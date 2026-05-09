@@ -39,7 +39,7 @@ leveraged_qqq_exploration/
     optimizer_equity.png             # top 5 equity curves
     optimizer_scatter.png            # CAGR vs worst annual return
 leveraged_spy_exploration/
-    optimizer_spy.py                 # SPY grid search optimizer
+    optimizer.py                     # SPY grid search optimizer
     spy_optimizer_results.csv
     spy_optimizer_equity.png
     spy_optimizer_scatter.png
@@ -71,6 +71,8 @@ Each optimizer ran 15,840 parameter combinations over full history (2003-01-01 t
 | QQQ | 15,817 / 15,840 | 2010 |
 | SPY | 15,754 / 15,840 | 2009 |
 | IWM | 15,674 / 15,840 | 2009 |
+
+**Note on the scatter plot (green dots below −40%):** The filter only applies from the year listed above onward — years before that cutoff are always treated as passing, because the leveraged ETF data for those years is synthetic (built from base-ETF returns) and penalizing synthetic history would be unfair. However, `worst_ann_ret` in the results is computed across *all* years including the pre-filter period. This means a combo can appear as a green (passing) dot in the scatter plot with a worst annual return worse than −40% if its worst year happened before the filter start — typically 2008, which fell before the cutoff for all three indices.
 
 ---
 
@@ -190,7 +192,7 @@ python backtester.py --preset IWM --entry-signal 1.04 --drop-level 0.025 --exit-
 
 ```bash
 cd leveraged_qqq_exploration && python optimizer.py
-cd leveraged_spy_exploration && python optimizer_spy.py
+cd leveraged_spy_exploration && python optimizer.py
 cd leveraged_iwm_exploration && python optimizer.py
 ```
 
