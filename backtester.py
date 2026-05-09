@@ -78,6 +78,8 @@ def parse_args():
                    help="Fraction of lev spend going to 2× ETF")
     p.add_argument("--alloc-x3",     type=float, default=1.00,
                    help="Fraction of lev spend going to 3× ETF")
+    p.add_argument("--save-plot",    default=None,
+                   help="Save plot to this path instead of showing interactively")
 
     args = p.parse_args()
 
@@ -519,7 +521,11 @@ def plot_results(hist, base_tk, args):
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.4)
     plt.tight_layout()
-    plt.show(block=True)
+    if args.save_plot:
+        plt.savefig(args.save_plot, dpi=150)
+        print(f"  Saved: {args.save_plot}")
+    else:
+        plt.show(block=True)
 
 
 # ----------------------------------------------------------
@@ -533,13 +539,13 @@ if __name__ == "__main__":
     print(f"\n{'='*60}")
     print(f"  Preset   : {args.preset}  "
           f"({cfg['base']} / {cfg['lev2']} / {cfg['lev3']})")
-    print(f"  Period   : {args.start} → {args.end}")
+    print(f"  Period   : {args.start} -> {args.end}")
     print(f"  Capital  : ${args.capital:,.0f}")
-    print(f"  Arm      : price > {args.entry_signal}×MA200")
-    print(f"  Buy      : armed + drop ≥ {args.drop_level*100:.1f}%")
-    print(f"  Exit     : price < {args.exit_signal}×MA200")
+    print(f"  Arm      : price > {args.entry_signal}x MA200")
+    print(f"  Buy      : armed + drop >= {args.drop_level*100:.1f}%")
+    print(f"  Exit     : price < {args.exit_signal}x MA200")
     print(f"  Alloc    : base {args.alloc_base*100:.0f}%  |  "
-          f"2× {args.alloc_x2*100:.0f}%  |  3× {args.alloc_x3*100:.0f}%")
+          f"2x {args.alloc_x2*100:.0f}%  |  3x {args.alloc_x3*100:.0f}%")
     print(f"  Lev buy  : min({args.buy_pct*100:.0f}% of portfolio, cash) per signal")
     print(f"{'='*60}")
 

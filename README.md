@@ -178,13 +178,42 @@ python backtester.py --preset IWM --entry-signal 1.04 --drop-level 0.025 --exit-
 
 ---
 
-## Key Observations
+## Performance Charts (Balanced Strategies, 2003–2026)
 
-- **QQQ and SPY significantly outperform IWM** in this strategy (~20%+ CAGR vs ~10%). Small-cap volatility does not translate to better leveraged returns with this approach.
-- **The 3× ETF dominates** in nearly all top combos — the 2× allocation rarely appears in top-ranked results.
-- **The high-CAGR combos carry heavy tail risk** (worst year near −40%). The balanced picks cut worst annual loss roughly in half at the cost of 1–6% CAGR.
-- **SPY best CAGR edges out QQQ** (22.26% vs 21.31%), likely because the SPY optimizer's looser exit (0.95× MA200) keeps more capital deployed during recoveries.
-- **IWM balanced pick is remarkably conservative** — worst annual return of only −13.13% while still delivering ~10% CAGR.
+**QQQ / TQQQ — 19.51% CAGR vs 16.07% buy & hold**
+![QQQ balanced](charts/qqq_balanced.png)
+
+**SPY / SSO — 16.13% CAGR vs 11.35% buy & hold**
+![SPY balanced](charts/spy_balanced.png)
+
+**IWM / TNA — 10.21% CAGR vs 10.28% buy & hold**
+![IWM balanced](charts/iwm_balanced.png)
+
+---
+
+## When This Strategy Works — and When It Doesn't
+
+### What it needs to thrive
+- **Sustained uptrends with periodic dips.** The MA200 filter keeps the strategy out of bear markets. Dip-buy signals pick up short-lived pullbacks within a broader uptrend, letting leveraged ETFs compound over months or years before an exit is needed.
+- **Clean trend reversals.** When a bear market begins and price crosses below the exit threshold quickly, the strategy exits before catastrophic leveraged losses accumulate. The 2020 COVID crash is a good example — sharp drop, fast recovery, the strategy exited and re-entered cleanly.
+- **A good entry point in the cycle.** Starting the strategy in cash during or just after a bear market (e.g. early 2009, early 2020) means the first buy signals coincide with a genuine recovery, and the leveraged ETF compounds from a low base.
+
+### What hurts it
+- **Fast waterfall declines with multiple dips before the exit fires.** The MA200 reacts slowly. If the market drops sharply in stages, each dip can trigger a buy signal while the strategy is still armed — accumulating 3× exposure just before the worst leg down. The 2008 GFC is the clearest example.
+- **Staircase-down bear markets with false recoveries.** After an exit, a brief rally above the entry threshold re-arms the strategy. If the bear resumes, the strategy buys again into another decline. Multiple losing buy-exit cycles deplete cash, and smaller capital means slower recovery. The 2000–2002 dot-com crash had this structure.
+- **Slow, grinding drawdowns (e.g. 2022).** Sustained rate-driven selloffs keep the market below MA200 for months. The strategy sits out, which is correct — but any false rallies that cross the entry threshold and trigger buys before the trend resumes will result in small but repeated losses.
+- **Sequence-of-returns risk.** After a long bull run, the strategy has built up maximum leveraged exposure. That is exactly when a crash causes the most damage. Starting right before a market peak is the worst possible timing.
+
+### Index comparison
+| | QQQ | SPY | IWM |
+|---|---|---|---|
+| Balanced CAGR | 19.51% | 16.13% | 10.21% |
+| Base B&H CAGR | 16.07% | 11.35% | 10.28% |
+| Strategy edge | +3.4pp | +4.8pp | −0.1pp |
+| Worst year (strategy) | −24.77% | −23.71% | −13.13% |
+| Worst year (base B&H) | −41.73% | −36.80% | −34.14% |
+
+QQQ and SPY gain meaningfully over buy-and-hold while reducing tail risk versus buy-and-hold. IWM shows almost no edge — small-cap volatility causes more decay in the leveraged ETF than it creates opportunity. The 3× ETF dominates top combos for all three indices; the 2× ETF almost never appears in top-ranked results.
 
 ---
 
