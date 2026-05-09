@@ -6,13 +6,14 @@ This project explores whether a disciplined dip-buying strategy using leveraged 
 
 ## Executive Summary
 
-| Index | Strategy CAGR | Buy & Hold CAGR | Strategy edge | Worst strategy year |
-|---|---|---|---|---|
-| QQQ (NASDAQ-100) | **24.75%** | 16.19% | +8.6pp | ~−39% |
-| SPY (S&P 500) | **22.21%** | 11.39% | +10.8pp | ~−39% |
-| IWM (Russell 2000) | **12.49%** | 10.31% | +2.2pp | ~−27% |
+| Index | Strategy CAGR | Buy & Hold CAGR | Strategy edge | Worst strategy year | Avg trades/yr |
+|---|---|---|---|---|---|
+| QQQ (NASDAQ-100) | **24.75%** | 16.19% | +8.6pp | ~−39% | ~4 |
+| SPY (S&P 500) | **22.21%** | 11.39% | +10.8pp | ~−39% | ~2 |
+| IWM (Russell 2000) | **12.49%** | 10.31% | +2.2pp | ~−27% | ~2 |
 
 > All results: $10,000 starting capital, 2003–2026, best-CAGR passing strategy per index.
+> This is a low-frequency swing strategy — not day trading. Most years see fewer than 5 trades total, with positions held for weeks to months between entry and exit.
 
 **Key findings:**
 - The strategy delivers meaningful alpha over buy-and-hold for QQQ and SPY, with roughly comparable drawdown risk to buy-and-hold in bad years.
