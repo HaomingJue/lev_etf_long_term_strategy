@@ -196,14 +196,16 @@ After the initial MA200 results, we tested replacing the exit trigger with a fas
 
 ### Head-to-head: MA200 exit vs MA100 exit (best parameters per approach)
 
-| Index | Exit MA | Best CAGR | vs B&H | Chart |
-|---|---|---|---|---|
-| QQQ | MA200 | **24.75%** | +8.6pp | below |
-| QQQ | MA100 | 20.15% | +3.9pp | below |
-| SPY | MA200 | 22.21% | +10.8pp | below |
-| SPY | MA100 | **22.42%** | +11.0pp | below |
-| IWM | MA200 | **12.49%** | +2.2pp | below |
-| IWM | MA100 | 9.67% | −0.6pp | below |
+| Index | Exit MA | Best CAGR | vs B&H | Worst year | Chart |
+|---|---|---|---|---|---|
+| QQQ | MA200 | **24.75%** | +8.6pp | −38.6% | below |
+| QQQ | MA100 | 20.15% | +3.9pp | −45.9%* | below |
+| SPY | MA200 | 22.21% | +10.8pp | −39.4% | below |
+| SPY | MA100 | **22.42%** | +11.0pp | **−33.0%** | below |
+| IWM | MA200 | **12.49%** | +2.2pp | −27.1% | below |
+| IWM | MA100 | 9.67% | −0.6pp | **−17.9%** | below |
+
+> \* QQQ MA100 worst year falls in 2008–2009, before the DD filter cutoff (2010). The strategy still passes the optimizer filter; the bad year is pre-filter history.
 
 ### QQQ: MA200 vs MA100 exit
 ![QQQ MA200 best](charts/qqq_ma200_best.png)
