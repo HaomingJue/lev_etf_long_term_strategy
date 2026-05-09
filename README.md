@@ -1,275 +1,316 @@
-# Leveraged ETF Long-Term Strategy
+# Leveraged ETF Strategy Research
 
-A trend-following, dip-buying strategy that uses leveraged ETFs (2× and 3×) to amplify returns on QQQ, SPY, and IWM. Includes a full-history optimizer that grid-searches 15,840 parameter combinations per index and ranks them by CAGR with a yearly drawdown filter.
-
----
-
-## Strategy Logic
-
-### Buy Cycle
-1. **Arm** — price closes above `MA200 × entry_signal` (trend confirmed)
-2. **Trigger** — while armed, same-day drop ≥ `drop_level` (buy the dip)
-3. **First signal in cycle** — buy base ETF up to `alloc_base × portfolio`, then spend `buy_pct × portfolio` on leveraged ETFs split by `alloc_x2` / `alloc_x3`
-4. **Subsequent signals** — spend `buy_pct × portfolio` on leveraged ETFs only (base already filled)
-
-### Exit
-- Price closes below `MA200 × exit_signal`
-- Sell all 2× and 3× holdings → cash
-- One-time trim of base if it exceeds `alloc_base × portfolio`
-- Dis-arm: next cycle requires a fresh arm signal
-
-### Synthetic Pre-Inception NAV
-For dates before a real leveraged ETF existed, the NAV is simulated from the base ETF's daily returns using the standard leverage model:
-
-```
-lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var20
-```
-
-The synthetic and real series are stitched seamlessly at the ETF's inception date.
+This project explores whether a disciplined dip-buying strategy using leveraged ETFs can beat simple buy-and-hold over the long run — and how far that edge holds up under different market conditions. We tested three major indices (NASDAQ-100, S&P 500, and Russell 2000), ran over 15,000 parameter combinations each, and extended the research to test a faster exit trigger using MA100 instead of MA200.
 
 ---
 
-## Repository Structure
+## Executive Summary
 
-```
-backtester.py                        # interactive backtester (CLI)
-leveraged_qqq_exploration/
-    optimizer.py                     # QQQ grid search optimizer
-    optimizer_results.csv            # all 15,840 combos, pass/fail
-    optimizer_equity.png             # top 5 equity curves
-    optimizer_scatter.png            # CAGR vs worst annual return
-leveraged_spy_exploration/
-    optimizer.py                     # SPY grid search optimizer
-    spy_optimizer_results.csv
-    spy_optimizer_equity.png
-    spy_optimizer_scatter.png
-leveraged_iwm_exploration/
-    optimizer.py                     # IWM grid search optimizer
-    optimizer_results.csv
-    optimizer_equity.png
-    optimizer_scatter.png
-```
+| Index | Strategy CAGR | Buy & Hold CAGR | Strategy edge | Worst strategy year |
+|---|---|---|---|---|
+| QQQ (NASDAQ-100) | **24.75%** | 16.19% | +8.6pp | ~−39% |
+| SPY (S&P 500) | **22.21%** | 11.39% | +10.8pp | ~−39% |
+| IWM (Russell 2000) | **12.49%** | 10.31% | +2.2pp | ~−27% |
+
+> All results: $10,000 starting capital, 2003–2026, best-CAGR passing strategy per index.
+
+**Key findings:**
+- The strategy delivers meaningful alpha over buy-and-hold for QQQ and SPY, with roughly comparable drawdown risk to buy-and-hold in bad years.
+- IWM (Russell 2000) shows minimal edge — small-cap volatility causes too much decay in the 3× ETF.
+- Using a faster MA100 exit instead of MA200 helps SPY (same CAGR, lower drawdown) but hurts QQQ and IWM significantly.
+- The 3× leveraged ETF dominates across all indices — the 2× version rarely appears in top strategies.
 
 ---
 
-## ETF Mapping
+## How the Strategy Works
 
-| Index | Base | 2× | 3× |
-|---|---|---|---|
-| NASDAQ-100 | QQQ | QLD (inception Jun 2006) | TQQQ (inception Feb 2010) |
-| S&P 500 | SPY | SSO (inception Jun 2006) | UPRO (inception Jun 2009) |
-| Russell 2000 | IWM | UWM (inception Jan 2007) | TNA (inception Nov 2008) |
+The strategy never just buys and holds a leveraged ETF. Instead it uses two rules to decide *when* to buy and when to get out:
 
----
+**Buying (the dip-buy cycle):**
+1. Wait until the market is in a healthy uptrend — specifically, price must be a certain percentage above its 200-day moving average (MA200). This "arms" the strategy.
+2. Once armed, wait for a single-day drop of a set size (e.g. 1%). That drop triggers a buy.
+3. On the first buy in a cycle, a small position in the plain ETF (e.g. QQQ) is established as a stabilizer. Then cash is deployed into the leveraged ETF (e.g. TQQQ).
+4. Each subsequent dip while armed puts more into the leveraged ETF only.
 
-## Optimizer Results Summary
+**Selling (the exit):**
+- If price falls below the moving average by a set threshold, everything in the leveraged ETFs is sold back to cash. The plain ETF position is kept (and trimmed once if it's grown too large).
+- After selling, the strategy goes back to waiting for a fresh uptrend signal before buying again.
 
-Each optimizer ran 15,840 parameter combinations over full history (2003-01-01 to 2026-05-08, $10,000 starting capital). A combo **passes** if every calendar year from the filter year onward shows an annual return ≥ −40%.
-
-| Index | Passing combos | Filter start year |
-|---|---|---|
-| QQQ | 15,817 / 15,840 | 2010 |
-| SPY | 15,754 / 15,840 | 2009 |
-| IWM | 15,674 / 15,840 | 2009 |
-
-**Note on the scatter plot (green dots below −40%):** The filter only applies from the year listed above onward — years before that cutoff are always treated as passing, because the leveraged ETF data for those years is synthetic (built from base-ETF returns) and penalizing synthetic history would be unfair. However, `worst_ann_ret` in the results is computed across *all* years including the pre-filter period. This means a combo can appear as a green (passing) dot in the scatter plot with a worst annual return worse than −40% if its worst year happened before the filter start — typically 2008, which fell before the cutoff for all three indices.
+**The logic in plain English:** Only buy leveraged ETFs when the trend is clearly up and the market pulls back. Exit fast when the trend breaks. Never hold a 3× ETF through a bear market.
 
 ---
 
-## Best Strategies
+## Parameters Explained
 
-> All results are based on the full backtest period **2003-01-02 → 2026-05-07** with $10,000 starting capital.
-> CAGR and worst annual return are measured over that entire window.
-> Base stock worst annual return is the single worst calendar-year return for buy-and-hold over the same period.
+| Parameter | What it means |
+|---|---|
+| Entry signal | How far above MA200 price must be to arm the strategy (e.g. 1.04 = 4% above) |
+| Drop level | Minimum single-day drop to trigger a buy (e.g. 0.01 = 1%) |
+| Exit signal | Price relative to the exit MA that triggers selling (e.g. 0.95 = 5% below) |
+| Buy pct | How much of the total portfolio to deploy per buy signal |
+| Alloc base | Target allocation to the plain (unleveraged) ETF as a portfolio stabilizer |
+| Alloc x2 / x3 | Split of leveraged spending between 2× and 3× ETFs |
+| Exit MA | Which moving average to use for the exit trigger: MA50, MA100, or MA200 |
 
-### QQQ — Best CAGR
+---
+
+## Results by Index
+
+> Period: **2003-01-01 → 2026-05-07** | Starting capital: **$10,000**
+> Each index was optimized independently across 15,840+ parameter combinations.
+> "Worst year" = worst single calendar-year return over the full period.
+
+### QQQ (NASDAQ-100) — TQQQ
+
+#### Best CAGR strategy
 | Metric | Strategy | QQQ Buy & Hold |
 |---|---|---|
 | Entry signal | 1.03× MA200 | — |
 | Drop level | 0.5% | — |
 | Exit signal | 1.01× MA200 | — |
 | Buy pct | 40% per signal | — |
-| Allocation | 0% QQQ / 0% QLD / 100% TQQQ | — |
-| **CAGR** | **21.31%** | 16.07% |
-| Worst annual return | −38.58% | −41.73% (2008) |
+| Allocation | 0% QQQ / 100% TQQQ | — |
+| **CAGR** | **24.75%** | 16.19% |
+| Worst year | ~−39% | −41.73% (2008) |
 
-```
-python backtester.py --preset QQQ --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+```bash
+python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 ```
 
-### QQQ — Balanced (CAGR vs drawdown)
+#### Balanced strategy (lower drawdown)
 | Metric | Strategy | QQQ Buy & Hold |
 |---|---|---|
 | Entry signal | 1.04× MA200 | — |
 | Drop level | 1.0% | — |
 | Exit signal | 1.01× MA200 | — |
 | Buy pct | 30% per signal | — |
-| Allocation | 0% QQQ / 0% QLD / 100% TQQQ | — |
+| Allocation | 0% QQQ / 100% TQQQ | — |
 | **CAGR** | **19.51%** | 16.07% |
-| Worst annual return | −24.77% | −41.73% (2008) |
+| Worst year | −24.77% | −41.73% (2008) |
 
-```
-python backtester.py --preset QQQ --entry-signal 1.04 --drop-level 0.010 --exit-signal 1.01 --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+```bash
+python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.04 --drop-level 0.010 --exit-signal 1.01 --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 ```
 
 ---
 
-### SPY — Best CAGR
+### SPY (S&P 500) — UPRO / SSO
+
+#### Best CAGR strategy
 | Metric | Strategy | SPY Buy & Hold |
 |---|---|---|
 | Entry signal | 1.02× MA200 | — |
 | Drop level | 0.5% | — |
 | Exit signal | 0.95× MA200 | — |
 | Buy pct | 30% per signal | — |
-| Allocation | 0% SPY / 0% SSO / 100% UPRO | — |
-| **CAGR** | **22.26%** | 11.35% |
-| Worst annual return | −39.40% | −36.80% (2008) |
+| Allocation | 0% SPY / 100% UPRO | — |
+| **CAGR** | **22.21%** | 11.39% |
+| Worst year | ~−39% | −36.80% (2008) |
 
-```
-python backtester.py --preset SPY --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+```bash
+python backtester.py --preset SPY --start 2003-01-01 --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 ```
 
-### SPY — Balanced (CAGR vs drawdown)
+#### Balanced strategy (lower drawdown)
 | Metric | Strategy | SPY Buy & Hold |
 |---|---|---|
 | Entry signal | 1.02× MA200 | — |
 | Drop level | 1.0% | — |
 | Exit signal | 0.95× MA200 | — |
 | Buy pct | 40% per signal | — |
-| Allocation | 0% SPY / 100% SSO / 0% UPRO | — |
+| Allocation | 0% SPY / 100% SSO (2×) | — |
 | **CAGR** | **16.13%** | 11.35% |
-| Worst annual return | −23.71% | −36.80% (2008) |
+| Worst year | −23.71% | −36.80% (2008) |
 
-```
-python backtester.py --preset SPY --entry-signal 1.02 --drop-level 0.010 --exit-signal 0.95 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 1.0 --alloc-x3 0.0
+```bash
+python backtester.py --preset SPY --start 2003-01-01 --entry-signal 1.02 --drop-level 0.010 --exit-signal 0.95 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 1.0 --alloc-x3 0.0
 ```
 
 ---
 
-### IWM — Best CAGR
+### IWM (Russell 2000) — TNA
+
+#### Best CAGR strategy
 | Metric | Strategy | IWM Buy & Hold |
 |---|---|---|
 | Entry signal | 1.05× MA200 | — |
 | Drop level | 1.5% | — |
 | Exit signal | 0.95× MA200 | — |
 | Buy pct | 30% per signal | — |
-| Allocation | 10% IWM / 0% UWM / 100% TNA | — |
-| **CAGR** | **10.23%** | 10.28% |
-| Worst annual return | −27.13% | −34.14% (2008) |
+| Allocation | 10% IWM / 100% TNA | — |
+| **CAGR** | **12.49%** | 10.31% |
+| Worst year | −27.13% | −34.14% (2008) |
 
-```
-python backtester.py --preset IWM --entry-signal 1.05 --drop-level 0.015 --exit-signal 0.95 --buy-pct 0.3 --alloc-base 0.1 --alloc-x2 0.0 --alloc-x3 1.0
+```bash
+python backtester.py --preset IWM --start 2003-01-01 --entry-signal 1.05 --drop-level 0.015 --exit-signal 0.95 --buy-pct 0.3 --alloc-base 0.1 --alloc-x2 0.0 --alloc-x3 1.0
 ```
 
-### IWM — Balanced (CAGR vs drawdown)
+#### Balanced strategy (lower drawdown)
 | Metric | Strategy | IWM Buy & Hold |
 |---|---|---|
 | Entry signal | 1.04× MA200 | — |
 | Drop level | 2.5% | — |
 | Exit signal | 0.99× MA200 | — |
 | Buy pct | 40% per signal | — |
-| Allocation | 30% IWM / 0% UWM / 100% TNA | — |
+| Allocation | 30% IWM / 100% TNA | — |
 | **CAGR** | **10.21%** | 10.28% |
-| Worst annual return | −13.13% | −34.14% (2008) |
+| Worst year | −13.13% | −34.14% (2008) |
 
-```
-python backtester.py --preset IWM --entry-signal 1.04 --drop-level 0.025 --exit-signal 0.99 --buy-pct 0.4 --alloc-base 0.3 --alloc-x2 0.0 --alloc-x3 1.0
+```bash
+python backtester.py --preset IWM --start 2003-01-01 --entry-signal 1.04 --drop-level 0.025 --exit-signal 0.99 --buy-pct 0.4 --alloc-base 0.3 --alloc-x2 0.0 --alloc-x3 1.0
 ```
 
 ---
 
-## Performance Charts (Balanced Strategies, 2003–2026)
+## Performance Charts
 
-**QQQ / TQQQ — 19.51% CAGR vs 16.07% buy & hold**
-![QQQ balanced](charts/qqq_balanced.png)
+### QQQ — Best CAGR strategy (MA200 exit)
+![QQQ MA200 best](charts/qqq_ma200_best.png)
 
-**SPY / SSO — 16.13% CAGR vs 11.35% buy & hold**
-![SPY balanced](charts/spy_balanced.png)
+### SPY — Best CAGR strategy (MA200 exit)
+![SPY MA200 best](charts/spy_ma200_best.png)
 
-**IWM / TNA — 10.21% CAGR vs 10.28% buy & hold**
-![IWM balanced](charts/iwm_balanced.png)
+### IWM — Best CAGR strategy (MA200 exit)
+![IWM MA200 best](charts/iwm_ma200_best.png)
 
 ---
 
 ## When This Strategy Works — and When It Doesn't
 
 ### What it needs to thrive
-- **Sustained uptrends with periodic dips.** The MA200 filter keeps the strategy out of bear markets. Dip-buy signals pick up short-lived pullbacks within a broader uptrend, letting leveraged ETFs compound over months or years before an exit is needed.
-- **Clean trend reversals.** When a bear market begins and price crosses below the exit threshold quickly, the strategy exits before catastrophic leveraged losses accumulate. The 2020 COVID crash is a good example — sharp drop, fast recovery, the strategy exited and re-entered cleanly.
-- **A good entry point in the cycle.** Starting the strategy in cash during or just after a bear market (e.g. early 2009, early 2020) means the first buy signals coincide with a genuine recovery, and the leveraged ETF compounds from a low base.
+- **Sustained uptrends with periodic dips.** The MA200 filter keeps the strategy in cash during bear markets. When the trend is up and the market pulls back briefly, the leveraged ETF compounds over months or years before an exit is needed.
+- **Clean, fast trend reversals.** The 2020 COVID crash is a good example — sharp drop, quick recovery. The strategy exited at the break, then re-entered cleanly into the recovery.
+- **A good starting point.** Starting in cash during or just after a bear market (e.g. early 2009, early 2020) means the first buys coincide with a genuine recovery and the leveraged ETF compounds from a low base.
 
 ### What hurts it
-- **Fast waterfall declines with multiple dips before the exit fires.** The MA200 reacts slowly. If the market drops sharply in stages, each dip can trigger a buy signal while the strategy is still armed — accumulating 3× exposure just before the worst leg down. The 2008 GFC is the clearest example.
-- **Staircase-down bear markets with false recoveries.** After an exit, a brief rally above the entry threshold re-arms the strategy. If the bear resumes, the strategy buys again into another decline. Multiple losing buy-exit cycles deplete cash, and smaller capital means slower recovery. The 2000–2002 dot-com crash had this structure.
-- **Slow, grinding drawdowns (e.g. 2022).** Sustained rate-driven selloffs keep the market below MA200 for months. The strategy sits out, which is correct — but any false rallies that cross the entry threshold and trigger buys before the trend resumes will result in small but repeated losses.
-- **Sequence-of-returns risk.** After a long bull run, the strategy has built up maximum leveraged exposure. That is exactly when a crash causes the most damage. Starting right before a market peak is the worst possible timing.
-
-### Index comparison
-| | QQQ | SPY | IWM |
-|---|---|---|---|
-| Balanced CAGR | 19.51% | 16.13% | 10.21% |
-| Base B&H CAGR | 16.07% | 11.35% | 10.28% |
-| Strategy edge | +3.4pp | +4.8pp | −0.1pp |
-| Worst year (strategy) | −24.77% | −23.71% | −13.13% |
-| Worst year (base B&H) | −41.73% | −36.80% | −34.14% |
-
-QQQ and SPY gain meaningfully over buy-and-hold while reducing tail risk versus buy-and-hold. IWM shows almost no edge — small-cap volatility causes more decay in the leveraged ETF than it creates opportunity. The 3× ETF dominates top combos for all three indices; the 2× ETF almost never appears in top-ranked results.
+- **Fast waterfall declines with multiple dips before the exit fires.** The MA200 is slow. If the market drops in stages, each dip can trigger a buy while the strategy is still armed — building up 3× exposure just before the worst leg down. The 2008 GFC is the clearest example.
+- **Staircase-down bear markets with false recoveries.** After selling, a brief rally can re-arm the strategy. If the bear resumes, the strategy buys again into the decline. Multiple losing cycles deplete cash and slow the recovery. The 2000–2002 dot-com crash had this pattern.
+- **Slow grinding drawdowns (e.g. 2022).** Sustained selloffs keep price below MA200 for months — the strategy correctly stays out, but any false rallies that trigger buys before the trend resumes result in small repeated losses.
+- **Sequence-of-returns risk.** After a long bull run the strategy holds maximum leveraged exposure. A crash at that point causes maximum damage. Starting just before a peak is the worst possible timing.
 
 ---
 
-## MA100 Exit Research
+## Extended Research: MA100 Exit
 
-A variant optimizer (`optimizer_ma100_exit.py` in each exploration folder) tests splitting the moving-average logic:
-- **Arm / Buy** — MA200 unchanged (slow trend filter)
-- **Exit** — MA100 instead of MA200 (faster reaction to trend breaks)
+After the initial MA200 results, we tested replacing the exit trigger with a faster MA100 — keeping MA200 for all entry/arm decisions. The hypothesis: a faster exit MA would cut losses in sharp reversals without meaningfully hurting upside.
 
-### Head-to-head results (same parameters, only exit MA changes)
+### Head-to-head: MA200 exit vs MA100 exit (best parameters per approach)
 
-| Index | Params | MA100 exit CAGR | MA200 exit CAGR | MA100 worst yr | MA200 worst yr |
-|---|---|---|---|---|---|
-| QQQ | best-CAGR (exit=0.95) | 17.97% | 17.49% (FAIL) | −46.06% | −42.62% |
-| QQQ | MA200-baseline (exit=1.01) | 8.51% | **21.31%** | −33.80% | −38.58% |
-| QQQ | MA200-balanced (exit=1.01) | 5.99% | **19.51%** | −22.12% | −24.77% |
-| SPY | best-CAGR (exit=0.95) | **20.51%** | 20.48% (FAIL) | **−32.95%** | −41.13% |
-| SPY | MA200-baseline (exit=0.95) | 19.99% | 20.26% | **−31.44%** | −39.40% |
-| SPY | MA200-balanced (exit=0.95) | 13.46% | 14.19% | **−18.74%** | −23.71% |
-| IWM | MA100-exit best (exit=0.95) | **8.33%** | 6.40% | **−17.91%** | −22.09% |
-| IWM | MA200-baseline (exit=0.95) | 6.69% | **10.23%** | −18.71% | −27.13% |
-| IWM | MA200-balanced (exit=0.99) | 5.34% | **10.21%** | −29.10% | −13.13% |
+| Index | Exit MA | Best CAGR | vs B&H | Chart |
+|---|---|---|---|---|
+| QQQ | MA200 | **24.75%** | +8.6pp | below |
+| QQQ | MA100 | 20.15% | +3.9pp | below |
+| SPY | MA200 | 22.21% | +10.8pp | below |
+| SPY | MA100 | **22.42%** | +11.0pp | below |
+| IWM | MA200 | **12.49%** | +2.2pp | below |
+| IWM | MA100 | 9.67% | −0.6pp | below |
+
+### QQQ: MA200 vs MA100 exit
+![QQQ MA200 best](charts/qqq_ma200_best.png)
+![QQQ MA100 best](charts/qqq_ma100_best.png)
+
+### SPY: MA200 vs MA100 exit
+![SPY MA200 best](charts/spy_ma200_best.png)
+![SPY MA100 best](charts/spy_ma100_best.png)
+
+### IWM: MA200 vs MA100 exit
+![IWM MA200 best](charts/iwm_ma200_best.png)
+![IWM MA100 best](charts/iwm_ma100_best.png)
 
 ### Conclusions
 
-**The exit_signal value and exit MA are tightly coupled — you cannot swap MA100 for MA200 without re-optimizing the exit_signal threshold.**
+**The exit MA and exit signal threshold are tightly coupled. You cannot swap MA100 for MA200 without re-optimizing the threshold — and even then the result varies by index.**
 
-- **High exit_signal (1.01–1.02) + MA100 = disastrous.** MA100 sits above MA200 during uptrends, so a signal like `price < 1.01 × MA100` fires constantly during normal bull-market volatility. The QQQ baseline loses 12+ CAGR points (21.31% → 8.51%) just from this swap. The strategy keeps exiting during rallies and misses the compounding.
+- **QQQ: MA200 wins clearly.** The MA200-optimized strategies use a high exit threshold (price just below MA200), which works because the MA200 is slow enough to stay well below price during normal dips. Switching to MA100 with the same threshold causes constant false exits during bull-market volatility, cutting CAGR from 24.75% to 20.15%.
 
-- **Low exit_signal (0.95) + MA100 = marginal improvement in drawdown, minimal CAGR cost.** SPY is the clearest example: MA100 exit cuts the worst year from −39.40% to −31.44% while barely touching CAGR (20.26% → 19.99%). It also converts a FAIL combo to PASS by keeping worst-year just under the 40% cap.
+- **SPY: MA100 is essentially a wash, with a slight drawdown benefit.** With a low exit threshold (0.95, meaning price must fall 5% *below* the exit MA), both MAs trigger at similar moments. MA100 exit slightly improves the worst year from −39% to −33% with no CAGR cost. This is the one case where MA100 exit makes sense.
 
-- **IWM is the exception.** For the MA200-optimized parameters, MA100 exit hurts on both dimensions — lower CAGR and worse drawdown. The frequent exits from a faster MA compound IWM's already-marginal leveraged performance.
+- **IWM: MA100 exit hurts.** IWM's already-thin leveraged edge disappears with more frequent exits. The MA100-optimized strategy actually underperforms IWM buy-and-hold (9.67% vs 10.31% CAGR).
 
-**Practical takeaway:** MA100 exit is worth considering for SPY with a low exit_signal (≤ 0.97). It meaningfully caps tail risk with little cost. For QQQ and IWM, stick with MA200 exit and the parameters found by the MA200 optimizer.
+**Bottom line:** Use MA200 exit for QQQ and IWM. For SPY with a low exit threshold (≤ 0.97), MA100 exit offers a modest drawdown improvement at no CAGR cost.
 
 ---
 
-## Running the Optimizer
+## Risk Considerations
+
+This research is based on historical backtests. Past performance does not guarantee future results. Key risks to be aware of:
+
+- **Leveraged ETF decay.** 3× ETFs lose value to daily rebalancing in volatile or sideways markets. The synthetic pre-inception NAV used here models this but may not capture all real-world costs (borrowing rates, fees, tracking error).
+- **The 2003–2026 window is mostly bullish.** The strategy's strong results are partly explained by the prolonged bull markets in this period. Performance in a structurally different decade could differ.
+- **Sequence risk.** Starting the strategy near a market peak — when leveraged exposure is at maximum — produces the worst outcomes. Timing matters even with a rules-based system.
+
+---
+
+## Technical Reference
+
+### Leveraged ETF Mapping
+
+| Index | Base ETF | 2× ETF | 3× ETF |
+|---|---|---|---|
+| NASDAQ-100 | QQQ | QLD (since Jun 2006) | TQQQ (since Feb 2010) |
+| S&P 500 | SPY | SSO (since Jun 2006) | UPRO (since Jun 2009) |
+| Russell 2000 | IWM | UWM (since Jan 2007) | TNA (since Nov 2008) |
+
+Data before each leveraged ETF's inception is simulated from the base ETF's daily returns using the standard leverage model:
+```
+lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var20
+```
+The synthetic and real series are stitched at inception, scaled to match.
+
+### Repository Structure
+
+```
+backtester.py                          # interactive backtester (CLI, supports --exit-ma 50/100/200)
+charts/                                # equity curve PNGs embedded in this README
+leveraged_qqq_exploration/
+    optimizer.py                       # MA200 exit optimizer for QQQ
+    optimizer_ma100_exit.py            # MA100 exit variant
+    optimizer_results.csv              # all 15,840 combos
+    ma100_exit_results.csv
+    optimizer_equity.png / scatter.png
+    ma100_exit_equity.png / scatter.png
+leveraged_spy_exploration/             # same structure for SPY
+leveraged_iwm_exploration/             # same structure for IWM
+```
+
+### Running the Backtester
 
 ```bash
+# MA200 exit (default)
+python backtester.py --preset QQQ --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+
+# MA100 exit
+python backtester.py --preset SPY --exit-ma 100 --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+
+# MA50 exit
+python backtester.py --preset SPY --exit-ma 50 --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+
+# Save chart to file
+python backtester.py --preset QQQ ... --save-plot output.png
+```
+
+### Running the Optimizer
+
+```bash
+# MA200 exit (baseline)
 cd leveraged_qqq_exploration && python optimizer.py
 cd leveraged_spy_exploration && python optimizer.py
 cd leveraged_iwm_exploration && python optimizer.py
-```
 
 # MA100 exit variant
-```bash
 cd leveraged_qqq_exploration && python optimizer_ma100_exit.py
 cd leveraged_spy_exploration && python optimizer_ma100_exit.py
 cd leveraged_iwm_exploration && python optimizer_ma100_exit.py
 ```
 
-Outputs per run: `optimizer_results.csv`, `optimizer_equity.png`, `optimizer_scatter.png`.
+### Optimizer Filter Notes
 
-## Dependencies
+The optimizer runs 15,840 parameter combinations and marks each as pass/fail based on whether any calendar year showed worse than −40% annual return. The filter only applies **from a cutoff year onward** (2010 for QQQ, 2009 for SPY/IWM) because data before the real leveraged ETF launched is synthetic and penalizing synthetic history would be unfair.
 
-```
+`worst_ann_ret` in the results CSV spans *all* years including pre-cutoff, so passing combos can show a worst return worse than −40% if that bad year was before the cutoff (typically 2008). This is why green dots can appear below the −40% line in the scatter plots.
+
+### Dependencies
+
+```bash
 pip install yfinance pandas numpy matplotlib tqdm
 ```

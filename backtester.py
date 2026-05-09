@@ -1,13 +1,11 @@
 # ==========================================================
-# LEVERAGED STRATEGY BACKTESTER v4
+# LEVERAGED STRATEGY BACKTESTER v5
 #
-# Two hardcoded configs:
-#   QQQ  →  QLD (2×)  +  TQQQ (3×)
-#   SPY  →  SSO (2×)  +  UPRO (3×)
+# Presets: QQQ / SPY / IWM
 #
 # BUY CYCLE RULES:
 #   Arm condition : price closes above MA200 × entry_signal
-#   Trigger       : armed AND same-day drop ≥ drop_level
+#   Trigger       : armed AND same-day drop >= drop_level
 #
 #   First signal in a cycle:
 #     1. Buy base up to alloc_base × total_portfolio (one shot)
@@ -17,7 +15,9 @@
 #   Subsequent signals (base already filled):
 #     - Spend min(buy_pct × total, cash) on lev only
 #
-# EXIT RULES  (price < MA200 × exit_signal):
+# EXIT RULES  (price < exit_MA × exit_signal):
+#   exit_MA is MA50, MA100, or MA200 (set via --exit-ma, default 200)
+#   Arm/entry always uses MA200.
 #   1. Sell ALL 2× and 3× holdings → cash
 #   2. If base value > alloc_base × total → trim excess → cash
 #   3. Dis-arm: next buy cycle needs a fresh arm
@@ -78,6 +78,8 @@ def parse_args():
                    help="Fraction of lev spend going to 2× ETF")
     p.add_argument("--alloc-x3",     type=float, default=1.00,
                    help="Fraction of lev spend going to 3× ETF")
+    p.add_argument("--exit-ma",      type=int, default=200, choices=[50, 100, 200],
+                   help="MA period used for exit signal (arm/entry always uses MA200)")
     p.add_argument("--save-plot",    default=None,
                    help="Save plot to this path instead of showing interactively")
 
@@ -169,6 +171,8 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 def add_indicators(df: pd.DataFrame, base_col: str) -> pd.DataFrame:
     df = df.copy()
     df["ret"]   = df[base_col].pct_change().fillna(0)
+    df["MA50"]  = df[base_col].rolling(50).mean()
+    df["MA100"] = df[base_col].rolling(100).mean()
     df["MA200"] = df[base_col].rolling(200).mean()
     return df
 
@@ -259,12 +263,15 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     START_IDX = 1     # MA200 already valid from day 0 (warmup handled above)
 
-    raw_base = df["base"].values
-    raw_lev2 = df["lev2"].values
-    raw_lev3 = df["lev3"].values
-    raw_ret  = df["ret"].values
-    raw_ma   = df["MA200"].values
-    idx      = df.index
+    exit_ma_col = f"MA{args.exit_ma}"
+
+    raw_base    = df["base"].values
+    raw_lev2    = df["lev2"].values
+    raw_lev3    = df["lev3"].values
+    raw_ret     = df["ret"].values
+    raw_ma200   = df["MA200"].values   # always used for arm/entry
+    raw_ma_exit = df[exit_ma_col].values  # used for exit
+    idx         = df.index
 
     # Actual (un-normalised) base price for display
     base_price_series = s_base.reindex(df.index)
@@ -279,13 +286,14 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     for i in range(START_IDX, len(df)):
 
-        nb   = raw_base[i]          # base NAV
-        n2   = raw_lev2[i]          # lev2 NAV
-        n3   = raw_lev3[i]          # lev3 NAV
-        ma   = raw_ma[i]
-        ret  = raw_ret[i]
+        nb      = raw_base[i]
+        n2      = raw_lev2[i]
+        n3      = raw_lev3[i]
+        ma200   = raw_ma200[i]
+        ma_exit = raw_ma_exit[i]
+        ret     = raw_ret[i]
 
-        if np.isnan(ma) or ma == 0:
+        if np.isnan(ma200) or ma200 == 0 or np.isnan(ma_exit) or ma_exit == 0:
             continue
 
         # actual base price (for display & signal calc)
@@ -299,9 +307,9 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         total    = cash + holdings
 
         # ══════════════════════════════════════════════════
-        # EXIT
+        # EXIT  (uses exit MA — MA50, MA100, or MA200)
         # ══════════════════════════════════════════════════
-        if price < ma * args.exit_signal and (s_2 > 0 or s_3 > 0):
+        if price < ma_exit * args.exit_signal and (s_2 > 0 or s_3 > 0):
 
             notes = []
 
@@ -346,18 +354,18 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
         else:
             # ════════════════════════════════════════════
-            # ARM CHECK
+            # ARM CHECK  (always MA200)
             # ════════════════════════════════════════════
-            if not armed and price > ma * args.entry_signal:
+            if not armed and price > ma200 * args.entry_signal:
                 armed = True
 
             # ════════════════════════════════════════════
-            # BUY SIGNAL
+            # BUY SIGNAL  (always MA200)
             # ════════════════════════════════════════════
             drop = (prev - price) / prev if prev > 0 else 0.0
             is_drop_signal = (
                 armed
-                and price > ma * args.entry_signal
+                and price > ma200 * args.entry_signal
                 and drop >= args.drop_level
                 and cash > 0.01
             )
@@ -504,12 +512,12 @@ def plot_results(hist, base_tk, args):
     ax.plot(hist.index, hist["Strategy"], label="Leveraged Strategy",
             linewidth=1.5, color="darkorange")
 
-    lev_label = (f"2×={cfg['lev2']} {args.alloc_x2*100:.0f}% / "
-                 f"3×={cfg['lev3']} {args.alloc_x3*100:.0f}%")
+    lev_label = (f"2x={cfg['lev2']} {args.alloc_x2*100:.0f}% / "
+                 f"3x={cfg['lev3']} {args.alloc_x3*100:.0f}%")
     ax.set_title(
         f"Backtest — {base_tk}  |  "
-        f"Entry >{args.entry_signal}×MA200 & drop >{args.drop_level*100:.1f}%  |  "
-        f"Exit <{args.exit_signal}×MA200\n"
+        f"Entry >{args.entry_signal}x MA200 & drop >{args.drop_level*100:.1f}%  |  "
+        f"Exit <{args.exit_signal}x MA{args.exit_ma}\n"
         f"Base {args.alloc_base*100:.0f}%  |  Lev: {lev_label}  |  "
         f"Lev buy size: {args.buy_pct*100:.0f}% per signal",
         fontsize=10,
@@ -543,7 +551,7 @@ if __name__ == "__main__":
     print(f"  Capital  : ${args.capital:,.0f}")
     print(f"  Arm      : price > {args.entry_signal}x MA200")
     print(f"  Buy      : armed + drop >= {args.drop_level*100:.1f}%")
-    print(f"  Exit     : price < {args.exit_signal}x MA200")
+    print(f"  Exit     : price < {args.exit_signal}x MA{args.exit_ma}")
     print(f"  Alloc    : base {args.alloc_base*100:.0f}%  |  "
           f"2x {args.alloc_x2*100:.0f}%  |  3x {args.alloc_x3*100:.0f}%")
     print(f"  Lev buy  : min({args.buy_pct*100:.0f}% of portfolio, cash) per signal")
