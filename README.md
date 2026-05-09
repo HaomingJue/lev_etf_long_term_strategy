@@ -85,6 +85,7 @@ Each optimizer ran 15,840 parameter combinations over full history (2003-01-01 t
 | Buy pct | 40% per signal |
 | Allocation | 0% QQQ / 0% QLD / 100% TQQQ |
 | **CAGR** | **21.31%** |
+| QQQ Buy & Hold CAGR | 16.07% |
 | Worst annual return | −38.58% |
 
 ```
@@ -100,6 +101,7 @@ python backtester.py --preset QQQ --entry-signal 1.03 --drop-level 0.005 --exit-
 | Buy pct | 30% per signal |
 | Allocation | 0% QQQ / 0% QLD / 100% TQQQ |
 | **CAGR** | **19.51%** |
+| QQQ Buy & Hold CAGR | 16.07% |
 | Worst annual return | −24.77% |
 
 ```
@@ -117,6 +119,7 @@ python backtester.py --preset QQQ --entry-signal 1.04 --drop-level 0.010 --exit-
 | Buy pct | 30% per signal |
 | Allocation | 0% SPY / 0% SSO / 100% UPRO |
 | **CAGR** | **22.26%** |
+| SPY Buy & Hold CAGR | 11.35% |
 | Worst annual return | −39.40% |
 
 ```
@@ -132,6 +135,7 @@ python backtester.py --preset SPY --entry-signal 1.02 --drop-level 0.005 --exit-
 | Buy pct | 40% per signal |
 | Allocation | 0% SPY / 100% SSO / 0% UPRO |
 | **CAGR** | **16.13%** |
+| SPY Buy & Hold CAGR | 11.35% |
 | Worst annual return | −23.71% |
 
 ```
@@ -149,6 +153,7 @@ python backtester.py --preset SPY --entry-signal 1.02 --drop-level 0.010 --exit-
 | Buy pct | 30% per signal |
 | Allocation | 10% IWM / 0% UWM / 100% TNA |
 | **CAGR** | **10.23%** |
+| IWM Buy & Hold CAGR | 10.28% |
 | Worst annual return | −27.13% |
 
 ```
@@ -164,6 +169,7 @@ python backtester.py --preset IWM --entry-signal 1.05 --drop-level 0.015 --exit-
 | Buy pct | 40% per signal |
 | Allocation | 30% IWM / 0% UWM / 100% TNA |
 | **CAGR** | **10.21%** |
+| IWM Buy & Hold CAGR | 10.28% |
 | Worst annual return | −13.13% |
 
 ```
