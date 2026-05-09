@@ -217,12 +217,53 @@ QQQ and SPY gain meaningfully over buy-and-hold while reducing tail risk versus 
 
 ---
 
+## MA100 Exit Research
+
+A variant optimizer (`optimizer_ma100_exit.py` in each exploration folder) tests splitting the moving-average logic:
+- **Arm / Buy** — MA200 unchanged (slow trend filter)
+- **Exit** — MA100 instead of MA200 (faster reaction to trend breaks)
+
+### Head-to-head results (same parameters, only exit MA changes)
+
+| Index | Params | MA100 exit CAGR | MA200 exit CAGR | MA100 worst yr | MA200 worst yr |
+|---|---|---|---|---|---|
+| QQQ | best-CAGR (exit=0.95) | 17.97% | 17.49% (FAIL) | −46.06% | −42.62% |
+| QQQ | MA200-baseline (exit=1.01) | 8.51% | **21.31%** | −33.80% | −38.58% |
+| QQQ | MA200-balanced (exit=1.01) | 5.99% | **19.51%** | −22.12% | −24.77% |
+| SPY | best-CAGR (exit=0.95) | **20.51%** | 20.48% (FAIL) | **−32.95%** | −41.13% |
+| SPY | MA200-baseline (exit=0.95) | 19.99% | 20.26% | **−31.44%** | −39.40% |
+| SPY | MA200-balanced (exit=0.95) | 13.46% | 14.19% | **−18.74%** | −23.71% |
+| IWM | MA100-exit best (exit=0.95) | **8.33%** | 6.40% | **−17.91%** | −22.09% |
+| IWM | MA200-baseline (exit=0.95) | 6.69% | **10.23%** | −18.71% | −27.13% |
+| IWM | MA200-balanced (exit=0.99) | 5.34% | **10.21%** | −29.10% | −13.13% |
+
+### Conclusions
+
+**The exit_signal value and exit MA are tightly coupled — you cannot swap MA100 for MA200 without re-optimizing the exit_signal threshold.**
+
+- **High exit_signal (1.01–1.02) + MA100 = disastrous.** MA100 sits above MA200 during uptrends, so a signal like `price < 1.01 × MA100` fires constantly during normal bull-market volatility. The QQQ baseline loses 12+ CAGR points (21.31% → 8.51%) just from this swap. The strategy keeps exiting during rallies and misses the compounding.
+
+- **Low exit_signal (0.95) + MA100 = marginal improvement in drawdown, minimal CAGR cost.** SPY is the clearest example: MA100 exit cuts the worst year from −39.40% to −31.44% while barely touching CAGR (20.26% → 19.99%). It also converts a FAIL combo to PASS by keeping worst-year just under the 40% cap.
+
+- **IWM is the exception.** For the MA200-optimized parameters, MA100 exit hurts on both dimensions — lower CAGR and worse drawdown. The frequent exits from a faster MA compound IWM's already-marginal leveraged performance.
+
+**Practical takeaway:** MA100 exit is worth considering for SPY with a low exit_signal (≤ 0.97). It meaningfully caps tail risk with little cost. For QQQ and IWM, stick with MA200 exit and the parameters found by the MA200 optimizer.
+
+---
+
 ## Running the Optimizer
 
 ```bash
 cd leveraged_qqq_exploration && python optimizer.py
 cd leveraged_spy_exploration && python optimizer.py
 cd leveraged_iwm_exploration && python optimizer.py
+```
+
+# MA100 exit variant
+```bash
+cd leveraged_qqq_exploration && python optimizer_ma100_exit.py
+cd leveraged_spy_exploration && python optimizer_ma100_exit.py
+cd leveraged_iwm_exploration && python optimizer_ma100_exit.py
 ```
 
 Outputs per run: `optimizer_results.csv`, `optimizer_equity.png`, `optimizer_scatter.png`.
