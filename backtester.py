@@ -47,6 +47,13 @@ PRESETS = {
     "IWM": dict(base="IWM", lev2="UWM",  lev3="TNA"),
 }
 
+# Earliest date yfinance has reliable data for each base ETF
+PRESET_INCEPTION = {
+    "QQQ": "1999-01-01",   # QQQ launched 1999-03-10
+    "SPY": "1993-01-29",   # SPY launched 1993-01-29
+    "IWM": "2000-05-22",   # IWM launched 2000-05-26
+}
+
 
 # ----------------------------------------------------------
 # CLI
@@ -59,8 +66,8 @@ def parse_args():
     )
     p.add_argument("--preset",       default="QQQ", choices=["QQQ", "SPY", "IWM"],
                    help="Which base/lev ETF set to use")
-    p.add_argument("--start",        default="1999-03-10",
-                   help="Start date. Defaults to QQQ inception (1999-03-10)")
+    p.add_argument("--start",        default=None,
+                   help="Start date (YYYY-MM-DD). Defaults to each preset's inception date.")
     p.add_argument("--end",          default=datetime.date.today().isoformat(),
                    help="End date. Defaults to today")
     p.add_argument("--capital",      type=float, default=10_000)
@@ -84,6 +91,17 @@ def parse_args():
                    help="Save plot to this path instead of showing interactively")
 
     args = p.parse_args()
+
+    # Default start = preset inception if not supplied
+    if args.start is None:
+        args.start = PRESET_INCEPTION[args.preset]
+
+    inception = PRESET_INCEPTION[args.preset]
+    if args.start < inception:
+        p.error(
+            f"--start {args.start} is before {args.preset} inception ({inception}). "
+            f"Earliest valid start for {args.preset} is {inception}."
+        )
 
     # alloc_x2 + alloc_x3 must sum to 1 (they split the lev portion)
     lev_alloc = args.alloc_x2 + args.alloc_x3
@@ -202,10 +220,10 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     # ── Download base from 1999; real lev ETFs from their inception ──
     print(f"  Downloading {base_tk}, {lev2_tk}, {lev3_tk} …")
     # Use 300-day warmup before args.start for accurate MA200,
-    # but never go earlier than 1999-01-01 (QQQ inception)
+    # but never go earlier than the base ETF's inception date.
     warmup_start = max(
         (pd.Timestamp(args.start) - pd.DateOffset(days=300)).strftime("%Y-%m-%d"),
-        "1999-01-01"
+        PRESET_INCEPTION[args.preset],
     )
     s_base = download(base_tk, warmup_start, args.end)
     # Download real lev ETFs — they'll only have data from their launch date
