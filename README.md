@@ -312,6 +312,35 @@ The optimizer runs 15,840 parameter combinations and marks each as pass/fail bas
 
 `worst_ann_ret` in the results CSV spans *all* years including pre-cutoff, so passing combos can show a worst return worse than −40% if that bad year was before the cutoff (typically 2008). This is why green dots can appear below the −40% line in the scatter plots.
 
+### Adjusted vs Unadjusted Prices
+
+All price data — daily closes, MA200, daily returns — uses **dividend-adjusted prices** (`auto_adjust=True` via yfinance). This matches the live `daily_signal` runner, so the backtest and live signals are computed on the same basis.
+
+**Why adjusted?**
+
+When a dividend is paid, the stock price drops by the dividend amount on the ex-dividend date. Without adjustment, that artificial drop looks like a real price dip and can falsely trigger the buy signal (drop ≥ threshold). Adjusted prices remove that noise retroactively, so the backtest and live signals only fire on genuine market dips.
+
+**Why the MA200 looks different from Google Finance / Barchart**
+
+Most charting sites (Google Finance, Barchart, TradingView) display MA200 computed from **unadjusted** prices. This produces a slightly higher MA200 value. The difference for QQQ/SPY is typically $1–3 on the MA200 level — small but visible. This is expected and not a bug.
+
+**How often do dividends affect signals?**
+
+QQQ and SPY pay dividends quarterly (~4× per year). The per-dividend price drop is roughly:
+
+| ETF | Annual yield | Quarterly drop | As % of price |
+|-----|-------------|----------------|---------------|
+| QQQ | ~0.6% | ~$1.00–1.50 | ~0.15% |
+| SPY | ~1.3% | ~$2.50–3.00 | ~0.33% |
+
+The buy trigger requires a **0.5% same-day drop** minimum. A dividend-only drop of 0.15–0.33% is well below this threshold, so ex-dividend dates essentially never cause a false buy signal even with unadjusted prices. The adjustment is a belt-and-suspenders safeguard, not a critical necessity for QQQ/SPY.
+
+**Live signal note**
+
+The live (intraday) price is always the actual market price — it cannot be "adjusted" since adjustments are applied retroactively. On the ~4 ex-dividend days per year, there is a brief inconsistency between the unadjusted live price and the adjusted MA200/prev_close. Given the small dividend size relative to the signal thresholds, this is safe to ignore.
+
+**Bottom line:** The ~$1–3 gap between your adjusted MA200 and what Google Finance shows is correct and expected. The backtest and live signal are internally consistent with each other, which is what matters.
+
 ### Dependencies
 
 ```bash
