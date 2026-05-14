@@ -276,6 +276,55 @@ leveraged_spy_exploration/             # same structure for SPY
 leveraged_iwm_exploration/             # same structure for IWM
 ```
 
+### Code Flow
+
+#### Backtester (`backtester.py`)
+
+```mermaid
+flowchart TD
+    A([python backtester.py --preset QQQ ...]) --> B[Parse CLI args\npreset · entry-signal · drop-level\nexit-signal · exit-ma · buy-pct\nalloc-base · alloc-x2 · alloc-x3]
+    B --> C[Download via yfinance\nBase ETF from inception\n2× ETF from real inception\n3× ETF from real inception]
+    C --> D[Build synthetic NAV for pre-inception\nlev_ret = L×r − 0.5×L²−L×var20\nStitch synthetic + real at inception date]
+    D --> E[Normalize all series to NAV 1.0\nAdd MA50 / MA100 / MA200\nCompute daily returns]
+    E --> F[Daily backtest loop]
+
+    F --> G{Price below\nexit_MA × exit_signal\nAND holding lev?}
+    G -- Yes --> H[EXIT\nSell all 2× and 3× → cash\nTrim base if over target\nDis-arm]
+    G -- No --> I{Price above\nMA200 × entry_signal?}
+    I -- Yes --> J[ARM strategy]
+    J --> K{Armed AND\ndrop ≥ drop_level?}
+    K -- Yes --> L{First buy\nin this cycle?}
+    L -- Yes --> M[Buy base ETF\nup to alloc_base × portfolio]
+    M --> N[Buy leveraged\nbuy_pct × portfolio\nsplit alloc_x2 / alloc_x3]
+    L -- No --> N
+    K -- No --> O[Hold]
+    I -- No --> O
+    H & N & O --> P[Record portfolio value\ncash + base + 2× + 3×]
+    P --> Q{More days?}
+    Q -- Yes --> F
+    Q -- No --> R[Compute CAGR\nyearly returns\nvs buy-and-hold]
+    R --> S([Console: transaction log · yearly table · CAGR\nChart: equity curve vs benchmark])
+```
+
+#### Optimizer (`optimizer.py` / `optimizer_ma100_exit.py`)
+
+```mermaid
+flowchart TD
+    A([python optimizer.py]) --> B[Load data\nSame pipeline as backtester:\ndownload → synthetic NAV\n→ normalize → MA200]
+    B --> C[Build parameter grid\n~15840 valid combos\nentry 6 × drop 6 × exit 6\n× buy_pct 4 × alloc_base 4 × alloc_x2 5\nFilter out exit_signal ≥ entry_signal]
+    C --> D[Loop over all combos\ntqdm progress bar]
+    D --> E[Run backtest\nreturns CAGR + portfolio array]
+    E --> F[Drawdown filter\ncheck each calendar year\nfrom DD_START_YEAR onward\nQQQ: 2010 · SPY/IWM: 2009]
+    F --> G{Any year\nreturn below −40%?}
+    G -- Yes --> H[Mark FAILED]
+    G -- No --> I[Mark PASSED]
+    H & I --> J[Record row:\nall params · CAGR · worst_ann_ret · passed]
+    J --> K{More combos?}
+    K -- Yes --> D
+    K -- No --> L[Filter to PASSING combos\nSort by CAGR descending]
+    L --> M([CSV: all 15840 rows\nConsole: top 20 leaderboard\nPlot: top 5 equity curves\nScatter: CAGR vs worst year])
+```
+
 ### Running the Backtester
 
 ```bash
