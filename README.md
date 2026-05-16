@@ -9,6 +9,40 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ---
 
+## Contents
+
+- [Abstract](#abstract)
+- [Executive Summary](#executive-summary)
+- [1. Strategy Description](#1-strategy-description)
+  - [How It Works](#how-it-works)
+  - [Parameters](#parameters)
+- [2. Methodology](#2-methodology)
+  - [Data and Universe](#data-and-universe)
+  - [Synthetic Leveraged NAV](#synthetic-leveraged-nav)
+  - [Optimizer Grid Search](#optimizer-grid-search)
+  - [Critical Limitation: Optimizer Warm-Up Gap](#critical-limitation-optimizer-warm-up-gap)
+- [3. Results — Full History (2003–2026)](#3-results--full-history-20032026)
+- [4. Results — Exit MA Comparison](#4-results--exit-ma-comparison-ma200-vs-ma100-vs-ma50)
+- [5. Results — 2× vs 3× Leverage](#5-results--2-vs-3-leverage)
+- [6. Results — Walk-Forward Validation](#6-results--walk-forward-validation)
+- [7. Results — Crisis Period Stress Tests](#7-results--crisis-period-stress-tests)
+  - [7.1 Global Financial Crisis: 2007–2010](#71-global-financial-crisis-20072010)
+  - [7.2 COVID Crash and Recovery](#72-covid-crash-and-recovery-2019-10-01--2021-06-30)
+  - [7.3 Rate-Hike Bear Market: 2022](#73-rate-hike-bear-market-2021-06-01--2023-06-30)
+  - [7.4 Dot-com Bubble & Recovery](#74-dot-com-bubble--recovery-2000-01-03--2003-12-31)
+- [8. Discussion](#8-discussion)
+  - [What Drives the Edge](#what-drives-the-edge)
+  - [When the Strategy Struggles](#when-the-strategy-struggles)
+  - [Limitations and Caveats](#limitations-and-caveats)
+- [9. Risk Considerations](#9-risk-considerations)
+- [10. Technical Reference](#10-technical-reference)
+  - [Repository Structure](#repository-structure)
+  - [Code Flow](#code-flow)
+  - [Running the Backtester](#running-the-backtester)
+  - [Running the Optimizers](#running-the-optimizers)
+
+---
+
 ## Abstract
 
 We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. Crucially, the strategy's edge held up in the out-of-sample period 2015–2026 (CAGR of 38.69% for QQQ vs 19.38% B&H) and survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
