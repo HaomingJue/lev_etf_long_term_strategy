@@ -90,6 +90,33 @@ The strategy never holds a leveraged ETF unconditionally. Two rules govern all b
 
 **Plain English:** Only hold leveraged ETFs when the trend is clearly up and the market dips briefly. Exit immediately when the trend breaks. Never ride a 3× ETF through a bear market.
 
+---
+
+**Worked Example** — SPY strategy, $10,000 starting capital
+> Parameters: entry=1.02, drop=0.5%, exit=0.95, buy_pct=30%, alloc_base=20%, alloc_x2=25%, alloc_x3=75%
+
+| Day | Event | Action | SPY | SSO (2×) | UPRO (3×) | Cash | Total |
+|---|---|---|---|---|---|---|---|
+| 1 | SPY = $450, MA200 = $440. SPY > 1.02×$440 = $448.8 | **ARM** | — | — | — | $10,000 | $10,000 |
+| 5 | SPY drops $450 → $447 (−0.67% ≥ 0.5%) | **FIRST BUY** | | | | | |
+| | ① Establish base: 20% × $10,000 = $2,000 into SPY | | $2,000 | — | — | $8,000 | $10,000 |
+| | ② Leveraged buy: 30% × $10,000 = $3,000 total | | | | | | |
+| | → SSO: 25% × $3,000 = $750 | | $2,000 | $750 | — | $7,250 | $10,000 |
+| | → UPRO: 75% × $3,000 = $2,250 | | $2,000 | $750 | $2,250 | $5,000 | $10,000 |
+| 12 | SPY drops $447 → $444 (−0.67%) while still armed | **SECOND BUY** (no base re-buy) | | | | | |
+| | Leveraged buy: 30% × $10,000 = $3,000 | | | | | | |
+| | → SSO: $750 more; UPRO: $2,250 more | | $2,000 | $1,500 | $4,500 | $2,000 | $10,000 |
+| Later | SPY falls to $416, below 0.95×$440 = $418 | **EXIT** | | | | | |
+| | Sell all SSO + UPRO → cash. Trim base if needed. Dis-arm. | | $2,000 | — | — | $8,000 | $10,000 |
+
+Key observations from this example:
+- The **base position (SPY) is bought only once** per cycle and kept through the exit — it acts as a stabiliser, not a trading position.
+- Each subsequent dip **adds to leveraged positions only**, compounding exposure as the dip deepens.
+- The exit **clears all leveraged positions immediately** but leaves the base intact (trimmed to 20% target).
+- With `alloc_x2=25%` and `alloc_x3=75%`, each $3,000 leveraged tranche splits $750 into SSO and $2,250 into UPRO.
+
+---
+
 ### Parameters
 
 | Parameter | Meaning |
