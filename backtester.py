@@ -27,9 +27,14 @@
 
 import argparse
 import sys
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import yfinance as yf
+_no_show = "--no-show" in sys.argv
+import matplotlib
+if _no_show:
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import datetime
@@ -89,6 +94,8 @@ def parse_args():
                    help="MA period used for exit signal (arm/entry always uses MA200)")
     p.add_argument("--save-plot",    default=None,
                    help="Save plot to this path instead of showing interactively")
+    p.add_argument("--no-show",     action="store_true",
+                   help="Suppress interactive plot window (images still saved if --save-plot is set)")
 
     args = p.parse_args()
 
@@ -488,6 +495,65 @@ def cagr(end_val: float, start_val: float, days: int) -> float:
 
 
 # ----------------------------------------------------------
+# AUTO-SAVE HELPERS
+# ----------------------------------------------------------
+
+def _run_slug(args) -> str:
+    """Descriptive filename stem from run parameters."""
+    start_yr = args.start[:4]
+    end_yr   = args.end[:4]
+    b  = int(round(args.alloc_base * 100))
+    x2 = int(round(args.alloc_x2   * 100))
+    return (
+        f"{args.preset}_{start_yr}-{end_yr}"
+        f"_entry{args.entry_signal}"
+        f"_exit{args.exit_signal}"
+        f"_drop{args.drop_level}"
+        f"_buy{args.buy_pct}"
+        f"_b{b}_x2{x2}"
+        f"_ma{args.exit_ma}"
+    )
+
+
+def _auto_out_dir(args) -> Path:
+    out = Path(__file__).parent / "results" / "backtester" / args.preset
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
+def save_results_files(hist, year_df, trans_df, base_tk, args):
+    """Save yearly CSV + summary TXT when running with --no-show."""
+    out_dir  = _auto_out_dir(args)
+    slug     = _run_slug(args)
+    days     = (hist.index[-1] - hist.index[0]).days
+    bcagr    = cagr(hist["BuyHold"].iloc[-1],  args.capital, days)
+    scagr    = cagr(hist["Strategy"].iloc[-1], args.capital, days)
+    worst_yr = year_df["Strategy Ret %"].min()
+
+    year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
+
+    summary_lines = [
+        f"Preset       : {args.preset}",
+        f"Period       : {args.start} -> {args.end}",
+        f"Entry signal : {args.entry_signal}x MA200",
+        f"Exit signal  : {args.exit_signal}x MA{args.exit_ma}",
+        f"Drop level   : {args.drop_level*100:.2f}%",
+        f"Buy pct      : {args.buy_pct*100:.0f}% per signal",
+        f"Alloc base   : {args.alloc_base*100:.0f}%  lev2 {args.alloc_x2*100:.0f}%  lev3 {args.alloc_x3*100:.0f}%",
+        f"",
+        f"Strategy CAGR    : {scagr*100:.2f}%",
+        f"B&H CAGR ({base_tk:3s}) : {bcagr*100:.2f}%",
+        f"Strategy edge    : {(scagr-bcagr)*100:+.2f}pp",
+        f"Final value      : ${hist['Strategy'].iloc[-1]:,.2f}",
+        f"Worst year       : {worst_yr:.2f}%",
+        f"Total trades     : {len(trans_df)}",
+    ]
+    (out_dir / f"{slug}_summary.txt").write_text("\n".join(summary_lines))
+    print(f"  Saved: results/backtester/{args.preset}/{slug}_yearly.csv")
+    print(f"  Saved: results/backtester/{args.preset}/{slug}_summary.txt")
+
+
+# ----------------------------------------------------------
 # OUTPUT
 # ----------------------------------------------------------
 
@@ -548,8 +614,17 @@ def plot_results(hist, base_tk, args):
     ax.grid(True, alpha=0.4)
     plt.tight_layout()
     if args.save_plot:
-        plt.savefig(args.save_plot, dpi=150)
-        print(f"  Saved: {args.save_plot}")
+        path = args.save_plot
+    elif args.no_show:
+        out_dir = _auto_out_dir(args)
+        path = out_dir / f"{_run_slug(args)}.png"
+    else:
+        path = None
+
+    if path:
+        plt.savefig(path, dpi=150)
+        print(f"  Saved: {path}")
+        plt.close()
     else:
         plt.show(block=True)
 
@@ -578,3 +653,5 @@ if __name__ == "__main__":
     hist, year_df, trans_df, base_tk = run_backtest(args)
     print_results(hist, year_df, trans_df, base_tk, args)
     plot_results(hist, base_tk, args)
+    if args.no_show:
+        save_results_files(hist, year_df, trans_df, base_tk, args)

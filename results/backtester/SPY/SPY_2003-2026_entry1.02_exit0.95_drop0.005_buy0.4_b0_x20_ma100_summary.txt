@@ -1,0 +1,14 @@
+Preset       : SPY
+Period       : 2003-01-01 -> 2026-05-16
+Entry signal : 1.02x MA200
+Exit signal  : 0.95x MA100
+Drop level   : 0.50%
+Buy pct      : 40% per signal
+Alloc base   : 0%  lev2 0%  lev3 100%
+
+Strategy CAGR    : 22.40%
+B&H CAGR (SPY) : 11.39%
+Strategy edge    : +11.02pp
+Final value      : $1,125,605.12
+Worst year       : -31.78%
+Total trades     : 52

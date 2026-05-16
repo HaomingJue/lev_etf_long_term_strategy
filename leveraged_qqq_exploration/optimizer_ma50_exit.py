@@ -1,20 +1,20 @@
 # ==========================================================
-# MA100-EXIT RESEARCH  —  QQQ / QLD / TQQQ strategy
+# MA50-EXIT RESEARCH  —  QQQ / QLD / TQQQ strategy
 #
 # Variant of optimizer.py that splits the moving-average
 # logic between entry and exit:
 #
 #   ARM / BUY  : use MA200  (slow trend filter, same as baseline)
-#   EXIT       : use MA100  (faster reaction to trend breaks)
+#   EXIT       : use MA50   (faster reaction to trend breaks)
 #
-# Hypothesis: a faster exit MA reduces drawdowns in sharp
+# Hypothesis: an even faster exit MA reduces drawdowns in sharp
 # reversals while keeping the same entry discipline.
 #
 # Outputs (separate from the baseline optimizer):
-#   - ma100_exit_results.csv
-#   - ma100_exit_equity.png
-#   - ma100_exit_scatter.png
-#   - Console comparison of MA200-exit vs MA100-exit top combos
+#   - ma50_exit_results.csv
+#   - ma50_exit_equity.png
+#   - ma50_exit_scatter.png
+#   - Console comparison of MA200-exit vs MA50-exit top combos
 # ==========================================================
 
 import itertools
@@ -35,7 +35,7 @@ from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-OUT_DIR = Path(__file__).parent / "ma100"
+OUT_DIR = Path(__file__).parent / "ma50"
 OUT_DIR.mkdir(exist_ok=True)
 
 
@@ -117,14 +117,14 @@ def load_data():
     df = df / df.iloc[0]
     df["ret"]   = df["QQQ"].pct_change().fillna(0)
     df["MA200"] = df["QQQ"].rolling(200).mean()   # entry / arm
-    df["MA100"] = df["QQQ"].rolling(100).mean()   # exit only
+    df["MA50"]  = df["QQQ"].rolling(50).mean()    # exit only
     return df
 
 
 # ----------------------------------------------------------
 # BACKTEST
 # ARM / BUY uses MA200 · entry_signal
-# EXIT       uses MA100 · exit_signal
+# EXIT       uses MA50  · exit_signal
 # ----------------------------------------------------------
 
 def backtest(df, entry_signal, drop_level, exit_signal,
@@ -134,7 +134,7 @@ def backtest(df, entry_signal, drop_level, exit_signal,
     n2_arr     = df["QLD"].values  / first["QLD"]
     n3_arr     = df["TQQQ"].values / first["TQQQ"]
     ma200_arr  = df["MA200"].values / first["QQQ"]   # entry reference
-    ma100_arr  = df["MA100"].values / first["QQQ"]   # exit reference
+    ma50_arr   = df["MA50"].values  / first["QQQ"]   # exit reference
     n          = len(df)
 
     alloc_x3 = 1.0 - alloc_x2
@@ -153,17 +153,17 @@ def backtest(df, entry_signal, drop_level, exit_signal,
         price = nb_arr[i]
         prev  = nb_arr[i-1]
         ma200 = ma200_arr[i]
-        ma100 = ma100_arr[i]
+        ma50  = ma50_arr[i]
 
-        if np.isnan(ma200) or ma200 == 0 or np.isnan(ma100) or ma100 == 0:
+        if np.isnan(ma200) or ma200 == 0 or np.isnan(ma50) or ma50 == 0:
             portfolio[i] = portfolio[i-1]
             continue
 
         val_b = s_b * nb;  val_2 = s_2 * n2;  val_3 = s_3 * n3
         total = cash + val_b + val_2 + val_3
 
-        # EXIT — checked against MA100
-        if price < ma100 * exit_signal and (s_2 > 0 or s_3 > 0):
+        # EXIT — checked against MA50
+        if price < ma50 * exit_signal and (s_2 > 0 or s_3 > 0):
             lev_val = val_2 + val_3
             if lev_val > 0:
                 cash += lev_val
@@ -301,14 +301,14 @@ def plot_top_combos(df, results, n=5):
                  f"TQQQ={row['alloc_x3']}  "
                  f"CAGR={row['cagr']:.1f}% DD={row['worst_ann_ret']:.1f}%")
         ax.plot(df.index, port, label=label, color=colors[rank], linewidth=1.2)
-    ax.set_title("Top combos — MA100 exit, full history equity curves", fontsize=11)
+    ax.set_title("Top combos — MA50 exit, full history equity curves", fontsize=11)
     ax.set_ylabel("Portfolio Value ($)")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}"))
     ax.legend(fontsize=7, loc="upper left")
     ax.grid(True, alpha=0.35)
     plt.tight_layout()
-    plt.savefig(OUT_DIR / "ma100_exit_equity.png", dpi=150)
-    print("  Saved: ma100_exit_equity.png")
+    plt.savefig(OUT_DIR / "ma50_exit_equity.png", dpi=150)
+    print("  Saved: ma50_exit_equity.png")
     plt.show()
 
 
@@ -324,12 +324,12 @@ def plot_scatter(results):
                label=f"-{DD_LIMIT*100:.0f}% annual return cap")
     ax.set_xlabel("Worst Annual Return (%)")
     ax.set_ylabel("CAGR (%)")
-    ax.set_title("CAGR vs Worst Annual Return — MA100 exit, all combos")
+    ax.set_title("CAGR vs Worst Annual Return — MA50 exit, all combos")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(OUT_DIR / "ma100_exit_scatter.png", dpi=150)
-    print("  Saved: ma100_exit_scatter.png")
+    plt.savefig(OUT_DIR / "ma50_exit_scatter.png", dpi=150)
+    print("  Saved: ma50_exit_scatter.png")
     plt.show()
 
 
@@ -343,21 +343,21 @@ if __name__ == "__main__":
     print(f"\nData range  : {df.index[0].date()} -> {df.index[-1].date()}")
     print(f"Trading days: {len(df)}")
     print(f"Entry / arm : MA200 x entry_signal")
-    print(f"Exit        : MA100 x exit_signal  (faster than baseline MA200 exit)")
+    print(f"Exit        : MA50 x exit_signal  (faster than MA100 exit)")
     print(f"Year-end DD cap : {DD_LIMIT*100:.0f}% max annual loss\n")
 
     grid = build_grid()
     print(f"Grid size   : {len(grid):,} combos (no exit<entry filter — different MAs)\n")
 
     results = run_search(df, grid)
-    results.to_csv(OUT_DIR / "ma100_exit_results.csv", index=False)
-    print(f"\n  Saved: ma100_exit_results.csv  ({len(results):,} rows)")
+    results.to_csv(OUT_DIR / "ma50_exit_results.csv", index=False)
+    print(f"\n  Saved: ma50_exit_results.csv  ({len(results):,} rows)")
 
     passing = results[results["passed"]].sort_values("cagr", ascending=False)
     print(f"  Passing combos: {len(passing):,} / {len(results):,}")
 
     print("\n" + "=" * 105)
-    print("  LEADERBOARD — top 20 passing combos (MA100 exit), ranked by CAGR")
+    print("  LEADERBOARD — top 20 passing combos (MA50 exit), ranked by CAGR")
     print("=" * 105)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 120)
@@ -366,7 +366,7 @@ if __name__ == "__main__":
     if not passing.empty:
         best = passing.iloc[0]
         print("\n" + "=" * 105)
-        print("  BEST COMBO (MA100 exit)")
+        print("  BEST COMBO (MA50 exit)")
         print("=" * 105)
         print(f"  entry={best['entry_signal']}  drop={best['drop_level']}  "
               f"exit={best['exit_signal']}  buy={best['buy_pct']}")
@@ -389,11 +389,10 @@ if __name__ == "__main__":
                       f"return {d['ann_ret']:+.1f}%  {flag}")
 
     # ----------------------------------------------------------
-    # HEAD-TO-HEAD: same params, MA200 exit vs MA100 exit
-    # Compare using the best MA100 combo and the best MA200 combo
+    # HEAD-TO-HEAD: same params, MA200 exit vs MA50 exit
     # ----------------------------------------------------------
     print("\n" + "=" * 105)
-    print("  HEAD-TO-HEAD: MA200 exit vs MA100 exit on identical parameters")
+    print("  HEAD-TO-HEAD: MA200 exit vs MA50 exit on identical parameters")
     print("  (same entry/drop/buy/alloc — only exit MA changes)")
     print("=" * 105)
 
@@ -456,13 +455,12 @@ if __name__ == "__main__":
     if not passing.empty:
         b = passing.iloc[0]
         combos_to_compare.append((
-            f"MA100-exit best  entry={b['entry_signal']} drop={b['drop_level']} "
+            f"MA50-exit best   entry={b['entry_signal']} drop={b['drop_level']} "
             f"exit={b['exit_signal']} buy={b['buy_pct']} "
             f"QQQ={b['alloc_base']} QLD={b['alloc_x2']} TQQQ={b['alloc_x3']}",
             (b['entry_signal'], b['drop_level'], b['exit_signal'],
              b['buy_pct'], b['alloc_base'], b['alloc_x2'])
         ))
-    # Also compare the MA200 baseline best combo (entry=1.03 drop=0.005 exit=1.01 buy=0.4)
     combos_to_compare.append((
         "MA200-baseline   entry=1.03 drop=0.005 exit=1.01 buy=0.4 QQQ=0 QLD=0 TQQQ=1",
         (1.03, 0.005, 1.01, 0.40, 0.0, 0.0)
@@ -474,13 +472,13 @@ if __name__ == "__main__":
 
     for label, p in combos_to_compare:
         entry, drop, exit_, buy, ab, ax2 = p
-        c100, port100, nav100 = backtest(df, entry, drop, exit_, buy, ab, ax2)
+        c50,  port50,  nav50  = backtest(df, entry, drop, exit_, buy, ab, ax2)
         c200, port200, nav200 = backtest_ma200_exit(df, entry, drop, exit_, buy, ab, ax2)
-        ok100, dd100, _ = check_dd(df, port100, nav100)
+        ok50,  dd50,  _ = check_dd(df, port50,  nav50)
         ok200, dd200, _ = check_dd(df, port200, nav200)
         print(f"\n  {label}")
-        print(f"    MA100 exit : CAGR {c100*100:.2f}%  worst {dd100*100:.2f}%  "
-              f"{'PASS' if ok100 else 'FAIL'}")
+        print(f"    MA50  exit : CAGR {c50*100:.2f}%  worst {dd50*100:.2f}%  "
+              f"{'PASS' if ok50 else 'FAIL'}")
         print(f"    MA200 exit : CAGR {c200*100:.2f}%  worst {dd200*100:.2f}%  "
               f"{'PASS' if ok200 else 'FAIL'}")
 

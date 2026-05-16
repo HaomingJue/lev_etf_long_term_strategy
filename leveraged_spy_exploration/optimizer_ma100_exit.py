@@ -18,13 +18,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yfinance as yf
+import sys
+_no_show = "--no-show" in sys.argv
+import matplotlib
+if _no_show:
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-OUT_DIR = Path(__file__).parent
+OUT_DIR = Path(__file__).parent / "ma100"
+OUT_DIR.mkdir(exist_ok=True)
 
 
 def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:

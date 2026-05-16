@@ -22,13 +22,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import yfinance as yf
+import sys
+_no_show = "--no-show" in sys.argv
+import matplotlib
+if _no_show:
+    matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-OUT_DIR = Path(__file__).parent
+OUT_DIR = Path(__file__).parent / "ma200"
+OUT_DIR.mkdir(exist_ok=True)
 
 # ----------------------------------------------------------
 # SYNTHETIC LEVERAGED NAV BUILDER
@@ -389,7 +395,7 @@ if __name__ == "__main__":
     # Keep full history so CAGR denominator starts from day 1
     # MA200 NaN rows are already skipped inside backtest() via isnan check
 
-    print(f"\nData range  : {df.index[0].date()} → {df.index[-1].date()}")
+    print(f"\nData range  : {df.index[0].date()} -> {df.index[-1].date()}")
     print(f"Trading days: {len(df)}")
     print(f"Year-end DD cap : {DD_LIMIT*100:.0f}% max annual loss\n")
 

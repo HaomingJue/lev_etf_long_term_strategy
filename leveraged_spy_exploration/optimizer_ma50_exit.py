@@ -1,14 +1,14 @@
 # ==========================================================
-# MA100-EXIT RESEARCH  —  IWM / UWM / TNA strategy
+# MA50-EXIT RESEARCH  —  SPY / SSO / UPRO strategy
 #
 #   ARM / BUY  : MA200  (slow trend filter)
-#   EXIT       : MA100  (faster reaction to trend breaks)
+#   EXIT       : MA50   (faster reaction to trend breaks)
 #
 # Outputs:
-#   - ma100_exit_results.csv
-#   - ma100_exit_equity.png
-#   - ma100_exit_scatter.png
-#   - Head-to-head MA200 vs MA100 exit comparison
+#   - ma50_exit_results.csv
+#   - ma50_exit_equity.png
+#   - ma50_exit_scatter.png
+#   - Head-to-head MA200 vs MA50 exit comparison
 # ==========================================================
 
 import itertools
@@ -29,7 +29,7 @@ from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 
-OUT_DIR = Path(__file__).parent / "ma100"
+OUT_DIR = Path(__file__).parent / "ma50"
 OUT_DIR.mkdir(exist_ok=True)
 
 
@@ -79,35 +79,35 @@ def download(ticker, start, end):
 
 
 def load_data():
-    print("Downloading IWM, UWM, TNA ...")
-    iwm = download("IWM", START_DATA, END)
+    print("Downloading SPY, SSO, UPRO ...")
+    spy = download("SPY", START_DATA, END)
     try:
-        uwm = download("UWM", START_DATA, END)
+        sso  = download("SSO",  START_DATA, END)
     except Exception:
-        uwm = pd.Series(dtype=float)
+        sso  = pd.Series(dtype=float)
     try:
-        tna = download("TNA", START_DATA, END)
+        upro = download("UPRO", START_DATA, END)
     except Exception:
-        tna = pd.Series(dtype=float)
-    lev2_nav = build_lev_nav(iwm, uwm, 2)
-    lev3_nav = build_lev_nav(iwm, tna, 3)
-    df = pd.DataFrame({"IWM": iwm, "UWM": lev2_nav, "TNA": lev3_nav}
-                      ).dropna(subset=["IWM"])
+        upro = pd.Series(dtype=float)
+    lev2_nav = build_lev_nav(spy, sso,  2)
+    lev3_nav = build_lev_nav(spy, upro, 3)
+    df = pd.DataFrame({"SPY": spy, "SSO": lev2_nav, "UPRO": lev3_nav}
+                      ).dropna(subset=["SPY"])
     df = df / df.iloc[0]
-    df["ret"]   = df["IWM"].pct_change().fillna(0)
-    df["MA200"] = df["IWM"].rolling(200).mean()
-    df["MA100"] = df["IWM"].rolling(100).mean()
+    df["ret"]   = df["SPY"].pct_change().fillna(0)
+    df["MA200"] = df["SPY"].rolling(200).mean()
+    df["MA50"]  = df["SPY"].rolling(50).mean()
     return df
 
 
 def backtest(df, entry_signal, drop_level, exit_signal,
              buy_pct, alloc_base, alloc_x2):
     first      = df.iloc[0]
-    nb_arr     = df["IWM"].values / first["IWM"]
-    n2_arr     = df["UWM"].values / first["UWM"]
-    n3_arr     = df["TNA"].values / first["TNA"]
-    ma200_arr  = df["MA200"].values / first["IWM"]
-    ma100_arr  = df["MA100"].values / first["IWM"]
+    nb_arr     = df["SPY"].values  / first["SPY"]
+    n2_arr     = df["SSO"].values  / first["SSO"]
+    n3_arr     = df["UPRO"].values / first["UPRO"]
+    ma200_arr  = df["MA200"].values / first["SPY"]
+    ma50_arr   = df["MA50"].values  / first["SPY"]
     n          = len(df)
     alloc_x3   = 1.0 - alloc_x2
     cash       = CAPITAL
@@ -119,11 +119,11 @@ def backtest(df, entry_signal, drop_level, exit_signal,
     for i in range(1, n):
         nb    = nb_arr[i];  n2 = n2_arr[i];  n3 = n3_arr[i]
         price = nb_arr[i];  prev = nb_arr[i-1]
-        ma200 = ma200_arr[i];  ma100 = ma100_arr[i]
-        if np.isnan(ma200) or ma200 == 0 or np.isnan(ma100) or ma100 == 0:
+        ma200 = ma200_arr[i];  ma50 = ma50_arr[i]
+        if np.isnan(ma200) or ma200 == 0 or np.isnan(ma50) or ma50 == 0:
             portfolio[i] = portfolio[i-1]; continue
         val_b = s_b*nb; val_2 = s_2*n2; val_3 = s_3*n3
-        if price < ma100 * exit_signal and (s_2 > 0 or s_3 > 0):
+        if price < ma50 * exit_signal and (s_2 > 0 or s_3 > 0):
             cash += val_2 + val_3
             s_2 = s_3 = lev_pw = lev_dw = 0.0
             if not base_trimmed and alloc_base > 0:
@@ -158,10 +158,10 @@ def backtest(df, entry_signal, drop_level, exit_signal,
 def backtest_ma200_exit(df, entry_signal, drop_level, exit_signal,
                         buy_pct, alloc_base, alloc_x2):
     first      = df.iloc[0]
-    nb_arr     = df["IWM"].values / first["IWM"]
-    n2_arr     = df["UWM"].values / first["UWM"]
-    n3_arr     = df["TNA"].values / first["TNA"]
-    ma200_arr  = df["MA200"].values / first["IWM"]
+    nb_arr     = df["SPY"].values  / first["SPY"]
+    n2_arr     = df["SSO"].values  / first["SSO"]
+    n3_arr     = df["UPRO"].values / first["UPRO"]
+    ma200_arr  = df["MA200"].values / first["SPY"]
     n          = len(df)
     alloc_x3   = 1.0 - alloc_x2
     cash       = CAPITAL
@@ -254,8 +254,8 @@ def run_search(df, grid):
 def plot_top_combos(df, results, n=5):
     top = results[results["passed"]].nlargest(n, "cagr")
     fig, ax = plt.subplots(figsize=(14, 7))
-    bh = CAPITAL * df["IWM"] / df["IWM"].iloc[0]
-    ax.plot(df.index, bh, label="IWM Buy & Hold",
+    bh = CAPITAL * df["SPY"] / df["SPY"].iloc[0]
+    ax.plot(df.index, bh, label="SPY Buy & Hold",
             color="steelblue", linewidth=1.8, linestyle="--")
     colors = plt.cm.tab10(np.linspace(0, 0.7, n))
     for rank, (_, row) in enumerate(top.iterrows()):
@@ -264,18 +264,18 @@ def plot_top_combos(df, results, n=5):
                                  row["alloc_base"], row["alloc_x2"])
         label = (f"#{rank+1}  e={row['entry_signal']} d={row['drop_level']} "
                  f"x={row['exit_signal']} b={row['buy_pct']}  "
-                 f"IWM={row['alloc_base']} UWM={row['alloc_x2']} "
-                 f"TNA={row['alloc_x3']}  "
+                 f"SPY={row['alloc_base']} SSO={row['alloc_x2']} "
+                 f"UPRO={row['alloc_x3']}  "
                  f"CAGR={row['cagr']:.1f}% DD={row['worst_ann_ret']:.1f}%")
         ax.plot(df.index, port, label=label, color=colors[rank], linewidth=1.2)
-    ax.set_title("Top combos — MA100 exit, IWM / UWM / TNA", fontsize=11)
+    ax.set_title("Top combos — MA50 exit, SPY / SSO / UPRO", fontsize=11)
     ax.set_ylabel("Portfolio Value ($)")
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"${x:,.0f}"))
     ax.legend(fontsize=7, loc="upper left")
     ax.grid(True, alpha=0.35)
     plt.tight_layout()
-    plt.savefig(OUT_DIR / "ma100_exit_equity.png", dpi=150)
-    print("  Saved: ma100_exit_equity.png")
+    plt.savefig(OUT_DIR / "ma50_exit_equity.png", dpi=150)
+    print("  Saved: ma50_exit_equity.png")
     plt.show()
 
 
@@ -291,12 +291,12 @@ def plot_scatter(results):
                label=f"-{DD_LIMIT*100:.0f}% annual return cap")
     ax.set_xlabel("Worst Annual Return (%)")
     ax.set_ylabel("CAGR (%)")
-    ax.set_title("CAGR vs Worst Annual Return — MA100 exit, IWM / UWM / TNA")
+    ax.set_title("CAGR vs Worst Annual Return — MA50 exit, SPY / SSO / UPRO")
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(OUT_DIR / "ma100_exit_scatter.png", dpi=150)
-    print("  Saved: ma100_exit_scatter.png")
+    plt.savefig(OUT_DIR / "ma50_exit_scatter.png", dpi=150)
+    print("  Saved: ma50_exit_scatter.png")
     plt.show()
 
 
@@ -304,21 +304,21 @@ if __name__ == "__main__":
     df = load_data()
     print(f"\nData range  : {df.index[0].date()} -> {df.index[-1].date()}")
     print(f"Entry / arm : MA200 x entry_signal")
-    print(f"Exit        : MA100 x exit_signal")
+    print(f"Exit        : MA50 x exit_signal")
     print(f"Year-end DD cap : {DD_LIMIT*100:.0f}% max annual loss\n")
 
     grid = build_grid()
     print(f"Grid size   : {len(grid):,} combos\n")
 
     results = run_search(df, grid)
-    results.to_csv(OUT_DIR / "ma100_exit_results.csv", index=False)
-    print(f"\n  Saved: ma100_exit_results.csv  ({len(results):,} rows)")
+    results.to_csv(OUT_DIR / "ma50_exit_results.csv", index=False)
+    print(f"\n  Saved: ma50_exit_results.csv  ({len(results):,} rows)")
 
     passing = results[results["passed"]].sort_values("cagr", ascending=False)
     print(f"  Passing combos: {len(passing):,} / {len(results):,}")
 
     print("\n" + "=" * 105)
-    print("  LEADERBOARD — top 20 passing combos (MA100 exit), ranked by CAGR")
+    print("  LEADERBOARD — top 20 passing combos (MA50 exit), ranked by CAGR")
     print("=" * 105)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 120)
@@ -327,13 +327,13 @@ if __name__ == "__main__":
     if not passing.empty:
         best = passing.iloc[0]
         print("\n" + "=" * 105)
-        print("  BEST COMBO (MA100 exit)")
+        print("  BEST COMBO (MA50 exit)")
         print("=" * 105)
         print(f"  entry={best['entry_signal']}  drop={best['drop_level']}  "
               f"exit={best['exit_signal']}  buy={best['buy_pct']}")
-        print(f"  IWM={best['alloc_base']*100:.0f}%  "
-              f"UWM={best['alloc_x2']*100:.0f}%  "
-              f"TNA={best['alloc_x3']*100:.0f}%")
+        print(f"  SPY={best['alloc_base']*100:.0f}%  "
+              f"SSO={best['alloc_x2']*100:.0f}%  "
+              f"UPRO={best['alloc_x3']*100:.0f}%")
         print(f"  CAGR              : {best['cagr']:.2f}%")
         print(f"  Worst annual return : {best['worst_ann_ret']:.2f}%")
 
@@ -350,33 +350,33 @@ if __name__ == "__main__":
                       f"return {d['ann_ret']:+.1f}%  {flag}")
 
     print("\n" + "=" * 105)
-    print("  HEAD-TO-HEAD: MA200 exit vs MA100 exit on identical parameters")
+    print("  HEAD-TO-HEAD: MA200 exit vs MA50 exit on identical parameters")
     print("=" * 105)
     combos = []
     if not passing.empty:
         b = passing.iloc[0]
         combos.append((
-            f"MA100-exit best  entry={b['entry_signal']} drop={b['drop_level']} "
+            f"MA50-exit best   entry={b['entry_signal']} drop={b['drop_level']} "
             f"exit={b['exit_signal']} buy={b['buy_pct']} "
-            f"IWM={b['alloc_base']} UWM={b['alloc_x2']} TNA={b['alloc_x3']}",
+            f"SPY={b['alloc_base']} SSO={b['alloc_x2']} UPRO={b['alloc_x3']}",
             (b['entry_signal'], b['drop_level'], b['exit_signal'],
              b['buy_pct'], b['alloc_base'], b['alloc_x2'])
         ))
     combos += [
-        ("MA200-baseline   entry=1.05 drop=0.015 exit=0.95 buy=0.3 IWM=0.1 UWM=0 TNA=1",
-         (1.05, 0.015, 0.95, 0.30, 0.1, 0.0)),
-        ("MA200-balanced   entry=1.04 drop=0.025 exit=0.99 buy=0.4 IWM=0.3 UWM=0 TNA=1",
-         (1.04, 0.025, 0.99, 0.40, 0.3, 0.0)),
+        ("MA200-baseline   entry=1.02 drop=0.005 exit=0.95 buy=0.3 SPY=0 SSO=0 UPRO=1",
+         (1.02, 0.005, 0.95, 0.30, 0.0, 0.0)),
+        ("MA200-balanced   entry=1.02 drop=0.010 exit=0.95 buy=0.4 SPY=0 SSO=1 UPRO=0",
+         (1.02, 0.010, 0.95, 0.40, 0.0, 1.0)),
     ]
     for label, p in combos:
         entry, drop, exit_, buy, ab, ax2 = p
-        c100, port100, nav100 = backtest(df, entry, drop, exit_, buy, ab, ax2)
+        c50,  port50,  nav50  = backtest(df, entry, drop, exit_, buy, ab, ax2)
         c200, port200, nav200 = backtest_ma200_exit(df, entry, drop, exit_, buy, ab, ax2)
-        ok100, dd100, _ = check_dd(df, port100, nav100)
+        ok50,  dd50,  _ = check_dd(df, port50,  nav50)
         ok200, dd200, _ = check_dd(df, port200, nav200)
         print(f"\n  {label}")
-        print(f"    MA100 exit : CAGR {c100*100:.2f}%  worst {dd100*100:.2f}%  "
-              f"{'PASS' if ok100 else 'FAIL'}")
+        print(f"    MA50  exit : CAGR {c50*100:.2f}%  worst {dd50*100:.2f}%  "
+              f"{'PASS' if ok50 else 'FAIL'}")
         print(f"    MA200 exit : CAGR {c200*100:.2f}%  worst {dd200*100:.2f}%  "
               f"{'PASS' if ok200 else 'FAIL'}")
 
