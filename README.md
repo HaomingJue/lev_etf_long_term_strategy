@@ -45,7 +45,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ## Abstract
 
-We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. Crucially, the strategy's edge held up in the out-of-sample period 2015–2026 (CAGR of 38.69% for QQQ vs 19.38% B&H) and survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
+We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. The strategy survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
 
 ---
 
@@ -369,6 +369,7 @@ For context, the same 2015–2026 period run with parameters optimized on the **
 The large QQQ gap (−17.28pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−3.29pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
 
 ![QQQ full-history 2015–2026 (full-period params, for reference)](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![SPY full-history 2015–2026 (full-period params, for reference)](results/backtester/SPY/SPY_2015-2026_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
 
 ---
 
@@ -526,10 +527,12 @@ results/backtester/                       # auto-saved results (one folder per p
     {PRESET}_...._summary.txt
     {PRESET}_...._yearly.csv
 leveraged_qqq_exploration/
-  optimizer.py                            # MA200 exit optimizer for QQQ
+  optimizer.py                            # MA200 exit optimizer for QQQ (full history)
+  optimizer_train.py                      # same optimizer restricted to 2003–2014 only
   optimizer_ma100_exit.py                 # MA100 exit variant
   optimizer_ma50_exit.py                  # MA50 exit variant
-  ma200/  optimizer_results.csv          # 15,840-row grid results
+  ma200/  optimizer_results.csv          # 15,840-row grid results (full history)
+  ma200_train/  optimizer_results.csv    # 15,840-row grid results (2003–2014 only)
   ma100/  ma100_exit_results.csv
   ma50/   ma50_exit_results.csv
 leveraged_spy_exploration/                # same structure for SPY
@@ -617,10 +620,16 @@ python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
 ### Running the Optimizers
 
 ```bash
-# MA200 exit (baseline) — results saved to ma200/ subfolder
+# MA200 exit (baseline, full history) — results saved to ma200/ subfolder
 cd leveraged_qqq_exploration && python optimizer.py --no-show
 cd leveraged_spy_exploration && python optimizer.py --no-show
 cd leveraged_iwm_exploration && python optimizer.py --no-show
+
+# Training-period only (2003–2014) — results saved to ma200_train/ subfolder
+# Use these params for a rigorous walk-forward out-of-sample test on 2015–2026
+cd leveraged_qqq_exploration && python optimizer_train.py --no-show
+cd leveraged_spy_exploration && python optimizer_train.py --no-show
+cd leveraged_iwm_exploration && python optimizer_train.py --no-show
 
 # MA100 exit variant — results saved to ma100/ subfolder
 cd leveraged_qqq_exploration && python optimizer_ma100_exit.py --no-show
