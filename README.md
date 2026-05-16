@@ -19,9 +19,9 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 
 | Index | Strategy CAGR | Buy & Hold CAGR | Edge | Worst Year | Avg Trades/Yr |
 |---|---|---|---|---|---|
-| QQQ (NASDAQ-100) | **24.67%** | 16.16% | +8.52pp | −40.5% | ~4 |
-| SPY (S&P 500) | **22.21%** | 11.39% | +10.82pp | −38.3% | ~2 |
-| IWM (Russell 2000) | **12.14%** | 10.19% | +1.95pp | −23.7% | ~2 |
+| QQQ (NASDAQ-100) | **24.67%** | 16.16% | +8.52pp | −40.5% (2005) | ~4 |
+| SPY (S&P 500) | **22.21%** | 11.39% | +10.82pp | −38.3% (2022) | ~2 |
+| IWM (Russell 2000) | **12.14%** | 10.19% | +1.95pp | −23.7% (2011) | ~2 |
 
 > All results: $10,000 starting capital, 2003-01-01 → 2026-05-16.
 > Best-CAGR passing strategy per index, MA200 exit, 3× ETF allocation.
@@ -155,7 +155,7 @@ The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) 
 | B&H CAGR (QQQ) | 16.16% |
 | Strategy edge | +8.52pp |
 | Final value | $1,729,122 |
-| Worst year | −40.5% |
+| Worst year | −40.5% (2005) |
 | Total trades | 100 (~4/yr) |
 
 ```bash
@@ -179,7 +179,7 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 | B&H CAGR (SPY) | 11.39% |
 | Strategy edge | +10.82pp |
 | Final value | $1,084,234 |
-| Worst year | −38.3% |
+| Worst year | −38.3% (2022) |
 | Total trades | 46 (~2/yr) |
 
 ```bash
@@ -203,7 +203,7 @@ python backtester.py --preset SPY --start 2003-01-01 \
 | B&H CAGR (IWM) | 10.19% |
 | Strategy edge | +1.95pp |
 | Final value | $145,501 |
-| Worst year | −23.7% |
+| Worst year | −23.7% (2011) |
 | Total trades | 43 (~2/yr) |
 
 ```bash
@@ -240,12 +240,12 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 
 | Index | Exit MA | CAGR | B&H | Edge | Worst Year | Trades |
 |---|---|---|---|---|---|---|
-| QQQ | MA200 | **24.67%** | 16.16% | +8.52pp | −40.5% | 100 |
-| QQQ | MA100 | 20.10% | 16.16% | +3.94pp | −48.5% | 118 |
-| SPY | MA200 | 22.21% | 11.39% | +10.82pp | −38.3% | 46 |
-| SPY | MA100 | **22.40%** | 11.39% | **+11.02pp** | **−31.8%** | 52 |
-| IWM | MA200 | **12.14%** | 10.19% | +1.95pp | −23.7% | 43 |
-| IWM | MA100 | 9.64% | 10.19% | −0.55pp | −20.6% | 26 |
+| QQQ | MA200 | **24.67%** | 16.16% | +8.52pp | −40.5% (2005) | 100 |
+| QQQ | MA100 | 20.10% | 16.16% | +3.94pp | −48.5% (2008) | 118 |
+| SPY | MA200 | 22.21% | 11.39% | +10.82pp | −38.3% (2022) | 46 |
+| SPY | MA100 | **22.40%** | 11.39% | **+11.02pp** | **−31.8% (2022)** | 52 |
+| IWM | MA200 | **12.14%** | 10.19% | +1.95pp | −23.7% (2011) | 43 |
+| IWM | MA100 | 9.64% | 10.19% | −0.55pp | −20.6% (2008) | 26 |
 
 ### Conclusions on Exit MA
 
@@ -265,10 +265,10 @@ Using the same entry/exit/drop parameters, we compared allocating 100% of levera
 
 | Index | Leverage | CAGR | Edge vs B&H | Worst Year | Final Value |
 |---|---|---|---|---|---|
-| QQQ | 3× (TQQQ) | **24.67%** | +8.52pp | −40.5% | $1,729,122 |
-| QQQ | 2× (QLD) | 18.87% | +2.71pp | **−28.2%** | $567,637 |
-| SPY | 3× (UPRO) | **22.21%** | +10.82pp | −38.3% | $1,084,234 |
-| SPY | 2× (SSO) | 16.25% | +4.86pp | **−27.0%** | $337,159 |
+| QQQ | 3× (TQQQ) | **24.67%** | +8.52pp | −40.5% (2005) | $1,729,122 |
+| QQQ | 2× (QLD) | 18.87% | +2.71pp | **−28.2% (2005)** | $567,637 |
+| SPY | 3× (UPRO) | **22.21%** | +10.82pp | −38.3% (2022) | $1,084,234 |
+| SPY | 2× (SSO) | 16.25% | +4.86pp | **−27.0% (2022)** | $337,159 |
 
 **3× wins on CAGR by a wide margin** — approximately +5.8pp for QQQ and +5.96pp for SPY. The 23-year compounding effect is enormous: $1.73M (3×) vs $567K (2×) for QQQ starting with $10K.
 
@@ -286,9 +286,9 @@ To test whether the strategy's edge generalizes beyond the period it was optimiz
 
 | Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Trades |
 |---|---|---|---|---|---|
-| QQQ | 13.62% | 13.32% | +0.31pp | −40.5% | 62 |
-| SPY | **26.24%** | 9.25% | **+16.98pp** | −14.7% | 19 |
-| IWM | 12.97% | 11.32% | +1.64pp | −23.7% | 22 |
+| QQQ | 13.62% | 13.32% | +0.31pp | −40.5% (2005) | 62 |
+| SPY | **26.24%** | 9.25% | **+16.98pp** | −14.7% (2008) | 19 |
+| IWM | 12.97% | 11.32% | +1.64pp | −23.7% (2011) | 22 |
 
 **QQQ note:** The training period edge is only +0.31pp. This reflects the 2008 GFC, which produced the worst drawdown year (−40.5%) despite the strategy's MA200 exit. QQQ's 2008 was brutal — the strategy could not fully avoid the staircase decline. SPY by contrast had far fewer false re-entries in the 2007–2009 GFC, hence the massive +16.98pp edge in the training period.
 
@@ -296,9 +296,9 @@ To test whether the strategy's edge generalizes beyond the period it was optimiz
 
 | Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Trades |
 |---|---|---|---|---|---|
-| QQQ | **38.69%** | 19.38% | **+19.31pp** | −22.6% | 41 |
-| SPY | 19.00% | 13.80% | +5.21pp | −38.3% | 31 |
-| IWM | 11.23% | 9.14% | +2.10pp | −19.4% | 21 |
+| QQQ | **38.69%** | 19.38% | **+19.31pp** | −22.6% (2022) | 41 |
+| SPY | 19.00% | 13.80% | +5.21pp | −38.3% (2022) | 31 |
+| IWM | 11.23% | 9.14% | +2.10pp | −19.4% (2022) | 21 |
 
 **The strategy's edge strengthened out-of-sample for QQQ** — from +0.31pp in training to +19.31pp in testing. This reflects the 2015–2026 period's character: a powerful tech bull market punctuated by a sharp COVID crash (which the strategy exploited aggressively) and the 2022 bear market (which it largely avoided).
 
@@ -322,7 +322,7 @@ We ran the strategy against four major market dislocations. Sections 7.1–7.3 u
 |---|---|---|
 | CAGR | **18.65%** | 6.62% |
 | Edge | **+12.03pp** | — |
-| Worst year | −19.4% | −41.7% (2008) |
+| Worst year | −19.4% (2008) | −41.7% (2008) |
 | Final value | $19,780 (from $10K) | ~$12,200 |
 
 The strategy outperformed buy-and-hold by 12pp annually over this 4-year window that includes the worst financial crisis in 80 years. Worst strategy year was −19.4% versus QQQ B&H −41.7%. The MA200 exit discipline significantly limited downside exposure during the extended 2008 bear market.
@@ -346,7 +346,7 @@ The COVID crash was the ideal scenario for this strategy. A rapid V-shaped recov
 |---|---|---|
 | CAGR | **27.91%** | 5.08% |
 | Edge | **+22.83pp** | — |
-| Worst year | −22.6% | −32.5% (2022) |
+| Worst year | −22.6% (2022) | −32.5% (2022) |
 | Final value | $16,666 (from $10K) | ~$10,965 |
 
 The 2022 bear market was a slow grinding decline — the most challenging scenario for MA-based strategies. Despite this, the strategy maintained positive overall CAGR (+27.91% annualized) by exiting the leveraged position early in 2022 and re-entering during the 2023 recovery. QQQ buy-and-hold earned only 5.08% annualized over the same window.
