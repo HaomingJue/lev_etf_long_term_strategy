@@ -63,7 +63,7 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 
 **Key findings:**
 - Meaningful alpha over buy-and-hold for QQQ (+8.5pp) and SPY (+10.8pp). IWM edge is thin (+1.95pp) due to small-cap 3× decay.
-- The edge is not confined to the training period: all three strategies outperformed their benchmark in the out-of-sample 2015–2026 window.
+- QQQ and SPY hold positive edges in a rigorous out-of-sample test (2015–2026, using parameters optimized on 2003–2014 only); IWM underperforms out-of-sample — an honest finding disclosed in full.
 - 3× ETF dominates 2× on CAGR (roughly +6pp), with the trade-off of ~12pp worse worst-year drawdowns.
 - MA100 exit marginally helps SPY. MA100 and MA50 exits both hurt QQQ significantly. Use MA200 for QQQ and IWM.
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
@@ -314,35 +314,61 @@ Using the same entry/exit/drop parameters, we compared allocating 100% of levera
 
 ## 6. Results — Walk-Forward Validation
 
-To test whether the strategy's edge generalizes beyond the period it was optimized on, we split the full history into a **training period** (2003–2014) and an **out-of-sample test period** (2015–2026), using the same parameters throughout both. The parameters were optimized on the full 2003–2026 period — this is conservative for the training period and favorable for the test period, but the test result is the meaningful out-of-sample check.
+### Methodology
+
+To test whether the strategy generalizes to unseen market conditions, we used a strict train/test split:
+
+- **Training set (2003–2014):** The 15,840-combo optimizer was run on this 12-year window only. No data after 2014 was used to select parameters.
+- **Out-of-sample test (2015–2026):** The best parameters found in training were **frozen** and applied to this 11-year window — data the optimizer never saw.
+
+This replicates real-world conditions: an investor who finished optimizing in late 2014 and traded the strategy from 2015 onward with those exact parameters, unmodified.
+
+**Best parameters found on training data only (2003–2014):**
+
+| Index | Entry | Drop | Exit | Buy % | ETF |
+|---|---|---|---|---|---|
+| QQQ | 1.04× MA200 | 0.5% | 0.95× MA200 | 40% | 100% TQQQ |
+| SPY | 1.01× MA200 | 0.5% | 0.97× MA200 | 40% | 100% UPRO |
+| IWM | 1.02× MA200 | 1.5% | 0.95× MA200 | 40% | 100% TNA |
 
 ### Training Period: 2003–2014 (12 years)
 
-| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Trades |
-|---|---|---|---|---|---|
-| QQQ | 13.62% | 13.32% | +0.31pp | −40.5% (2005) | 62 |
-| SPY | **26.24%** | 9.25% | **+16.98pp** | −14.7% (2008) | 19 |
-| IWM | 12.97% | 11.32% | +1.64pp | −23.7% (2011) | 22 |
+| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year |
+|---|---|---|---|---|
+| QQQ | 19.53% | 13.32% | +6.21pp | −29.1% (2008) |
+| SPY | **26.78%** | 9.25% | **+17.53pp** | −14.6% (2011) |
+| IWM | 15.67% | 11.32% | +4.35pp | −25.4% (2011) |
 
-**QQQ note:** The training period edge is only +0.31pp. This reflects the 2008 GFC, which produced the worst drawdown year (−40.5%) despite the strategy's MA200 exit. QQQ's 2008 was brutal — the strategy could not fully avoid the staircase decline. SPY by contrast had far fewer false re-entries in the 2007–2009 GFC, hence the massive +16.98pp edge in the training period.
+### Out-of-Sample Test: 2015–2026 (11 years, genuinely unseen)
 
-### Out-of-Sample Test Period: 2015–2026 (11 years)
+These results use only the parameters found from 2003–2014 data. The strategy had no information about what happened post-2014.
 
-| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Trades |
-|---|---|---|---|---|---|
-| QQQ | **38.69%** | 19.38% | **+19.31pp** | −22.6% (2022) | 41 |
-| SPY | 19.00% | 13.80% | +5.21pp | −38.3% (2022) | 31 |
-| IWM | 11.23% | 9.14% | +2.10pp | −19.4% (2022) | 21 |
+| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year |
+|---|---|---|---|---|
+| QQQ | 21.41% | 19.38% | **+2.03pp ✓** | −36.0% (2022) |
+| SPY | 15.71% | 13.80% | **+1.91pp ✓** | −43.9% (2022) |
+| IWM | 5.41% | 9.14% | **−3.73pp ✗** | −31.7% (2023) |
 
-**The strategy's edge strengthened out-of-sample for QQQ** — from +0.31pp in training to +19.31pp in testing. This reflects the 2015–2026 period's character: a powerful tech bull market punctuated by a sharp COVID crash (which the strategy exploited aggressively) and the 2022 bear market (which it largely avoided).
+**QQQ and SPY both hold positive edges out-of-sample.** The edge narrows substantially vs training — expected and healthy. The 2003–2014 GFC provided strong conditions for the strategy's exit discipline; 2015–2026 was a more mixed regime.
 
-**SPY's test edge is lower than training (+5.21pp vs +16.98pp).** The 2022 rate-hike bear market was harder on UPRO than the GFC period was within the training set. Still positive out-of-sample.
+**IWM fails the out-of-sample test.** The training-optimal IWM parameters did not generalize to 2015–2026. The 2015–2016 entry conditions were too aggressive for small-cap's sideways drift, and the 2023 re-entry after a false rally was punishing. This is an honest finding: the IWM edge is weaker and less robust.
 
-**IWM holds consistent thin edge** across both periods (+1.64pp training, +2.10pp test).
+![QQQ out-of-sample 2015–2026 (training params)](results/backtester/QQQ/QQQ_2015-2026_entry1.04_exit0.95_drop0.005_buy0.4_b0_x20_ma200.png)
+![SPY out-of-sample 2015–2026 (training params)](results/backtester/SPY/SPY_2015-2026_entry1.01_exit0.97_drop0.005_buy0.4_b0_x20_ma200.png)
 
-**Walk-forward interpretation:** The strategy is not a historical artifact. Its edge held in a genuinely out-of-sample period. The structural reasons — exploiting dip-buying opportunity in confirmed uptrends, strict exit discipline — translate across market regimes.
+### Full-History Best Params: Reference Comparison
 
-![QQQ out-of-sample period 2015–2026](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+For context, the same 2015–2026 period run with parameters optimized on the **full 2003–2026 dataset** (hindsight advantage):
+
+| Index | True Out-of-Sample CAGR | Full-History CAGR | Hindsight Gap | Full-History Edge vs B&H |
+|---|---|---|---|---|
+| QQQ | 21.41% | 38.69% | −17.28pp | +19.31pp |
+| SPY | 15.71% | 19.00% | −3.29pp | +5.21pp |
+| IWM | 5.41% | 11.23% | −5.82pp | +2.10pp |
+
+The large QQQ gap (−17.28pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−3.29pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
+
+![QQQ full-history 2015–2026 (full-period params, for reference)](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
 ---
 
