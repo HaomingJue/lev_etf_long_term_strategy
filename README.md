@@ -106,6 +106,18 @@ The strategy never holds a leveraged ETF unconditionally. Two rules govern all b
 
 ## 2. Methodology
 
+### Tools: Optimizer and Backtester
+
+Two separate tools are used throughout this research. Understanding the difference is important for interpreting all results.
+
+**Optimizer** (`optimizer.py`)
+The optimizer's job is to *search* — it runs all 15,840 parameter combinations against historical data and ranks them by CAGR. Think of it as a brute-force scanner: feed it 23 years of price data and it tells you which settings would have performed best. It is fast (a few minutes for all combos) and useful for ranking, but it has a known accuracy limitation (the warm-up gap, explained below). **Optimizer CAGR numbers are always an underestimate.** Use the optimizer to find the best parameter combo; use the backtester to measure it accurately.
+
+**Backtester** (`backtester.py`)
+The backtester's job is to *validate* — it takes one specific set of parameters, runs the strategy over a chosen date range with full precision, and produces a detailed trade log, year-by-year returns, and an equity curve. It pre-downloads additional price history before the start date so the MA200 is fully warmed up on day one. It is the authoritative tool for any specific result cited in this paper.
+
+In short: **optimizer finds, backtester measures.**
+
 ### Data and Universe
 
 Three major US equity indices were tested over the same period for fair comparison:
@@ -146,7 +158,17 @@ Each optimizer runs a grid search over **15,840 parameter combinations**:
 | `alloc_base` | 0%, 10%, 20%, 30% |
 | `alloc_x2` | 0%, 25%, 50%, 75%, 100% |
 
-Combos are ranked by CAGR. A drawdown filter eliminates any combo that produced a calendar-year loss worse than −40% from a cutoff year onward (2010 for QQQ; 2009 for SPY/IWM — the filter starts after most synthetic leveraged data ends).
+The naive total would be 6×6×6×4×4×5 = 17,280 combinations, but one logical constraint removes 1,440 of them: the exit signal must be strictly less than the entry signal (you cannot set the exit threshold above the point where you armed — that would mean selling into strength before you even bought). After removing those invalid pairs, exactly **15,840 valid combinations** remain. Each is run as a full historical simulation; CAGR and worst annual return are recorded for every one.
+
+Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose calendar-year return fell worse than −40% in any year from a cutoff year onward:
+
+| Index | Filter applies from | Reason for cutoff |
+|---|---|---|
+| QQQ | 2010 onward | TQQQ launched Feb 2010 |
+| SPY | 2009 onward | UPRO launched Jun 2009 |
+| IWM | 2009 onward | TNA launched Nov 2008 |
+
+**Why the filter does not apply before these dates:** All leveraged ETF returns before inception are synthetic — computed from the mathematical decay model, not from real traded prices. The synthetic model tends to produce extreme simulated losses in volatile early periods (e.g. the 2008 GFC, before real 3× ETFs existed) that are mathematically correct but would never have played out in practice: real investors would have stopped the strategy, real ETFs have liquidity mechanisms, and the model itself is an approximation. Penalising combos for pre-inception synthetic drawdowns would unfairly eliminate strategies that work well on real data. The filter therefore only enforces the −40% cap once real ETF prices are available, ensuring the pass/fail decision is based on actual, not simulated, performance.
 
 ### Critical Limitation: Optimizer Warm-Up Gap
 
@@ -171,6 +193,8 @@ The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) 
 ---
 
 ## 3. Results — Full History (2003–2026)
+
+> **Note on allocation:** The optimizer explored all combinations of base ETF allocation (0–30%), 2× ETF allocation (0–100% of leveraged spend), and 3× ETF allocation (remainder). The original intent was to find the optimal *mix* — perhaps holding some unleveraged base stock for stability and splitting leverage between 2× and 3×. In practice, **100% allocation to the 3× ETF with no base position consistently produced the highest CAGR across all three indices.** The base stock and 2× ETF allocations improve drawdown slightly but cost meaningful CAGR. All headline results below use the top-ranked combo from the optimizer, which in every case was 100% 3×. Section 5 examines the 2× vs 3× trade-off in detail.
 
 ### MA200 Exit, 3× Allocation
 
@@ -295,7 +319,9 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 
 ## 5. Results — 2× vs 3× Leverage
 
-Using the same entry/exit/drop parameters, we compared allocating 100% of leveraged spending to the 2× ETF (QLD/SSO) versus the 3× ETF (TQQQ/UPRO).
+The optimizer grid included `alloc_x2` (fraction of leveraged spending going to the 2× ETF) and `alloc_x3` (remainder going to the 3× ETF), as well as `alloc_base` (a separate unleveraged base position). The idea was that mixing in some 2× exposure or holding a small base stock position might reduce drawdowns enough to justify the CAGR cost — perhaps enabling more aggressive position sizing elsewhere.
+
+The optimizer's answer was unambiguous: **100% 3×, 0% 2×, 0% base stock topped the leaderboard for every index.** Partial allocations to 2× or base improved worst-year drawdown marginally but reduced CAGR by 3–6pp — a poor trade over 23 years of compounding. The table below isolates the 2× vs 3× comparison directly, holding all other parameters equal.
 
 | Index | Leverage | CAGR | Edge vs B&H | Worst Year | Final Value |
 |---|---|---|---|---|---|
