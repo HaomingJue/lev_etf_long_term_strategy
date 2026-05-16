@@ -631,7 +631,12 @@ leveraged_qqq_exploration/
   ma100/  ma100_exit_results.csv
   ma50/   ma50_exit_results.csv
 leveraged_spy_exploration/                # same structure for SPY
-leveraged_iwm_exploration/                # same structure for IWM
+  optimizer.py  optimizer_train.py  optimizer_ma100_exit.py  optimizer_ma50_exit.py
+  ma200/  spy_optimizer_results.csv       # note: spy_ prefix on all SPY result CSVs
+  ma200_train/  spy_optimizer_results.csv
+  ma100/  ma100_exit_results.csv
+  ma50/   ma50_exit_results.csv
+leveraged_iwm_exploration/                # same structure as QQQ (no prefix)
 ```
 
 ### Code Flow
