@@ -68,10 +68,27 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 - MA100 exit marginally helps SPY. MA100 and MA50 exits both hurt QQQ significantly. Use MA200 for QQQ and IWM.
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
 - The dot-com crash (2000–2003) is the strategy's weakest case: QQQ lost 80% of capital in the first year due to repeated false-rally re-entries. SPY survived with positive CAGR (+6%) thanks to its looser exit threshold.
+- **The strategy requires a periodically bullish, trending market to work.** In sustained choppy or sideways conditions, repeated false dip signals whipsaw the leveraged position — as seen in QQQ's −40% year in 2005 and IWM's out-of-sample failure. This is also why IWM was explored: small-cap indices are structurally noisier and less trend-consistent, making leveraged dip-buying less reliable. The strategy is not all-weather; it amplifies returns in trending bull markets and protects capital in clear bear markets, but struggles when the market oscillates without direction.
 
 ---
 
 ## 1. Strategy Description
+
+### Why Not Just Buy and Hold 3× ETFs Permanently?
+
+The obvious question: if TQQQ returns roughly 3× QQQ's daily return, why not simply hold it forever?
+
+Two compounding problems make this impractical:
+
+**1. Volatility decay (beta slippage)**
+3× ETFs reset their leverage ratio every day. In choppy or sideways markets this daily reset silently erodes value even when the underlying ends flat. A simple example: if QQQ falls 10% then recovers 11.1% (back to its starting price), TQQQ falls 30% then recovers 33.3% — but the math leaves TQQQ at 0.70 × 1.333 = **0.933**, a 6.7% loss while QQQ broke even. The longer and choppier the market, the more this decay compounds against the holder.
+
+**2. Bear markets are catastrophic**
+A 33% QQQ decline translates to roughly a 70–80% TQQQ decline once decay is factored in. A buy-and-hold TQQQ investor in 2000 would have lost over 99% by 2002. In 2008, TQQQ lost approximately 95% from peak to trough. Recovering from those losses requires thousands of percent in gains — mathematically possible but practically ruinous for most investors.
+
+**The solution this strategy uses:** only hold leveraged ETFs during confirmed uptrends, and exit the moment the trend breaks. This cuts off the catastrophic tail, avoids accumulating decay through choppy sideways markets, and preserves cash for re-entry at lower prices after a bear market ends.
+
+---
 
 ### How It Works
 
