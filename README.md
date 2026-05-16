@@ -361,6 +361,10 @@ We ran the strategy against four major market dislocations for both QQQ and SPY,
 
 Both strategies significantly outperformed their benchmarks through the worst financial crisis in 80 years. QQQ's tighter exit (1.01×MA200) fired early in 2008 and kept the strategy in cash through most of the crash, delivering +18.65% CAGR vs +6.62% B&H. SPY's wider exit (0.95×MA200) also fired in early 2008 — the 5% buffer absorbed some early decline but still protected against the deeper crash — finishing at +9.00% CAGR while SPY buy-and-hold barely broke even (−0.82%). SPY's worst strategy year (−14.67% in 2008) was meaningfully better than QQQ's (−19.4%) because SPY's crash was less volatile.
 
+![QQQ GFC 2007–2010](results/backtester/QQQ/QQQ_2007-2010_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+
+![SPY GFC 2007–2010](results/backtester/SPY/SPY_2007-2010_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+
 ### 7.2 COVID Crash and Recovery: 2019-10-01 → 2021-06-30
 
 | Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
@@ -374,6 +378,8 @@ COVID was the ideal scenario for both strategies, but the magnitude of the edge 
 
 ![QQQ COVID crash and recovery 2019–2021](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
+![SPY COVID crash and recovery 2019–2021](results/backtester/SPY/SPY_2019-2021_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+
 ### 7.3 Rate-Hike Bear Market: 2021-06-01 → 2023-06-30
 
 | Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
@@ -386,6 +392,10 @@ COVID was the ideal scenario for both strategies, but the magnitude of the edge 
 This is the most revealing divergence between QQQ and SPY. QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's wide exit (0.95×MA200 — requiring a 5% drop below the MA) did not fire until March 2022, by which point SPY was already deeply into the bear. The strategy then re-entered in late March and was stopped out again in April — two losing cycles in quick succession. SPY's worst strategy year was −38.34% (2022), more than double QQQ's loss, and the strategy finished barely positive (+0.67%) — actually **underperforming SPY buy-and-hold by 3.09pp**.
 
 The same exit threshold that protected SPY through the dot-com crash (by keeping it out for two full bear years) became a liability here: the 2022 decline was fast and sharp enough that the 5% buffer simply absorbed more damage before firing.
+
+![QQQ rate-hike bear market 2021–2023](results/backtester/QQQ/QQQ_2021-2023_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+
+![SPY rate-hike bear market 2021–2023](results/backtester/SPY/SPY_2021-2023_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
 
 ### 7.4 Dot-com Bubble & Recovery: 2000-01-03 → 2003-12-31
 
@@ -419,6 +429,8 @@ SPY's wider exit threshold (0.95×MA200 — price must drop 5% below MA200 to ex
 **The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost 80% of their initial capital in the first year alone. SPY's more defensive exit threshold (0.95× vs 1.01× MA200) proved far more durable. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
 
 ![QQQ dot-com bubble 2000–2003](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+
+![SPY dot-com bubble 2000–2003](results/backtester/SPY/SPY_2000-2003_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
 
 ---
 
