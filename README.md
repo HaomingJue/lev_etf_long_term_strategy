@@ -30,14 +30,6 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
 - The dot-com crash (2000–2003) is the strategy's weakest case: QQQ lost 80% of capital in the first year due to repeated false-rally re-entries. SPY survived with positive CAGR (+6%) thanks to its looser exit threshold.
 
-```mermaid
-xychart-beta
-    title "Strategy vs Buy & Hold CAGR — Full History 2003–2026 (MA200 exit, 3× ETF)"
-    x-axis ["QQQ Strat", "QQQ B&H", "SPY Strat", "SPY B&H", "IWM Strat", "IWM B&H"]
-    y-axis "CAGR (%)" 0 --> 28
-    bar [24.67, 16.16, 22.21, 11.39, 12.14, 10.19]
-```
-
 ---
 
 ## 1. Strategy Description
@@ -167,6 +159,8 @@ python backtester.py --preset QQQ --start 2003-01-01 \
   --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0 --no-show
 ```
 
+![QQQ full history 2003–2026](results/backtester/QQQ/QQQ_2003-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+
 #### SPY — S&P 500 / UPRO
 
 | Metric | Value |
@@ -244,14 +238,6 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 | IWM | MA200 | **12.14%** | 10.19% | +1.95pp | −23.7% | 43 |
 | IWM | MA100 | 9.64% | 10.19% | −0.55pp | −20.6% | 26 |
 
-```mermaid
-xychart-beta
-    title "CAGR Sensitivity to Exit MA — Backtester 2003–2026"
-    x-axis ["QQQ MA200", "QQQ MA100", "SPY MA200", "SPY MA100", "IWM MA200", "IWM MA100"]
-    y-axis "Strategy CAGR (%)" 0 --> 28
-    bar [24.67, 20.10, 22.21, 22.40, 12.14, 9.64]
-```
-
 ### Conclusions on Exit MA
 
 **QQQ — MA200 wins decisively.** MA200 produces +4.57pp more CAGR than MA100 and a better worst year. The MA200 is slow enough to ignore normal bull-market volatility; MA100 triggers false exits that cut off profitable compounding runs. Do not use MA100 or MA50 for QQQ.
@@ -313,13 +299,7 @@ To test whether the strategy's edge generalizes beyond the period it was optimiz
 
 **Walk-forward interpretation:** The strategy is not a historical artifact. Its edge held in a genuinely out-of-sample period. The structural reasons — exploiting dip-buying opportunity in confirmed uptrends, strict exit discipline — translate across market regimes.
 
-```mermaid
-xychart-beta
-    title "Strategy CAGR — Training (2003–2014) vs Out-of-Sample (2015–2026)"
-    x-axis ["QQQ Train", "QQQ OOS", "SPY Train", "SPY OOS", "IWM Train", "IWM OOS"]
-    y-axis "Strategy CAGR (%)" 0 --> 42
-    bar [13.62, 38.69, 26.24, 19.00, 12.97, 11.23]
-```
+![QQQ out-of-sample period 2015–2026](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
 ---
 
@@ -348,6 +328,8 @@ The strategy outperformed buy-and-hold by 12pp annually over this 4-year window 
 | Final value | $38,839 (from $10K) | ~$18,000 |
 
 The COVID crash was the ideal scenario for this strategy. A rapid V-shaped recovery allowed aggressive dip-buying at the March 2020 lows immediately after the MA200 exit signal fired. The strategy achieved nearly 3× the buy-and-hold return over this 20-month window with zero down years.
+
+![QQQ COVID crash and recovery 2019–2021](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
 ### 7.3 Rate-Hike Bear Market: 2021-06-01 → 2023-06-30
 
@@ -391,15 +373,7 @@ SPY's wider exit threshold (0.95×MA200 — price must drop 5% below MA200 to ex
 
 **The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost 80% of their initial capital in the first year alone. SPY's more defensive exit threshold (0.95× vs 1.01× MA200) proved far more durable. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
 
-```mermaid
-xychart-beta
-    title "Crisis Period CAGRs — Strategy (QQQ params) vs QQQ Buy & Hold"
-    x-axis ["GFC Strat", "GFC B&H", "2022 Strat", "2022 B&H", "Dot-com Strat", "Dot-com B&H"]
-    y-axis "Annualized Return (%)" -25 --> 32
-    bar [18.65, 6.62, 27.91, 5.08, -20.10, -21.23]
-```
-
-> COVID excluded from chart (strategy +117.71% vs B&H +45.15%) due to scale — it compresses all other bars to near zero. The COVID result is the strategy's best-case scenario: a sharp V-shaped crash captured at the trough.
+![QQQ dot-com bubble 2000–2003](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
 ---
 
