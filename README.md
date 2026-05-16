@@ -483,6 +483,28 @@ IWM's edge is thin because small-cap stocks have higher daily volatility. Higher
 - **Slow grinding drawdowns** (2022): Price stays below MA200 for months. The strategy correctly stays out, but any false rally before the real recovery triggers a losing re-entry.
 - **Maximum exposure at a market peak**: After a long bull run, the strategy holds maximum leveraged allocation. A crash at that moment causes maximum damage. Sequence-of-returns risk applies even to rules-based systems.
 
+### Does the Edge Survive Into the Future? Overfitting vs. Regime Change
+
+The walk-forward results raise a natural question: if the strategy underperformed out-of-sample for IWM and delivered only a narrow edge for QQQ/SPY, does it have a real future?
+
+The reduced out-of-sample performance reflects **both overfitting and genuine regime change** — and understanding which matters more determines how much to trust forward projections.
+
+**On overfitting:** Running 15,840 parameter combinations guarantees that some combos look exceptional on historical data by chance. The training-period optimizer selected parameters that best fit a 12-year window dominated by the 2008 GFC — a slow, staircase crash with clear trend breaks. Those parameters are not necessarily the ones that will best fit the next 12 years. The large gap between the full-history QQQ result (38.69% CAGR on 2015–2026) and the rigorous OOS result (21.41%) is largely overfitting: the full-period optimizer happened upon exit=1.01×MA200, which captured COVID's instant V-shape recovery with near-perfect timing — a pattern impossible to anticipate from 2003–2014 alone.
+
+**On regime change:** The two periods are structurally different markets. 2003–2014 featured post-dot-com recovery, the 2008 GFC, and a decade of historically low rates — conditions that produced clean, multi-year trend cycles ideal for MA200-based exits. 2015–2026 brought QE-fueled sustained bulls, the fastest crash-and-recovery in history (COVID 2020), and a sharp policy-driven bear (2022) with no clean MA200 signal before damage was done. The strategy's exit logic was designed for the first regime and was less well-suited to the second.
+
+**What this means for the structural edge:**
+The fact that QQQ and SPY still beat B&H out-of-sample (+2.03pp and +1.91pp) with training-period parameters — parameters not tuned to post-2014 events — is genuinely encouraging. It suggests the core logic does generalize: the MA200 trend filter is a well-established concept, not a data artifact, and buying leveraged ETFs on confirmed-uptrend dips has real structural justification. The edge narrowed, but it did not disappear.
+
+IWM's out-of-sample failure (−3.73pp) appears more structural than coincidental. Small-cap leverage decay is higher due to greater daily volatility, the IWM trend signal is noisier, and the 2015–2016 small-cap sideways period triggered too many false entries. This makes the IWM strategy less reliable across market regimes.
+
+**Realistic forward expectations:**
+- **QQQ and SPY:** A forward edge of roughly **1–3pp above B&H** is a realistic base case in trending market regimes. In prolonged sideways or choppy markets, the edge may temporarily disappear or invert.
+- **IWM:** The out-of-sample evidence is too weak to rely on. The IWM strategy should be treated as speculative.
+- **Tail risk remains real:** A dot-com-style multi-year bear with false rallies remains the strategy's worst-case scenario. No parameter set eliminates this risk.
+
+The strategy is not broken. But investors should anchor expectations to the OOS numbers, not the full-history optimized numbers.
+
 ### Limitations and Caveats
 
 - **Backtested on a mostly bullish 23-year window.** The US equity market 2003–2026 included three major crashes but also three major multi-year bull markets. A prolonged bear or sideways decade would test the strategy more severely.
