@@ -3,9 +3,12 @@
 A systematic investigation into whether a disciplined dip-buying approach applied to leveraged ETFs can deliver durable alpha over simple buy-and-hold across the NASDAQ-100, S&P 500, and Russell 2000 — with full walk-forward validation, crisis stress testing, and exit MA comparison.
 
 > [!TIP]
-> **$10,000 → $1,729,122** — QQQ strategy over 23 years (2003–2026), averaging just ~4 trades per year.
-> **$10,000 → $1,084,234** — SPY strategy, same period, ~2 trades per year.
-> Simple buy-and-hold on QQQ returned 16.16% CAGR. This strategy returned 24.67% — **8.5 percentage points more, every year, for 23 years.**
+> **$10,000 → $1,729,122** — QQQ strategy over 23 years (2003–2026), ~4 trades per year. Buy-and-hold QQQ returned only $331K over the same period — **this strategy returned 5.2× more.**
+>
+> **$10,000 → $1,084,234** — SPY strategy, same period, ~2 trades per year. Buy-and-hold SPY returned only $124K — **this strategy returned 8.7× more.**
+>
+> QQQ buy-and-hold: 16.16% CAGR → this strategy: 24.67% — **+8.5pp every year for 23 years.**
+> SPY buy-and-hold: 11.39% CAGR → this strategy: 22.21% — **+10.8pp every year for 23 years.**
 
 ---
 
