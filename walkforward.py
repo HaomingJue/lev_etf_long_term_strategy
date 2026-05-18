@@ -303,8 +303,16 @@ def run_walkforward(preset: str, schedule: dict,
     _save_command_log(int_sched, preset, start_year, end_year,
                       out_dir / f"{slug}_commands.txt")
 
-    _plot(hist, base_tk, preset, start_year, end_year,
-          out_dir / f"{slug}.png", no_show)
+    # Fixed model: 2003-(start_year-1) params frozen for the full period
+    print(f"\nRunning fixed model (2003-{start_year-1} params, frozen) for comparison …")
+    hist_fixed, year_df_fixed = _run_fixed_model(
+        preset, p0, start_year, end_year, capital)
+
+    _print_comparison_table(year_df, year_df_fixed, hist, hist_fixed, base_tk,
+                            start_year, end_year)
+
+    _plot_comparison(hist, hist_fixed, base_tk, preset, start_year, end_year,
+                     out_dir / f"{slug}_comparison.png", no_show)
 
     return hist, year_df
 
@@ -335,22 +343,109 @@ def _save_command_log(int_sched: dict, preset: str, start_year: int,
     print(f"  Saved: {save_path}")
 
 
-def _plot(hist, base_tk, preset, start_year, end_year, save_path, no_show):
+def _run_fixed_model(preset: str, first_params: dict,
+                     start_year: int, end_year: int, capital: float):
+    """Run backtester with 2003-(start_year-1) params frozen for the full period."""
+    p = first_params
+    args = argparse.Namespace(
+        preset=preset,
+        start=f"{start_year}-01-01",
+        end=f"{end_year}-12-31",
+        capital=capital,
+        entry_signal=p["entry_signal"],
+        exit_signal=p["exit_signal"],
+        drop_level=p["drop_level"],
+        buy_pct=p["buy_pct"],
+        alloc_base=p["alloc_base"],
+        alloc_x2=p["alloc_x2"],
+        alloc_x3=p["alloc_x3"],
+        exit_ma=200,
+        no_show=True,
+        save_plot=None,
+    )
+    hist, year_df, _, _ = run_backtest(args)
+    return hist, year_df
+
+
+def _print_comparison_table(year_exp, year_fix, hist_exp, hist_fix,
+                             base_tk, start_year, end_year):
+    W = 85
+    print("\n" + "=" * W)
+    print(f"  COMPARISON: Fixed (2003-{start_year-1}) vs Expanding Window vs {base_tk} B&H")
+    print("=" * W)
+
+    # Year-by-year table
+    merged = year_exp[["Year", "Strategy Ret %", "Strategy Value"]].merge(
+        year_fix[["Year", "Strategy Ret %", "Strategy Value"]],
+        on="Year", suffixes=(" Exp", " Fix"),
+    ).merge(
+        year_exp[["Year", f"{base_tk} Ret %", f"{base_tk} Value"]], on="Year"
+    )
+
+    print(f"\n  {'Year':>4}  {'Fixed Ret%':>10}  {'Expand Ret%':>11}  "
+          f"{'B&H Ret%':>9}  {'Fixed Val':>12}  {'Expand Val':>12}")
+    print("  " + "-" * 72)
+    for _, r in merged.iterrows():
+        print(f"  {int(r['Year']):>4}  "
+              f"{r['Strategy Ret % Fix']:>10.2f}%  "
+              f"{r['Strategy Ret % Exp']:>10.2f}%  "
+              f"{r[f'{base_tk} Ret %']:>8.2f}%  "
+              f"${r['Strategy Value Fix']:>11,.0f}  "
+              f"${r['Strategy Value Exp']:>11,.0f}")
+
+    # Summary row
+    days   = (hist_exp.index[-1] - hist_exp.index[0]).days
+    cagr_e = compute_cagr(hist_exp["Strategy"].iloc[-1], hist_exp["Strategy"].iloc[0], days)
+    cagr_f = compute_cagr(hist_fix["Strategy"].iloc[-1], hist_fix["Strategy"].iloc[0], days)
+    cagr_b = compute_cagr(hist_exp["BuyHold"].iloc[-1],  hist_exp["BuyHold"].iloc[0],  days)
+
+    worst_e = year_exp["Strategy Ret %"].min()
+    worst_f = year_fix["Strategy Ret %"].min()
+    worst_b = year_exp[f"{base_tk} Ret %"].min()
+
+    worst_yr_e = int(year_exp.loc[year_exp["Strategy Ret %"].idxmin(), "Year"])
+    worst_yr_f = int(year_fix.loc[year_fix["Strategy Ret %"].idxmin(), "Year"])
+    worst_yr_b = int(year_exp.loc[year_exp[f"{base_tk} Ret %"].idxmin(), "Year"])
+
+    print("\n  " + "-" * 72)
+    print(f"  {'CAGR':>18}  {cagr_f*100:>10.2f}%  {cagr_e*100:>10.2f}%  {cagr_b*100:>8.2f}%")
+    print(f"  {'Final Value':>18}  "
+          f"${hist_fix['Strategy'].iloc[-1]:>11,.0f}  "
+          f"${hist_exp['Strategy'].iloc[-1]:>11,.0f}  "
+          f"${hist_exp['BuyHold'].iloc[-1]:>8,.0f}")
+    print(f"  {'Worst Year':>18}  "
+          f"{worst_f:>9.1f}% ({worst_yr_f})  "
+          f"{worst_e:>9.1f}% ({worst_yr_e})  "
+          f"{worst_b:>7.1f}% ({worst_yr_b})")
+    print(f"  {'Edge vs B&H':>18}  "
+          f"{(cagr_f-cagr_b)*100:>+9.2f}pp  "
+          f"{(cagr_e-cagr_b)*100:>+10.2f}pp  "
+          f"{'—':>9}")
+
+
+def _plot_comparison(hist_exp, hist_fix, base_tk, preset,
+                     start_year, end_year, save_path, no_show):
     fig, ax = plt.subplots(figsize=(14, 7))
 
-    ax.plot(hist.index, hist["BuyHold"],  label=f"{base_tk} Buy & Hold",
+    days   = (hist_exp.index[-1] - hist_exp.index[0]).days
+    cagr_e = compute_cagr(hist_exp["Strategy"].iloc[-1], hist_exp["Strategy"].iloc[0], days)
+    cagr_f = compute_cagr(hist_fix["Strategy"].iloc[-1], hist_fix["Strategy"].iloc[0], days)
+    cagr_b = compute_cagr(hist_exp["BuyHold"].iloc[-1],  hist_exp["BuyHold"].iloc[0],  days)
+
+    ax.plot(hist_exp.index, hist_exp["BuyHold"],
+            label=f"{base_tk} Buy & Hold  ({cagr_b*100:.2f}% CAGR)",
             linewidth=1.5, color="steelblue")
-    ax.plot(hist.index, hist["Strategy"], label="Walk-forward Strategy",
+    ax.plot(hist_fix.index, hist_fix["Strategy"],
+            label=f"Fixed model 2003-{start_year-1}  ({cagr_f*100:.2f}% CAGR)",
+            linewidth=1.5, color="mediumseagreen", linestyle="--")
+    ax.plot(hist_exp.index, hist_exp["Strategy"],
+            label=f"Expanding window  ({cagr_e*100:.2f}% CAGR)",
             linewidth=1.5, color="darkorange")
 
-    days  = (hist.index[-1] - hist.index[0]).days
-    scagr = compute_cagr(hist["Strategy"].iloc[-1], hist["Strategy"].iloc[0], days)
-    bcagr = compute_cagr(hist["BuyHold"].iloc[-1],  hist["BuyHold"].iloc[0],  days)
-
     ax.set_title(
-        f"Expanding-Window Walk-Forward — {preset}  |  {start_year}–{end_year}\n"
-        f"Strategy {scagr*100:.2f}% CAGR  vs  {base_tk} B&H {bcagr*100:.2f}% CAGR  "
-        f"(params re-optimized each year on all prior data)",
+        f"Walk-Forward Comparison — {preset}  |  {start_year}–{end_year}\n"
+        f"Fixed (2003-{start_year-1} params, frozen)  vs  "
+        f"Expanding window (re-optimized each year)  vs  {base_tk} B&H",
         fontsize=10,
     )
     ax.set_xlabel("Date")

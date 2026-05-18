@@ -496,23 +496,56 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 | 2024 | +56.7% | +25.6% | +63.6% | +24.9% |
 | 2025 | +16.6% | +21.8% | +18.1% | +18.6% |
 
-**Summary vs fixed single-split walk-forward:**
+**Three-way comparison: Fixed (2003–2013) vs Expanding Window vs B&H**
 
-| Index | Fixed WF CAGR | Fixed WF Edge | Expanding WF CAGR | Expanding WF Edge | B&H CAGR |
-|---|---|---|---|---|---|
-| QQQ | 21.41% | +2.03pp | **27.26%** | **+8.54pp** | 18.72% |
-| SPY | 15.71% | +1.91pp | **20.14%** | **+6.55pp** | 13.59% |
+> All three start from $10,000 on 2014-01-01.
 
-The expanding-window approach delivers **+6.5pp more edge** for QQQ and **+4.6pp more** for SPY versus the frozen single-split test. This is not overfitting — at no point does the optimizer see the year it is trading. The improvement comes from the model adapting as the market evolves: for example, after absorbing the 2008 GFC data, SPY's optimizer locks in a tight entry (1.02×MA200) and moderate exit (0.97×MA200) that it holds with near-zero variance for the rest of the period.
+#### QQQ
 
-**Worst year comparison:**
+| Year | Fixed (2003–2013) | Expanding Window | QQQ B&H |
+|---|---|---|---|
+| 2014 | +57.3% | +57.3% | +20.1% |
+| 2015 | −15.0% | −15.0% | +9.4% |
+| 2016 | **−15.3%** | −9.2% | +7.1% |
+| 2017 | +96.7% | +98.1% | +32.7% |
+| 2018 | −2.5% | **+13.2%** | −0.1% |
+| 2019 | +32.2% | +4.5% | +39.0% |
+| 2020 | +49.2% | **+89.7%** | +48.4% |
+| 2021 | +72.9% | +79.4% | +27.4% |
+| 2022 | **−35.5%** | −25.9% | −32.6% |
+| 2023 | **+97.8%** | +37.3% | +54.9% |
+| 2024 | +54.7% | +56.7% | +25.6% |
+| 2025 | +0.8% | **+16.6%** | +21.8% |
+| **CAGR** | 25.15% | **27.26%** | 18.72% |
+| **Final value** | $147,361 | **$180,025** | $78,267 |
+| **Worst year** | −35.5% (2022) | **−25.9%** (2022) | −32.6% (2022) |
+| **Edge vs B&H** | +6.43pp | **+8.54pp** | — |
 
-| Index | Fixed WF worst year | Expanding WF worst year |
-|---|---|---|
-| QQQ | −36.0% (2022) | **−25.9%** (2022) |
-| SPY | −43.9% (2022) | **−37.1%** (2022) |
+#### SPY
 
-The expanding-window approach also reduces peak drawdowns — the annually-updated exit thresholds fired slightly earlier in the 2022 rate-hike bear for both indices.
+| Year | Fixed (2003–2013) | Expanding Window | SPY B&H |
+|---|---|---|---|
+| 2014 | +45.6% | +45.6% | +14.6% |
+| 2015 | −17.4% | −17.4% | +1.2% |
+| 2016 | +14.1% | +14.1% | +12.0% |
+| 2017 | +71.4% | +71.4% | +21.7% |
+| 2018 | −13.4% | −15.3% | −4.6% |
+| 2019 | +49.0% | +44.9% | +31.2% |
+| 2020 | −8.9% | −8.9% | +18.3% |
+| 2021 | +98.6% | +98.6% | +28.7% |
+| 2022 | **−43.9%** | −37.1% | −18.2% |
+| 2023 | +42.2% | +42.2% | +26.2% |
+| 2024 | +63.6% | +63.6% | +24.9% |
+| 2025 | +24.1% | +18.1% | +18.6% |
+| **CAGR** | 19.99% | **20.14%** | 13.59% |
+| **Final value** | $88,951 | **$90,307** | $46,112 |
+| **Worst year** | **−43.9%** (2022) | −37.1% (2022) | −18.2% (2022) |
+| **Edge vs B&H** | +6.40pp | **+6.55pp** | — |
+
+**Key takeaways:**
+- For QQQ, the expanding window is meaningfully better: +27.26% vs +25.15% CAGR and a dramatically better worst year (−25.9% vs −35.5%). The key divergence years are 2018 (expanding window correctly tightened the exit after absorbing 2016–2017 data) and 2020 (after learning from 2019's choppy recovery, the expanding window switched to a 2.0% dip trigger — fewer false entries in the COVID crash).
+- For SPY, the difference in CAGR is minimal (+0.15pp) because SPY's optimal params barely changed year to year. The expanding window's main benefit here is a meaningfully better worst year: −37.1% vs −43.9% in 2022.
+- The fixed (2003–2013) model still substantially outperforms buy-and-hold for both indices (+6.4pp), confirming the core strategy logic is robust even without annual re-optimization.
 
 ![QQQ expanding-window walk-forward 2014–2025](results/walkforward/QQQ_walkforward_2014-2025.png)
 ![SPY expanding-window walk-forward 2014–2025](results/walkforward/SPY_walkforward_2014-2025.png)
