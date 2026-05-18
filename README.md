@@ -48,7 +48,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ## Abstract
 
-We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. The strategy survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
+We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) further improved QQQ to **27.26% CAGR** (+2.11pp vs the fixed model) and reduced its worst calendar year from −35.5% to −25.9%; SPY showed minimal CAGR gain (+0.15pp) but a meaningfully better worst year (−37.1% vs −43.9%). Based on these results, we recommend annual re-optimization as a best practice — particularly for QQQ, where market-regime shifts cause parameter drift that translates directly to better risk-adjusted outcomes. The strategy survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
 
 ---
 
@@ -67,6 +67,7 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 **Key findings:**
 - Meaningful alpha over buy-and-hold for QQQ (+8.5pp) and SPY (+10.8pp). IWM edge is thin (+1.95pp) due to small-cap 3× decay.
 - QQQ and SPY hold positive edges in a rigorous out-of-sample test (2015–2026, using parameters optimized on 2003–2014 only); IWM underperforms out-of-sample — an honest finding disclosed in full.
+- **Annual re-optimization (expanding-window walk-forward, 2014–2025) meaningfully improves QQQ:** CAGR rises from 25.15% (fixed 2003–2013 params) to **27.26%** (+2.11pp), and worst year improves from −35.5% to −25.9%. SPY's CAGR barely changes (+0.15pp) but its worst year also improves significantly (−43.9% → −37.1%). We recommend running the optimizer annually and updating parameters before each new trading year — the ~30 min compute cost is justified by better risk management and, for QQQ, measurably higher CAGR.
 - 3× ETF dominates 2× on CAGR (roughly +6pp), with the trade-off of ~12pp worse worst-year drawdowns.
 - MA100 exit marginally helps SPY. MA100 and MA50 exits both hurt QQQ significantly. Use MA200 for QQQ and IWM.
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
@@ -543,9 +544,21 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 | **Edge vs B&H** | +6.40pp | **+6.55pp** | — |
 
 **Key takeaways:**
-- For QQQ, the expanding window is meaningfully better: +27.26% vs +25.15% CAGR and a dramatically better worst year (−25.9% vs −35.5%). The key divergence years are 2018 (expanding window correctly tightened the exit after absorbing 2016–2017 data) and 2020 (after learning from 2019's choppy recovery, the expanding window switched to a 2.0% dip trigger — fewer false entries in the COVID crash).
-- For SPY, the difference in CAGR is minimal (+0.15pp) because SPY's optimal params barely changed year to year. The expanding window's main benefit here is a meaningfully better worst year: −37.1% vs −43.9% in 2022.
-- The fixed (2003–2013) model still substantially outperforms buy-and-hold for both indices (+6.4pp), confirming the core strategy logic is robust even without annual re-optimization.
+
+**QQQ: annual re-optimization provides clear, material benefit.** CAGR improves by +2.11pp (27.26% vs 25.15%) and the worst year shrinks from −35.5% to −25.9% — nearly 10pp of tail risk eliminated. The mechanism is intuitive: QQQ's optimal parameters are regime-sensitive. The optimizer absorbed the 2016–2017 bull market and tightened the exit, which paid off in 2018. After the 2019 choppy recovery, it raised the dip trigger from 0.5% to 2.0% — requiring a more meaningful pullback before buying — which prevented costly false entries during the COVID crash.
+
+**SPY: annual re-optimization primarily reduces drawdown rather than boosting CAGR.** The CAGR gain is negligible (+0.15pp) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. But the worst year still improves meaningfully (−37.1% vs −43.9% in 2022), suggesting the annual pass is worth running for risk management alone.
+
+**The core strategy does not depend on annual tuning.** The fixed (2003–2013) model still beats buy-and-hold by +6.4pp for both indices — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite.
+
+**Recommendation: run the optimizer annually and update params for the coming year.** The computational cost is approximately 30 minutes per preset. The benefit — better alignment with evolving market regimes and meaningfully better worst-case outcomes — justifies it. For QQQ specifically, where parameter drift is largest, skipping annual updates leaves both CAGR and risk management on the table.
+
+**Three-way comparison — Fixed model (2003–2013 params, frozen) vs Expanding Window (annual re-opt) vs Buy & Hold:**
+
+![QQQ three-way comparison 2014–2025](results/walkforward/QQQ_walkforward_2014-2025_comparison.png)
+![SPY three-way comparison 2014–2025](results/walkforward/SPY_walkforward_2014-2025_comparison.png)
+
+**Expanding-window equity curves (individual strategy view):**
 
 ![QQQ expanding-window walk-forward 2014–2025](results/walkforward/QQQ_walkforward_2014-2025.png)
 ![SPY expanding-window walk-forward 2014–2025](results/walkforward/SPY_walkforward_2014-2025.png)
