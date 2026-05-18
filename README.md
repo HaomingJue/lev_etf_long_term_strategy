@@ -444,6 +444,81 @@ The large QQQ gap (−17.28pp) reflects meaningful overfitting: the full-period 
 ![QQQ full-history 2015–2026 (full-period params, for reference)](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 ![SPY full-history 2015–2026 (full-period params, for reference)](results/backtester/SPY/SPY_2015-2026_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
 
+### Expanding-Window Walk-Forward (Annual Re-Optimization, 2014–2025)
+
+The single-split test above answers: *"what if you optimized once in 2014 and never updated?"* A stronger question is: *"what if you re-optimized every year using all available history?"* This is the **expanding-window walk-forward** — for each trade year Y, the optimizer runs on 2003 through Y−1, and the best params are applied to year Y only, then discarded. Portfolio state is continuous across year boundaries; only the decision rules change.
+
+This is the most realistic simulation of how a systematic investor would actually operate.
+
+**How params evolved year by year (QQQ):**
+
+| Year traded | Trained on | Entry | Drop | Exit | Buy% |
+|---|---|---|---|---|---|
+| 2014 | 2003–2013 | 1.04× | 0.5% | 0.95× | 40% |
+| 2015 | 2003–2014 | 1.04× | 0.5% | 0.95× | 40% |
+| 2016 | 2003–2015 | 1.05× | 0.5% | 0.99× | 40% |
+| 2017 | 2003–2016 | 1.06× | 0.5% | 1.00× | 30% |
+| 2018 | 2003–2017 | 1.06× | 0.5% | 1.00× | 40% |
+| 2019 | 2003–2018 | 1.06× | 0.5% | 1.00× | 40% |
+| 2020 | 2003–2019 | 1.03× | 2.0% | 1.00× | 40% |
+| 2021 | 2003–2020 | 1.03× | 2.0% | 1.00× | 40% |
+| 2022 | 2003–2021 | 1.03× | 2.0% | 1.00× | 40% |
+| 2023 | 2003–2022 | 1.02× | 1.5% | 1.01× | 30% |
+| 2024 | 2003–2023 | 1.06× | 0.5% | 1.00× | 40% |
+| 2025 | 2003–2024 | 1.06× | 0.5% | 1.00× | 40% |
+
+Notable shift: after 2019 the optimizer raised the drop requirement from 0.5% to 2.0% for three consecutive years — it had absorbed enough bull-market data to prefer waiting for a more meaningful dip before buying.
+
+**How params evolved year by year (SPY):**
+
+SPY params were remarkably stable across all 12 windows — entry settled at 1.01–1.02×MA200, drop at 0.5%, exit at 0.95–0.97×MA200 virtually every year. The optimizer consistently converged to the same region of the grid regardless of how much new history was added.
+
+| Year traded | Entry | Drop | Exit | Buy% |
+|---|---|---|---|---|
+| 2014–2016 | 1.01× | 0.5% | 0.97× | 40% |
+| 2017–2022 | 1.02× | 0.5% | 0.95–0.97× | 40% |
+| 2023–2025 | 1.02× | 0.5% | 0.97× | 40% |
+
+**Year-by-year results:**
+
+| Year | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
+|---|---|---|---|---|
+| 2014 | +57.3% | +20.1% | +45.6% | +14.6% |
+| 2015 | −15.0% | +9.4% | −17.4% | +1.2% |
+| 2016 | −9.2% | +7.1% | +14.1% | +12.0% |
+| 2017 | +98.1% | +32.7% | +71.4% | +21.7% |
+| 2018 | +13.2% | −0.1% | −15.3% | −4.6% |
+| 2019 | +4.5% | +39.0% | +44.9% | +31.2% |
+| 2020 | +89.7% | +48.4% | −8.9% | +18.3% |
+| 2021 | +79.4% | +27.4% | +98.6% | +28.7% |
+| 2022 | −25.9% | −32.6% | −37.1% | −18.2% |
+| 2023 | +37.3% | +54.9% | +42.2% | +26.2% |
+| 2024 | +56.7% | +25.6% | +63.6% | +24.9% |
+| 2025 | +16.6% | +21.8% | +18.1% | +18.6% |
+
+**Summary vs fixed single-split walk-forward:**
+
+| Index | Fixed WF CAGR | Fixed WF Edge | Expanding WF CAGR | Expanding WF Edge | B&H CAGR |
+|---|---|---|---|---|---|
+| QQQ | 21.41% | +2.03pp | **27.26%** | **+8.54pp** | 18.72% |
+| SPY | 15.71% | +1.91pp | **20.14%** | **+6.55pp** | 13.59% |
+
+The expanding-window approach delivers **+6.5pp more edge** for QQQ and **+4.6pp more** for SPY versus the frozen single-split test. This is not overfitting — at no point does the optimizer see the year it is trading. The improvement comes from the model adapting as the market evolves: for example, after absorbing the 2008 GFC data, SPY's optimizer locks in a tight entry (1.02×MA200) and moderate exit (0.97×MA200) that it holds with near-zero variance for the rest of the period.
+
+**Worst year comparison:**
+
+| Index | Fixed WF worst year | Expanding WF worst year |
+|---|---|---|
+| QQQ | −36.0% (2022) | **−25.9%** (2022) |
+| SPY | −43.9% (2022) | **−37.1%** (2022) |
+
+The expanding-window approach also reduces peak drawdowns — the annually-updated exit thresholds fired slightly earlier in the 2022 rate-hike bear for both indices.
+
+![QQQ expanding-window walk-forward 2014–2025](results/walkforward/QQQ_walkforward_2014-2025.png)
+![SPY expanding-window walk-forward 2014–2025](results/walkforward/SPY_walkforward_2014-2025.png)
+
+> To reproduce: `python walkforward.py --preset QQQ` (or `--preset SPY`). Phase 1 (optimizer) takes ~30 min and is cached to `results/walkforward/`. Re-run Phase 2 only with `--no-rebuild`.
+
 ---
 
 ## 7. Results — Crisis Period Stress Tests

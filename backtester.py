@@ -218,7 +218,7 @@ def normalise(df: pd.DataFrame, cols: list) -> pd.DataFrame:
 # BACKTEST ENGINE
 # ----------------------------------------------------------
 
-def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     cfg = PRESETS[args.preset]
     base_tk = cfg["base"]
     lev2_tk = cfg["lev2"]
@@ -290,6 +290,16 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     exit_ma_col = f"MA{args.exit_ma}"
 
+    # Active params — fixed unless param_schedule overrides them at year boundaries
+    active_entry = args.entry_signal
+    active_exit  = args.exit_signal
+    active_drop  = args.drop_level
+    active_buy   = args.buy_pct
+    active_base  = args.alloc_base
+    active_x2    = args.alloc_x2
+    active_x3    = args.alloc_x3
+    _sched_year  = None
+
     raw_base    = df["base"].values
     raw_lev2    = df["lev2"].values
     raw_lev3    = df["lev3"].values
@@ -310,6 +320,20 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     })
 
     for i in range(START_IDX, len(df)):
+
+        if param_schedule is not None:
+            yr = idx[i].year
+            if yr != _sched_year:
+                _sched_year = yr
+                if yr in param_schedule:
+                    p = param_schedule[yr]
+                    active_entry = p["entry_signal"]
+                    active_exit  = p["exit_signal"]
+                    active_drop  = p["drop_level"]
+                    active_buy   = p["buy_pct"]
+                    active_base  = p.get("alloc_base", args.alloc_base)
+                    active_x2    = p.get("alloc_x2",   args.alloc_x2)
+                    active_x3    = p.get("alloc_x3",   args.alloc_x3)
 
         nb      = raw_base[i]
         n2      = raw_lev2[i]
@@ -334,7 +358,7 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         # ══════════════════════════════════════════════════
         # EXIT  (uses exit MA — MA50, MA100, or MA200)
         # ══════════════════════════════════════════════════
-        if price < ma_exit * args.exit_signal and (s_2 > 0 or s_3 > 0):
+        if price < ma_exit * active_exit and (s_2 > 0 or s_3 > 0):
 
             notes = []
 
@@ -350,10 +374,10 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 notes.append(f"lev gain {gain_pct:+.2f}%")
 
             # 2. Trim base if over target — ONE TIME ONLY, never again
-            if not base_trimmed and args.alloc_base > 0:
+            if not base_trimmed and active_base > 0:
                 val_b  = s_b * nb
                 total  = cash + val_b
-                target = total * args.alloc_base
+                target = total * active_base
                 if val_b > target + 0.01:
                     excess        = val_b - target
                     shares_trim   = excess / nb
@@ -381,7 +405,7 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             # ════════════════════════════════════════════
             # ARM CHECK  (always MA200)
             # ════════════════════════════════════════════
-            if not armed and price > ma200 * args.entry_signal:
+            if not armed and price > ma200 * active_entry:
                 armed = True
 
             # ════════════════════════════════════════════
@@ -390,8 +414,8 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             drop = (prev - price) / prev if prev > 0 else 0.0
             is_drop_signal = (
                 armed
-                and price > ma200 * args.entry_signal
-                and drop >= args.drop_level
+                and price > ma200 * active_entry
+                and drop >= active_drop
                 and cash > 0.01
             )
 
@@ -399,8 +423,8 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 buy_notes = []
 
                 # ── First signal in cycle: fill base ────
-                if not base_filled and args.alloc_base > 0:
-                    target_base_val = total * args.alloc_base
+                if not base_filled and active_base > 0:
+                    target_base_val = total * active_base
                     current_base_val = s_b * nb
                     base_needed = max(target_base_val - current_base_val, 0.0)
                     base_spend  = min(base_needed, cash)
@@ -416,11 +440,11 @@ def run_backtest(args) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                     total = cash + s_b * nb + s_2 * n2 + s_3 * n3
 
                 # ── Lev buy (every signal) ───────────────
-                lev_spend = min(args.buy_pct * total, cash)
+                lev_spend = min(active_buy * total, cash)
 
                 if lev_spend > 0.01:
-                    a2 = lev_spend * args.alloc_x2
-                    a3 = lev_spend * args.alloc_x3
+                    a2 = lev_spend * active_x2
+                    a3 = lev_spend * active_x3
 
                     if a2 > 0:
                         s_2            += a2 / n2
