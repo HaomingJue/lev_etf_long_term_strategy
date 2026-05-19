@@ -1,14 +1,17 @@
-Preset       : SPY
-Period       : 2021-06-01 -> 2023-06-30
-Entry signal : 1.02x MA200
-Exit signal  : 0.95x MA200
-Drop level   : 0.50%
-Buy pct      : 30% per signal
-Alloc base   : 0%  lev2 0%  lev3 100%
+Preset          : SPY
+Period          : 2021-06-01 -> 2023-06-30
+Entry signal    : 1.02x MA200
+Exit signal     : 0.95x MA200
+Drop level      : 0.50%
+Buy pct         : 30% per signal
+Alloc base      : 0%  lev2 0%  lev3 100%
+Cost per trade  : 0.000%
 
-Strategy CAGR    : 0.67%
-B&H CAGR (SPY) : 3.76%
-Strategy edge    : -3.09pp
-Final value      : $10,139.90
-Worst year       : -38.34%
-Total trades     : 11
+Strategy CAGR   : 0.67%
+B&H CAGR (SPY)  : 3.76%
+Strategy edge   : -3.09pp
+Final value     : $10,139.91
+Worst year      : -38.34%
+Max drawdown    : -50.01%
+Sharpe ratio    : 0.18
+Total trades    : 11

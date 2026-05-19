@@ -70,20 +70,35 @@ ALLOC_X2S     = [0.0, 0.25, 0.50, 0.75, 1.0]
 # DATA
 # ──────────────────────────────────────────────────────────────
 
-def _build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
-    ret   = base.pct_change().fillna(0)
-    var20 = ret.rolling(20).var().fillna(0)
-    nav   = np.ones(len(base))
+# Annual MERs — applied to synthetic pre-inception period only (real prices include MER)
+_MER_3X = {"QQQ": 0.0095, "SPY": 0.0091, "IWM": 0.0109}
+_MER_2X = {"QQQ": 0.0095, "SPY": 0.0089, "IWM": 0.0095}
+
+
+def _build_lev_nav(base: pd.Series, real: pd.Series, L: int,
+                   annual_mer: float = 0.0) -> pd.Series:
+    ret       = base.pct_change().fillna(0)
+    var20     = ret.rolling(20).var().fillna(0)
+    daily_mer = annual_mer / 252.0
+
+    # Determine stitch point before building synthetic
+    first_real_pos = None
+    if real is not None and not real.dropna().empty:
+        common = base.index.intersection(real.dropna().index)
+        if not common.empty:
+            first_real_pos = base.index.get_loc(common[0])
+
+    nav = np.ones(len(base))
     for i in range(1, len(base)):
-        nav[i] = nav[i-1] * (1.0 + L * ret.values[i]
-                             - 0.5 * (L**2 - L) * var20.values[i])
+        lev_r = L * ret.values[i] - 0.5 * (L**2 - L) * var20.values[i]
+        if first_real_pos is None or i < first_real_pos:
+            lev_r -= daily_mer   # MER only during synthetic period
+        nav[i] = nav[i-1] * (1.0 + lev_r)
+
     synth = pd.Series(nav, index=base.index)
-    if real is None or real.dropna().empty:
+    if first_real_pos is None:
         return synth
-    common = base.index.intersection(real.dropna().index)
-    if common.empty:
-        return synth
-    first    = common[0]
+    first    = base.index[first_real_pos]
     stitched = synth.copy()
     stitched.loc[first:] = (real.reindex(base.index).loc[first:]
                             * (synth.loc[first] / real.loc[first]))
@@ -107,8 +122,8 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
     base = dl(base_tk)
     df   = pd.DataFrame({
         "base": base,
-        "lev2": _build_lev_nav(base, dl(lev2_tk), 2),
-        "lev3": _build_lev_nav(base, dl(lev3_tk), 3),
+        "lev2": _build_lev_nav(base, dl(lev2_tk), 2, annual_mer=_MER_2X[preset]),
+        "lev3": _build_lev_nav(base, dl(lev3_tk), 3, annual_mer=_MER_3X[preset]),
     }).dropna(subset=["base"])
     df["ret"]   = df["base"].pct_change().fillna(0)
     df["MA200"] = df["base"].rolling(200).mean()
@@ -267,6 +282,7 @@ def run_walkforward(preset: str, schedule: dict,
         alloc_x2=p0["alloc_x2"],
         alloc_x3=p0["alloc_x3"],
         exit_ma=200,
+        cost_per_trade=0.0,
         no_show=no_show,
         save_plot=None,
     )
@@ -360,6 +376,7 @@ def _run_fixed_model(preset: str, first_params: dict,
         alloc_x2=p["alloc_x2"],
         alloc_x3=p["alloc_x3"],
         exit_ma=200,
+        cost_per_trade=0.0,
         no_show=True,
         save_plot=None,
     )

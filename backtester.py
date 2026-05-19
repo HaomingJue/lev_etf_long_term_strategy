@@ -52,6 +52,12 @@ PRESETS = {
     "IWM": dict(base="IWM", lev2="UWM",  lev3="TNA"),
 }
 
+# Annual management expense ratios for leveraged ETFs.
+# Applied ONLY to the synthetic pre-inception period — real ETF prices
+# already have MER baked in via daily NAV adjustments.
+MER_3X = {"QQQ": 0.0095, "SPY": 0.0091, "IWM": 0.0109}  # TQQQ/UPRO/TNA
+MER_2X = {"QQQ": 0.0095, "SPY": 0.0089, "IWM": 0.0095}  # QLD/SSO/UWM
+
 # Earliest date yfinance has reliable data for each base ETF
 PRESET_INCEPTION = {
     "QQQ": "1999-01-01",   # QQQ launched 1999-03-10
@@ -94,6 +100,9 @@ def parse_args():
                    help="MA period used for exit signal (arm/entry always uses MA200)")
     p.add_argument("--save-plot",    default=None,
                    help="Save plot to this path instead of showing interactively")
+    p.add_argument("--cost-per-trade", type=float, default=0.0,
+                   help="One-way transaction cost as a fraction of trade value "
+                        "(e.g. 0.001 = 0.1%%). Applied to every buy and sell execution.")
     p.add_argument("--no-show",     action="store_true",
                    help="Suppress interactive plot window (images still saved if --save-plot is set)")
 
@@ -153,14 +162,26 @@ def align(*series: pd.Series) -> pd.DataFrame:
 # smoothly from the last synthetic value.
 # ----------------------------------------------------------
 
-def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
+def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int,
+                  annual_mer: float = 0.0) -> pd.Series:
     """
     Returns a NAV series (starting at 1.0 on qqq.index[0]) for an
     L-times leveraged ETF, using synthetic returns before real ETF
     inception and real prices (re-scaled) from inception onward.
+
+    annual_mer: expense ratio applied only to the synthetic period
+    (e.g. 0.0095 for TQQQ). Real ETF prices already include MER.
     """
     ret   = qqq.pct_change().fillna(0)
     var20 = ret.rolling(20).var().fillna(0)
+    daily_mer = annual_mer / 252.0
+
+    # Find stitch point before the loop so we can apply MER selectively
+    first_real_pos = None
+    if real is not None and not real.dropna().empty:
+        common = qqq.index.intersection(real.dropna().index)
+        if not common.empty:
+            first_real_pos = qqq.index.get_loc(common[0])
 
     nav = np.empty(len(qqq))
     nav[0] = 1.0
@@ -169,17 +190,15 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
     for i in range(1, len(qqq)):
         r = r_arr[i]; v = v_arr[i]
         lev_r = L * r - 0.5 * (L**2 - L) * v
+        if first_real_pos is None or i < first_real_pos:
+            lev_r -= daily_mer   # MER applies only during synthetic period
         nav[i] = nav[i-1] * (1.0 + lev_r)
     synth = pd.Series(nav, index=qqq.index, name=f"synth{L}x")
 
-    if real is None or real.dropna().empty:
+    if first_real_pos is None:
         return synth
 
-    common = qqq.index.intersection(real.dropna().index)
-    if common.empty:
-        return synth
-
-    first_real = common[0]
+    first_real = qqq.index[first_real_pos]
     scale = synth.loc[first_real] / real.loc[first_real]
     real_scaled = real.reindex(qqq.index) * scale
 
@@ -244,8 +263,9 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
         s_lev3_real = pd.Series(dtype=float)
 
     # Build stitched NAV series (synthetic before inception, real after)
-    lev2_nav = build_lev_nav(s_base, s_lev2_real, 2)
-    lev3_nav = build_lev_nav(s_base, s_lev3_real, 3)
+    # MER is applied only to the synthetic portion; real prices already include it.
+    lev2_nav = build_lev_nav(s_base, s_lev2_real, 2, annual_mer=MER_2X[args.preset])
+    lev3_nav = build_lev_nav(s_base, s_lev3_real, 3, annual_mer=MER_3X[args.preset])
 
     # Assemble full-history DataFrame on base index
     df_full = pd.DataFrame({
@@ -369,6 +389,7 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                             if lev_dollar_sum > 0 else 0.0)
                 gain_pct = ((price / avg_px) - 1) * 100 if avg_px > 0 else 0.0
                 cash    += lev_val
+                cash    -= lev_val * args.cost_per_trade   # transaction cost on exit
                 s_2 = s_3 = 0.0
                 lev_price_wsum = lev_dollar_sum = 0.0
                 notes.append(f"lev gain {gain_pct:+.2f}%")
@@ -432,6 +453,7 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                     if base_spend > 0.01:
                         s_b  += base_spend / nb
                         cash -= base_spend
+                        cash -= base_spend * args.cost_per_trade  # transaction cost
                         buy_notes.append(f"base filled ${base_spend:,.2f}")
 
                     base_filled = True
@@ -456,6 +478,7 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                         lev_dollar_sum += a3
 
                     cash -= lev_spend
+                    cash -= lev_spend * args.cost_per_trade  # transaction cost
                     buy_notes.append(f"lev ${lev_spend:,.2f}")
 
                 # Recalc for snapshot
@@ -545,32 +568,52 @@ def _auto_out_dir(args) -> Path:
     return out
 
 
+def _compute_metrics(hist, year_df, capital):
+    """Return (bcagr, scagr, worst_yr, max_dd_pct, sharpe) for a hist DataFrame."""
+    days     = (hist.index[-1] - hist.index[0]).days
+    bcagr    = cagr(hist["BuyHold"].iloc[-1],  capital, days)
+    scagr    = cagr(hist["Strategy"].iloc[-1], capital, days)
+    worst_yr = year_df["Strategy Ret %"].min()
+
+    # Intra-period peak-to-trough drawdown
+    roll_max = hist["Strategy"].cummax()
+    max_dd   = ((hist["Strategy"] - roll_max) / roll_max).min() * 100
+
+    # Annualised Sharpe (rf = 0%)
+    daily_ret = hist["Strategy"].pct_change().dropna()
+    sharpe    = (daily_ret.mean() / daily_ret.std() * np.sqrt(252)
+                 if daily_ret.std() > 0 else 0.0)
+
+    return bcagr, scagr, worst_yr, max_dd, sharpe
+
+
 def save_results_files(hist, year_df, trans_df, base_tk, args):
     """Save yearly CSV + summary TXT when running with --no-show."""
     out_dir  = _auto_out_dir(args)
     slug     = _run_slug(args)
-    days     = (hist.index[-1] - hist.index[0]).days
-    bcagr    = cagr(hist["BuyHold"].iloc[-1],  args.capital, days)
-    scagr    = cagr(hist["Strategy"].iloc[-1], args.capital, days)
-    worst_yr = year_df["Strategy Ret %"].min()
+    bcagr, scagr, worst_yr, max_dd, sharpe = _compute_metrics(
+        hist, year_df, args.capital)
 
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
 
     summary_lines = [
-        f"Preset       : {args.preset}",
-        f"Period       : {args.start} -> {args.end}",
-        f"Entry signal : {args.entry_signal}x MA200",
-        f"Exit signal  : {args.exit_signal}x MA{args.exit_ma}",
-        f"Drop level   : {args.drop_level*100:.2f}%",
-        f"Buy pct      : {args.buy_pct*100:.0f}% per signal",
-        f"Alloc base   : {args.alloc_base*100:.0f}%  lev2 {args.alloc_x2*100:.0f}%  lev3 {args.alloc_x3*100:.0f}%",
+        f"Preset          : {args.preset}",
+        f"Period          : {args.start} -> {args.end}",
+        f"Entry signal    : {args.entry_signal}x MA200",
+        f"Exit signal     : {args.exit_signal}x MA{args.exit_ma}",
+        f"Drop level      : {args.drop_level*100:.2f}%",
+        f"Buy pct         : {args.buy_pct*100:.0f}% per signal",
+        f"Alloc base      : {args.alloc_base*100:.0f}%  lev2 {args.alloc_x2*100:.0f}%  lev3 {args.alloc_x3*100:.0f}%",
+        f"Cost per trade  : {args.cost_per_trade*100:.3f}%",
         f"",
-        f"Strategy CAGR    : {scagr*100:.2f}%",
-        f"B&H CAGR ({base_tk:3s}) : {bcagr*100:.2f}%",
-        f"Strategy edge    : {(scagr-bcagr)*100:+.2f}pp",
-        f"Final value      : ${hist['Strategy'].iloc[-1]:,.2f}",
-        f"Worst year       : {worst_yr:.2f}%",
-        f"Total trades     : {len(trans_df)}",
+        f"Strategy CAGR   : {scagr*100:.2f}%",
+        f"B&H CAGR ({base_tk:3s})  : {bcagr*100:.2f}%",
+        f"Strategy edge   : {(scagr-bcagr)*100:+.2f}pp",
+        f"Final value     : ${hist['Strategy'].iloc[-1]:,.2f}",
+        f"Worst year      : {worst_yr:.2f}%",
+        f"Max drawdown    : {max_dd:.2f}%",
+        f"Sharpe ratio    : {sharpe:.2f}",
+        f"Total trades    : {len(trans_df)}",
     ]
     (out_dir / f"{slug}_summary.txt").write_text("\n".join(summary_lines))
     print(f"  Saved: results/backtester/{args.preset}/{slug}_yearly.csv")
@@ -597,17 +640,22 @@ def print_results(hist, year_df, trans_df, base_tk, args):
     print("=" * W)
     print(year_df.to_string(index=False))
 
-    days  = (hist.index[-1] - hist.index[0]).days
-    bcagr = cagr(hist["BuyHold"].iloc[-1],  args.capital, days)
-    scagr = cagr(hist["Strategy"].iloc[-1], args.capital, days)
+    bcagr, scagr, worst_yr, max_dd, sharpe = _compute_metrics(
+        hist, year_df, args.capital)
 
     print("\n" + "=" * W)
-    print("  CAGR & FINAL VALUES")
+    print("  SUMMARY")
     print("=" * W)
     print(f"  {base_tk} Buy & Hold CAGR : {bcagr * 100:7.2f}%   "
           f"Final: ${hist['BuyHold'].iloc[-1]:>12,.2f}")
     print(f"  Strategy CAGR         : {scagr * 100:7.2f}%   "
           f"Final: ${hist['Strategy'].iloc[-1]:>12,.2f}")
+    print(f"  Strategy edge         : {(scagr-bcagr)*100:+7.2f}pp")
+    print(f"  Worst year            : {worst_yr:7.2f}%")
+    print(f"  Max drawdown          : {max_dd:7.2f}%")
+    print(f"  Sharpe ratio          : {sharpe:7.2f}")
+    if args.cost_per_trade > 0:
+        print(f"  Cost per trade        : {args.cost_per_trade*100:.3f}%")
     print()
 
 

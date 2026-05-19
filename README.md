@@ -3,12 +3,12 @@
 A systematic investigation into whether a disciplined dip-buying approach applied to leveraged ETFs can deliver durable alpha over simple buy-and-hold across the NASDAQ-100, S&P 500, and Russell 2000 — with full walk-forward validation, crisis stress testing, and exit MA comparison.
 
 > [!TIP]
-> **$10,000 → $1,729,122** — QQQ strategy over 23 years (2003–2026), ~4 trades per year. Buy-and-hold QQQ returned only $331K over the same period — **this strategy returned 5.2× more.**
+> **Walk-forward validated edge (annual re-optimization, 2014–2025, no look-ahead bias):**
+> QQQ: 27.26% CAGR vs 18.72% B&H — **+8.5pp over 12 years**
+> SPY: 20.14% CAGR vs 13.59% B&H — **+6.6pp over 12 years**
 >
-> **$10,000 → $1,084,234** — SPY strategy, same period, ~2 trades per year. Buy-and-hold SPY returned only $124K — **this strategy returned 8.7× more.**
->
-> QQQ buy-and-hold: 16.16% CAGR → this strategy: 24.67% — **+8.5pp every year for 23 years.**
-> SPY buy-and-hold: 11.39% CAGR → this strategy: 22.21% — **+10.8pp every year for 23 years.**
+> Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,039,000 SPY** vs $331K / $124K buy-and-hold.
+> These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation.
 
 ---
 
@@ -48,26 +48,27 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ## Abstract
 
-We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. Over a 23-year period (2003–2026), the strategy produced CAGR of **24.67% for QQQ**, **22.21% for SPY**, and **12.14% for IWM** — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) further improved QQQ to **27.26% CAGR** (+2.11pp vs the fixed model) and reduced its worst calendar year from −35.5% to −25.9%; SPY showed minimal CAGR gain (+0.15pp) but a meaningfully better worst year (−37.1% vs −43.9%). Based on these results, we recommend annual re-optimization as a best practice — particularly for QQQ, where market-regime shifts cause parameter drift that translates directly to better risk-adjusted outcomes. The strategy survived all three major stress tests (GFC, COVID, 2022 rate hikes). A faster MA100 exit improves SPY but degrades QQQ. MA50 exit degrades all three. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
+We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. After correcting for management expense ratios in the synthetic pre-inception period, the strategy produced CAGR of **24.48% for QQQ** (Sharpe 0.74), **21.98% for SPY** (Sharpe 0.74), and **11.96% for IWM** (Sharpe 0.49) over 2003–2026 — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) produced **27.26% CAGR for QQQ** (+8.54pp vs B&H) and **20.14% for SPY** (+6.55pp vs B&H) with no look-ahead bias — the most realistic simulation of live operation. The strategy survived all major stress tests (GFC, COVID, 2022 rate hikes). Transaction costs up to 0.2%/trade reduce CAGR by less than 0.6pp. A parameter robustness analysis confirms the alpha sits in a broad plateau rather than an isolated spike. A faster MA100 exit improves SPY but degrades QQQ. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
 
 ---
 
 ## Executive Summary
 
-| Index | Strategy CAGR | Buy & Hold CAGR | Edge | Worst Year | Avg Trades/Yr |
-|---|---|---|---|---|---|
-| QQQ (NASDAQ-100) | **24.67%** | 16.16% | +8.52pp | −40.5% (2005) | ~4 |
-| SPY (S&P 500) | **22.21%** | 11.39% | +10.82pp | −38.3% (2022) | ~2 |
-| IWM (Russell 2000) | **12.14%** | 10.19% | +1.95pp | −23.7% (2011) | ~2 |
+| Index | Strategy CAGR | B&H CAGR | Edge | Max Drawdown | Sharpe | Avg Trades/Yr |
+|---|---|---|---|---|---|---|
+| QQQ (NASDAQ-100) | **24.48%** | 16.16% | +8.32pp | −69.1% | 0.74 | ~4 |
+| SPY (S&P 500) | **21.98%** | 11.39% | +10.60pp | −56.4% | 0.74 | ~2 |
+| IWM (Russell 2000) | **11.96%** | 10.19% | +1.76pp | −59.3% | 0.49 | ~2 |
 
-> All results: $10,000 starting capital, 2003-01-01 → 2026-05-16.
+> All results: $10,000 starting capital, 2003-01-01 → 2026-05-16, MER-corrected synthetic NAV.
 > Best-CAGR passing strategy per index, MA200 exit, 3× ETF allocation.
+> Max drawdown is intra-period peak-to-trough (not calendar year). Sharpe ratio assumes rf = 0%.
 > This is a low-frequency swing strategy. Most years see 2–5 trades, with positions held weeks to months.
 
 **Key findings:**
-- Meaningful alpha over buy-and-hold for QQQ (+8.5pp) and SPY (+10.8pp). IWM edge is thin (+1.95pp) due to small-cap 3× decay.
-- QQQ and SPY hold positive edges in a rigorous out-of-sample test (2015–2026, using parameters optimized on 2003–2014 only); IWM underperforms out-of-sample — an honest finding disclosed in full.
-- **Annual re-optimization (expanding-window walk-forward, 2014–2025) meaningfully improves QQQ:** CAGR rises from 25.15% (fixed 2003–2013 params) to **27.26%** (+2.11pp), and worst year improves from −35.5% to −25.9%. SPY's CAGR barely changes (+0.15pp) but its worst year also improves significantly (−43.9% → −37.1%). We recommend running the optimizer annually and updating parameters before each new trading year — the ~30 min compute cost is justified by better risk management and, for QQQ, measurably higher CAGR.
+- Meaningful alpha over buy-and-hold for QQQ (+8.32pp) and SPY (+10.60pp). IWM edge is thin (+1.76pp) due to small-cap 3× decay. All numbers MER-corrected for synthetic pre-inception period.
+- QQQ and SPY hold positive edges in a rigorous single-split OOS test (2015–2026, parameters optimized on 2003–2014 only, then frozen); IWM underperforms out-of-sample — an honest finding disclosed in full.
+- **Annual re-optimization (expanding-window walk-forward, 2014–2025) is the recommended operating mode:** QQQ edge grows to +8.54pp (27.26% vs 18.72% B&H), worst year improves from −35.5% to −25.9%. SPY edge is +6.55pp (20.14% vs 13.59% B&H). These are the realistic forward-looking numbers — fully walk-forward validated with zero look-ahead bias.
 - 3× ETF dominates 2× on CAGR (roughly +6pp), with the trade-off of ~12pp worse worst-year drawdowns.
 - MA100 exit marginally helps SPY. MA100 and MA50 exits both hurt QQQ significantly. Use MA200 for QQQ and IWM.
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
@@ -186,10 +187,14 @@ All three start from **2003-01-01** for fair comparison. Key rationale:
 Before real leveraged ETFs launched (TQQQ 2010, UPRO 2009, TNA 2008), returns are simulated using the standard leverage cost model applied to daily base ETF returns:
 
 ```
-lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var₂₀
+lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var₂₀  −  annual_MER / 252
 ```
 
-where `r` is the base ETF's daily return and `rolling_var₂₀` is the 20-day variance (proxy for daily vol² that drives leveraged ETF decay). The synthetic series is stitched to the real series at inception, scaled so the real series continues smoothly.
+where `r` is the base ETF's daily return, `rolling_var₂₀` is the 20-day variance (proxy for daily vol² that drives leveraged ETF decay), and `annual_MER / 252` is the daily management expense ratio drag. **The MER term is applied only during the synthetic pre-inception period** — real ETF prices already embed the fund's expenses, so applying MER twice would double-count it. The stitch point (the date the real ETF launched) is identified before the loop, and MER is zeroed out from that date onward.
+
+MER values used: TQQQ 0.95%/yr, UPRO 0.91%/yr, TNA 1.09%/yr (2× ETFs use their respective ratios). The cumulative effect over 6–7 synthetic years is approximately −0.2pp CAGR.
+
+The synthetic series is stitched to the real series at inception, scaled so the real series continues smoothly.
 
 All prices are dividend-adjusted (`auto_adjust=True`). This prevents quarterly dividend drops from falsely triggering dip-buy signals.
 
@@ -238,6 +243,8 @@ The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) 
 
 **Effect on rankings:** Since all 15,840 combos share the same warm-up gap, relative rankings remain valid. The optimizer is a reliable ranking tool. Absolute CAGR numbers are understated — treat backtester CAGR as authoritative.
 
+**Separate issue — MER in synthetic returns:** The optimizer's synthetic NAV formula models volatility decay but not management expense ratios (TQQQ: 0.95%/yr, UPRO: 0.91%/yr, TNA: 1.09%/yr). The backtester now applies these as a daily drag on the synthetic pre-inception period only — real ETF prices already include MER. Over the 6–7 synthetic years, the cumulative effect is approximately −0.2pp CAGR. Since all optimizer combos are equally affected, this does not change parameter rankings; it only affects the absolute gap between optimizer and backtester CAGR numbers.
+
 ---
 
 ## 3. Results — Full History (2003–2026)
@@ -257,11 +264,13 @@ The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) 
 | Exit signal | 1.01× MA200 |
 | Buy pct | 40% per signal |
 | Allocation | 0% QQQ / 100% TQQQ |
-| **Strategy CAGR** | **24.67%** |
+| **Strategy CAGR** | **24.48%** |
 | B&H CAGR (QQQ) | 16.16% |
-| Strategy edge | +8.52pp |
-| Final value | $1,729,122 |
-| Worst year | −40.5% (2005) |
+| Strategy edge | +8.32pp |
+| Final value | $1,666,954 |
+| Worst year | −40.8% (2005) |
+| Max drawdown | −69.1% |
+| Sharpe ratio | 0.74 |
 | Total trades | 100 (~4/yr) |
 
 ```bash
@@ -281,11 +290,13 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 | Exit signal | 0.95× MA200 |
 | Buy pct | 30% per signal |
 | Allocation | 0% SPY / 100% UPRO |
-| **Strategy CAGR** | **22.21%** |
+| **Strategy CAGR** | **21.98%** |
 | B&H CAGR (SPY) | 11.39% |
-| Strategy edge | +10.82pp |
-| Final value | $1,084,234 |
+| Strategy edge | +10.60pp |
+| Final value | $1,038,755 |
 | Worst year | −38.3% (2022) |
+| Max drawdown | −56.4% |
+| Sharpe ratio | 0.74 |
 | Total trades | 46 (~2/yr) |
 
 ```bash
@@ -305,11 +316,13 @@ python backtester.py --preset SPY --start 2003-01-01 \
 | Exit signal | 0.95× MA200 |
 | Buy pct | 30% per signal |
 | Allocation | 10% IWM / 100% TNA |
-| **Strategy CAGR** | **12.14%** |
+| **Strategy CAGR** | **11.96%** |
 | B&H CAGR (IWM) | 10.19% |
-| Strategy edge | +1.95pp |
-| Final value | $145,501 |
+| Strategy edge | +1.76pp |
+| Final value | $139,958 |
 | Worst year | −23.7% (2011) |
+| Max drawdown | −59.3% |
+| Sharpe ratio | 0.49 |
 | Total trades | 43 (~2/yr) |
 
 ```bash
@@ -346,12 +359,14 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 
 | Index | Exit MA | CAGR | B&H | Edge | Worst Year | Trades |
 |---|---|---|---|---|---|---|
-| QQQ | MA200 | **24.67%** | 16.16% | +8.52pp | −40.5% (2005) | 100 |
-| QQQ | MA100 | 20.10% | 16.16% | +3.94pp | −48.5% (2008) | 118 |
-| SPY | MA200 | 22.21% | 11.39% | +10.82pp | −38.3% (2022) | 46 |
-| SPY | MA100 | **22.40%** | 11.39% | **+11.02pp** | **−31.8% (2022)** | 52 |
-| IWM | MA200 | **12.14%** | 10.19% | +1.95pp | −23.7% (2011) | 43 |
-| IWM | MA100 | 9.64% | 10.19% | −0.55pp | −20.6% (2008) | 26 |
+| QQQ | MA200 | **24.48%** | 16.16% | +8.32pp | −40.8% (2005) | 100 |
+| QQQ | MA100 | ~19.9% | 16.16% | ~+3.7pp | −48.5% (2008) | 118 |
+| SPY | MA200 | 21.98% | 11.39% | +10.60pp | −38.3% (2022) | 46 |
+| SPY | MA100 | ~22.2% | 11.39% | ~+10.8pp | **−31.8% (2022)** | 52 |
+| IWM | MA200 | **11.96%** | 10.19% | +1.76pp | −23.7% (2011) | 43 |
+| IWM | MA100 | ~9.4% | 10.19% | ~−0.8pp | −20.6% (2008) | 26 |
+
+> MA100 and MA50 variant numbers are approximate (pre-MER-correction); the ~0.2pp correction does not change any conclusions.
 
 ### Conclusions on Exit MA
 
@@ -407,21 +422,25 @@ This replicates real-world conditions: an investor who finished optimizing in la
 
 ### Training Period: 2003–2014 (12 years)
 
-| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year |
-|---|---|---|---|---|
-| QQQ | 19.53% | 13.32% | +6.21pp | −29.1% (2008) |
-| SPY | **26.78%** | 9.25% | **+17.53pp** | −14.6% (2011) |
-| IWM | 15.67% | 11.32% | +4.35pp | −25.4% (2011) |
+> MER correction affects all three indices here — the synthetic pre-inception period (pre-TQQQ Feb 2010, pre-UPRO Jun 2009, pre-TNA Nov 2008) falls inside this window. Numbers are slightly lower than pre-MER figures.
+
+| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Max Drawdown | Sharpe |
+|---|---|---|---|---|---|---|
+| QQQ | 19.08% | 13.32% | +5.77pp | −29.1% (2008) | −57.0% | 0.62 |
+| SPY | **26.35%** | 9.25% | **+17.10pp** | −14.6% (2011) | −39.3% | 0.86 |
+| IWM | 15.26% | 11.32% | +3.94pp | −25.4% (2011) | −66.1% | 0.54 |
 
 ### Out-of-Sample Test: 2015–2026 (11 years, genuinely unseen)
 
 These results use only the parameters found from 2003–2014 data. The strategy had no information about what happened post-2014.
 
-| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year |
-|---|---|---|---|---|
-| QQQ | 21.41% | 19.38% | **+2.03pp ✓** | −36.0% (2022) |
-| SPY | 15.71% | 13.80% | **+1.91pp ✓** | −43.9% (2022) |
-| IWM | 5.41% | 9.14% | **−3.73pp ✗** | −31.7% (2023) |
+> MER has **zero effect** on this window — all three real leveraged ETFs launched before 2015 (TQQQ: Feb 2010, UPRO: Jun 2009, TNA: Nov 2008), so every day in 2015–2026 uses real ETF prices with MER already embedded.
+
+| Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Max Drawdown | Sharpe |
+|---|---|---|---|---|---|---|
+| QQQ | 21.41% | 19.38% | **+2.03pp ✓** | −36.0% (2022) | −64.9% | 0.65 |
+| SPY | 15.71% | 13.80% | **+1.91pp ✓** | −43.9% (2022) | −57.9% | 0.59 |
+| IWM | 5.41% | 9.14% | **−3.73pp ✗** | −31.7% (2023) | −66.5% | 0.33 |
 
 **QQQ and SPY both hold positive edges out-of-sample.** The edge narrows substantially vs training — expected and healthy. The 2003–2014 GFC provided strong conditions for the strategy's exit discipline; 2015–2026 was a more mixed regime.
 
@@ -434,11 +453,11 @@ These results use only the parameters found from 2003–2014 data. The strategy 
 
 For context, the same 2015–2026 period run with parameters optimized on the **full 2003–2026 dataset** (hindsight advantage):
 
-| Index | True Out-of-Sample CAGR | Full-History CAGR | Hindsight Gap | Full-History Edge vs B&H |
-|---|---|---|---|---|
-| QQQ | 21.41% | 38.69% | −17.28pp | +19.31pp |
-| SPY | 15.71% | 19.00% | −3.29pp | +5.21pp |
-| IWM | 5.41% | 11.23% | −5.82pp | +2.10pp |
+| Index | True OOS CAGR | OOS Sharpe | Full-History CAGR | Full-History Sharpe | Hindsight Gap | Full-History Edge vs B&H |
+|---|---|---|---|---|---|---|
+| QQQ | 21.41% | 0.65 | 38.69% | 0.96 | −17.28pp | +19.31pp |
+| SPY | 15.71% | 0.59 | 19.00% | 0.66 | −3.29pp | +5.21pp |
+| IWM | 5.41% | 0.33 | 11.23% | — | −5.82pp | +2.10pp |
 
 The large QQQ gap (−17.28pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−3.29pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
 
@@ -575,12 +594,14 @@ We ran the strategy against four major market dislocations for both QQQ and SPY,
 
 | Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
 |---|---|---|---|---|
-| CAGR | **+18.65%** | +6.62% | **+9.00%** | −0.82% |
-| Edge | +12.03pp | — | +9.82pp | — |
-| Worst year | −19.4% (2008) | −41.7% (2008) | −14.67% (2008) | −36.8% (2008) |
-| Final value | $19,780 (from $10K) | ~$12,200 | $14,105 (from $10K) | $9,676 |
+| CAGR | **+18.20%** | +6.62% | **+8.76%** | −0.82% |
+| Edge | +11.58pp | — | +9.58pp | — |
+| Worst year | −19.4% (2008) | −41.7% (2008) | −14.69% (2008) | −36.8% (2008) |
+| Max drawdown | −44.1% | — | −43.3% | — |
+| Sharpe ratio | 0.62 | — | 0.41 | — |
+| Final value | $19,481 (from $10K) | ~$12,914 | $13,980 (from $10K) | $9,676 |
 
-Both strategies significantly outperformed their benchmarks through the worst financial crisis in 80 years. QQQ's tighter exit (1.01×MA200) fired early in 2008 and kept the strategy in cash through most of the crash, delivering +18.65% CAGR vs +6.62% B&H. SPY's wider exit (0.95×MA200) also fired in early 2008 — the 5% buffer absorbed some early decline but still protected against the deeper crash — finishing at +9.00% CAGR while SPY buy-and-hold barely broke even (−0.82%). SPY's worst strategy year (−14.67% in 2008) was meaningfully better than QQQ's (−19.4%) because SPY's crash was less volatile.
+Both strategies significantly outperformed through the worst financial crisis in 80 years. QQQ's tight exit (1.01×MA200) fired early in 2008 and kept the strategy largely in cash through the crash. SPY's wider exit (0.95×MA200) also fired in early 2008 — the 5% buffer absorbed more initial decline but still protected the bulk of capital. Both finished with strongly positive CAGR vs a flat-to-negative B&H. QQQ's edge (+11.58pp) was larger than SPY's (+9.58pp) because tech recovered more explosively in 2009.
 
 ![QQQ GFC 2007–2010](results/backtester/QQQ/QQQ_2007-2010_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
@@ -593,9 +614,11 @@ Both strategies significantly outperformed their benchmarks through the worst fi
 | CAGR | **+117.71%** | +45.15% | **+37.62%** | +26.31% |
 | Edge | +72.56pp | — | +11.31pp | — |
 | Worst year | +35.4% (no down year) | — | −7.29% (2020) | — |
-| Final value | $38,839 (from $10K) | ~$18,000 | $17,454 (from $10K) | $15,029 |
+| Max drawdown | −51.9% | — | −56.4% | — |
+| Sharpe ratio | 1.53 | — | 0.92 | — |
+| Final value | $38,839 (from $10K) | ~$19,152 | $17,454 (from $10K) | $15,029 |
 
-COVID was the ideal scenario for both strategies, but the magnitude of the edge differed sharply. QQQ's tight exit fired immediately in the crash and re-armed early in the recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return. SPY's wider exit delayed re-entry to June 2020, missing the sharpest April–May recovery leg, and its 2020 calendar year was actually −7.29% despite the market being up. However, the full 20-month window was still solidly positive (+37.62%) and beat buy-and-hold by +11.31pp.
+COVID was the ideal scenario for both strategies, but the magnitude of the edge differed sharply. QQQ's tight exit fired immediately in the crash and re-armed early in the V-shaped recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return over 20 months. SPY's wider exit delayed re-entry to June 2020, missing the sharpest April–May leg, and its 2020 calendar year was −7.29% despite the market being up. The full 20-month window still returned +37.62% and beat B&H by +11.31pp.
 
 ![QQQ COVID crash and recovery 2019–2021](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
@@ -608,6 +631,8 @@ COVID was the ideal scenario for both strategies, but the magnitude of the edge 
 | CAGR | **+27.91%** | +5.08% | +0.67% | +3.76% |
 | Edge | +22.83pp | — | **−3.09pp** | — |
 | Worst year | −22.6% (2022) | −32.5% (2022) | **−38.34% (2022)** | −18.18% (2022) |
+| Max drawdown | −37.3% | — | −50.0% | — |
+| Sharpe ratio | 0.91 | — | 0.18 | — |
 | Final value | $16,666 (from $10K) | ~$10,965 | $10,140 (from $10K) | $10,796 |
 
 This is the most revealing divergence between QQQ and SPY. QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's wide exit (0.95×MA200 — requiring a 5% drop below the MA) did not fire until March 2022, by which point SPY was already deeply into the bear. The strategy then re-entered in late March and was stopped out again in April — two losing cycles in quick succession. SPY's worst strategy year was −38.34% (2022), more than double QQQ's loss, and the strategy finished barely positive (+0.67%) — actually **underperforming SPY buy-and-hold by 3.09pp**.
@@ -624,10 +649,10 @@ The same exit threshold that protected SPY through the dot-com crash (by keeping
 
 | Metric | Strategy | QQQ B&H |
 |---|---|---|
-| CAGR | −20.10% | −21.23% |
-| Edge | +1.13pp | — |
-| Worst year | **−80.19% (2000)** | −38.4% (2000) |
-| Final value | $4,086 (from $10K) | $3,860 |
+| CAGR | −20.35% | −21.23% |
+| Edge | +0.88pp | — |
+| Worst year | **~−80% (2000)** | −38.4% (2000) |
+| Final value | ~$4,027 (from $10K) | $3,860 |
 
 The dot-com crash was the hardest test — and shows the strategy's true downside in a sustained multi-year bear market.
 
@@ -639,15 +664,15 @@ The dot-com crash was the hardest test — and shows the strategy's true downsid
 
 | Index | Period | Strategy CAGR | B&H CAGR | Edge | Worst Year |
 |---|---|---|---|---|---|
-| QQQ | 2000–2003 | −20.10% | −21.23% | +1.13pp | **−80.19% (2000)** |
-| SPY | 2000–2003 | **+6.01%** | −5.21% | **+11.22pp** | −26.48% (2000) |
+| QQQ | 2000–2003 | −20.35% | −21.23% | +0.88pp | **~−80% (2000)** |
+| SPY | 2000–2003 | **+5.66%** | −5.21% | **+10.87pp** | −26.48% (2000) |
 | IWM | 2001–2003* | +6.96% | +8.05% | −1.09pp | −36.86% (2002) |
 
 *IWM started 2001-01-02 due to May 2000 ETF inception and insufficient warmup before then.
 
 SPY's wider exit threshold (0.95×MA200 — price must drop 5% below MA200 to exit) kept the strategy in cash for all of 2001–2002, avoiding the bulk of the bear market. SPY actually made money through the dot-com crash. IWM's minor underperformance is explained by small-cap stocks having positive 2001 returns while the strategy sat unarmed.
 
-**The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost 80% of their initial capital in the first year alone. SPY's more defensive exit threshold (0.95× vs 1.01× MA200) proved far more durable. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
+**The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost roughly 80% of their initial capital in the first year alone, with nearly all of that recovered by December 2003 — just barely ahead of buy-and-hold by +0.88pp CAGR. SPY's more defensive exit threshold (0.95× vs 1.01× MA200) proved far more durable, generating a +5.66% CAGR (+10.87pp edge) through the same crash. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
 
 ![QQQ dot-com bubble 2000–2003](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
@@ -729,7 +754,18 @@ python param_heatmap.py --no-show
 ### Limitations and Caveats
 
 - **Backtested on a mostly bullish 23-year window.** The US equity market 2003–2026 included three major crashes but also three major multi-year bull markets. A prolonged bear or sideways decade would test the strategy more severely.
-- **Leveraged ETF costs.** The synthetic NAV model captures decay mathematically but does not account for real-world expense ratios (~0.95% for TQQQ), borrowing costs embedded in leveraged ETF pricing, or bid/ask spreads.
+- **Leveraged ETF costs.** Management expense ratios (TQQQ: 0.95%/yr, UPRO: 0.91%/yr, TNA: 1.09%/yr) are applied to the synthetic pre-inception period; real ETF prices already embed them. Borrowing costs and bid/ask spreads are not modelled.
+- **Transaction cost sensitivity.** The backtester supports a `--cost-per-trade` flag. The table below shows the CAGR impact of adding per-trade round-trip costs to the full-history (2003–2026) run:
+
+  | Cost per trade | QQQ CAGR | Delta | SPY CAGR | Delta |
+  |---|---|---|---|---|
+  | 0.00% (base) | 24.48% | — | 21.98% | — |
+  | 0.05% | 24.35% | −0.13pp | 21.94% | −0.04pp |
+  | 0.10% | 24.23% | −0.25pp | 21.90% | −0.08pp |
+  | 0.20% | 23.97% | −0.51pp | 21.81% | −0.17pp |
+
+  The strategy is relatively insensitive to transaction costs because it trades infrequently (~2–4 trades/yr). Even at 0.20% per trade, the CAGR loss is less than 0.6pp for QQQ and less than 0.2pp for SPY.
+
 - **Execution at closing prices.** The backtest assumes all trades execute at the day's closing price. In practice, the signal fires during market hours and execution may occur at a different price.
 - **Optimizer warm-up gap.** Optimizer CAGR numbers understate true performance by up to 3–4pp for QQQ. Always validate with the backtester (which pre-downloads history for MA200 warm-up).
 - **No taxes or commissions.** Real returns would be reduced by short-term capital gains taxes on frequent position changes (especially in high-trade regimes with low drop_level).
@@ -756,9 +792,9 @@ python param_heatmap.py --no-show
 
 Before each leveraged ETF's inception, returns are synthesized from base ETF daily returns:
 ```
-lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var₂₀
+lev_daily_ret = L × r  −  0.5 × (L² − L) × rolling_var₂₀  −  annual_MER / 252
 ```
-The synthetic and real series are stitched at inception, scaled to match prices.
+The MER term is applied **only during the synthetic period** (before real ETF inception). Real prices already embed MER — applying it again would double-count. The synthetic and real series are stitched at inception, scaled to match prices.
 
 ### Repository Structure
 
@@ -793,26 +829,26 @@ leveraged_iwm_exploration/                # same structure as QQQ (no prefix)
 
 ```mermaid
 flowchart TD
-    A([python backtester.py --preset QQQ ...]) --> B[Parse CLI args\npreset · entry-signal · drop-level\nexit-signal · exit-ma · buy-pct\nalloc-base · alloc-x2 · alloc-x3]
+    A([python backtester.py --preset QQQ ...]) --> B[Parse CLI args\npreset · entry-signal · drop-level\nexit-signal · exit-ma · buy-pct\nalloc-base · alloc-x2 · alloc-x3\ncost-per-trade]
     B --> C[Download via yfinance\nBase ETF: start − 420 days for MA warm-up\n2× and 3× from real inception]
-    C --> D[Build synthetic NAV for pre-inception\nlev_ret = L×r − 0.5×L²−L×var20\nStitch synthetic + real at inception date]
+    C --> D[Build synthetic NAV for pre-inception\nlev_ret = L×r − 0.5×L²−L×var20 − MER/252\nMER applied ONLY before real ETF launch date\nStitch synthetic + real at inception · scale to match]
     D --> E[Normalize all series to NAV 1.0\nAdd MA50 / MA100 / MA200]
     E --> F[Daily backtest loop]
     F --> G{Price below\nexit_MA × exit_signal\nAND holding lev?}
-    G -- Yes --> H[EXIT\nSell all 2× and 3× → cash\nTrim base if over target\nDis-arm]
+    G -- Yes --> H[EXIT\nSell all 2× and 3× → cash\nDeduct cost_per_trade on proceeds\nTrim base if over target\nDis-arm]
     G -- No --> I{Price above\nMA200 × entry_signal?}
     I -- Yes --> J[ARM strategy]
     J --> K{Armed AND\ndrop ≥ drop_level?}
     K -- Yes --> L{First buy\nin this cycle?}
     L -- Yes --> M[Buy base ETF\nup to alloc_base × portfolio]
-    M --> N[Buy leveraged\nbuy_pct × portfolio\nsplit alloc_x2 / alloc_x3]
+    M --> N[Buy leveraged\nbuy_pct × portfolio\nsplit alloc_x2 / alloc_x3\nDeduct cost_per_trade on each leg]
     L -- No --> N
     K -- No --> O[Hold]
     I -- No --> O
     H & N & O --> P[Record portfolio value]
     P --> Q{More days?}
     Q -- Yes --> F
-    Q -- No --> R[Compute CAGR · yearly returns · vs B&H]
+    Q -- No --> R[Compute CAGR · yearly returns · vs B&H\nMax peak-to-trough drawdown\nAnnualised Sharpe ratio rf=0%]
     R --> S([Auto-save PNG + summary TXT + yearly CSV\nto results/backtester/&#123;PRESET&#125;/])
 ```
 
@@ -853,6 +889,12 @@ python backtester.py --preset IWM --start 2003-01-01 \
 
 # Suppress pop-up windows (save files only)
 python backtester.py --preset QQQ ... --no-show
+
+# Transaction cost sensitivity (0.10% per trade round-trip)
+python backtester.py --preset QQQ --start 2003-01-01 \
+  --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 \
+  --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0 \
+  --cost-per-trade 0.001 --no-show
 
 # Custom date range (e.g. walk-forward test)
 python backtester.py --preset QQQ --start 2015-01-01 \
