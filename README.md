@@ -699,6 +699,33 @@ IWM's out-of-sample failure (−3.73pp) appears more structural than coincidenta
 
 The strategy is not broken. But investors should anchor expectations to the OOS numbers, not the full-history optimized numbers.
 
+### Parameter Robustness Analysis
+
+A key question the OOS test alone cannot answer is: *is the optimal parameter set a sharp spike or a broad plateau?* A spike means the strategy only works because one specific combo happened to fit historical data by chance — move one step in any direction and performance collapses. A plateau means a wide neighborhood of similar parameters all work, which is strong evidence that the underlying logic is real, not a data artifact.
+
+The heatmaps below show **median CAGR across all passing combos** for each (row, col) parameter pair, marginalizing over all remaining free parameters. Blue box = chosen optimal. Bright green region = plateau. Isolated bright cell = spike.
+
+> Note: values are optimizer CAGR, which understates backtester CAGR by ~3–4pp for QQQ due to the warm-up gap. Use relative comparisons across cells, not absolute magnitudes.
+
+![Parameter robustness heatmaps — QQQ and SPY](results/walkforward/param_robustness_heatmap.png)
+
+**What the heatmaps show:**
+
+**QQQ — entry × exit (top-left panel): clear plateau.** The bright green region spans entry 1.02–1.06 combined with exit 1.00–1.02×MA200. The optimal (1.03, 1.01) is embedded in this broad neighborhood, not sitting on an isolated peak. Moving one or two grid steps away barely changes performance. This is the most encouraging finding: QQQ's alpha is not dependent on a precise parameter guess.
+
+**QQQ — entry × drop level (top-right panel): 0.5% dip is structural.** The 0.5% drop column is clearly dominant regardless of entry threshold. Moving to 1.0%+ drop meaningfully degrades performance. This is more spike-like: the dip threshold matters and 0.5% is the right regime for QQQ's large-cap, trend-following behavior. This is still interpretable — QQQ produces frequent small dips in bull markets; waiting for a 1%+ drop misses most of them.
+
+**SPY — entry × exit (bottom-left panel): exit threshold is load-bearing.** The exit=0.95× column (leftmost) is dominant. Entry signal barely matters once exit is right — the entire left column is bright regardless of which entry level is used. The strategy's SPY alpha is driven almost entirely by the exit rule: staying in cash until price clearly breaks below MA200 (−5% buffer) is what generates the edge. This is a mixed result: robust to entry choice, sensitive to exit choice.
+
+**SPY — entry × drop level (bottom-right panel): broader plateau.** Multiple drop levels (0.5%–1.5%) produce similar performance for SPY. This confirms that SPY's entry timing is less critical than QQQ's — SPY's larger, slower trends make dip threshold less important.
+
+**Overall verdict:** The QQQ and SPY strategies are not sitting on isolated parameter spikes. The core alpha is embedded in a recognizable, economically interpretable region of parameter space. The main fragility for QQQ is the drop level (0.5% is structurally superior); for SPY it is the exit threshold (0.95× MA200 drives the bulk of the alpha). These are not arbitrary numbers — they correspond to the natural scale of dips in each index's typical bull-market regime.
+
+To reproduce:
+```bash
+python param_heatmap.py --no-show
+```
+
 ### Limitations and Caveats
 
 - **Backtested on a mostly bullish 23-year window.** The US equity market 2003–2026 included three major crashes but also three major multi-year bull markets. A prolonged bear or sideways decade would test the strategy more severely.
