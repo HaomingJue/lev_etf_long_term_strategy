@@ -577,11 +577,6 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 ![QQQ three-way comparison 2014–2025](results/walkforward/QQQ_walkforward_2014-2025_comparison.png)
 ![SPY three-way comparison 2014–2025](results/walkforward/SPY_walkforward_2014-2025_comparison.png)
 
-**Expanding-window equity curves (individual strategy view):**
-
-![QQQ expanding-window walk-forward 2014–2025](results/walkforward/QQQ_walkforward_2014-2025.png)
-![SPY expanding-window walk-forward 2014–2025](results/walkforward/SPY_walkforward_2014-2025.png)
-
 > To reproduce: `python walkforward.py --preset QQQ` (or `--preset SPY`). Phase 1 (optimizer) takes ~30 min and is cached to `results/walkforward/`. Re-run Phase 2 only with `--no-rebuild`.
 
 ---
