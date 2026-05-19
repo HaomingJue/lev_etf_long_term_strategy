@@ -573,6 +573,14 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 
 **Recommendation: run the optimizer annually and update params for the coming year.** The computational cost is approximately 30 minutes per preset. The benefit — better alignment with evolving market regimes and meaningfully better worst-case outcomes — justifies it. For QQQ specifically, where parameter drift is largest, skipping annual updates leaves both CAGR and risk management on the table.
 
+**Continuity filter — apply for QQQ before accepting new params.** The 2023 walk-forward year illustrates a real risk: after absorbing 2022's bear market, the optimizer shifted `drop_level` from 0.5% to 1.5% and `entry_signal` from 1.06 to 1.02 — a large discontinuous jump driven by a single anomalous year. The optimizer accepted it because 2022 data temporarily made that combo top-ranked. Then 2024 reversed the entire set again. The whipsawing resolved without catastrophe, but it is avoidable. Before accepting new QQQ params each year, run a quick sanity check:
+
+1. If any of `entry_signal`, `drop_level`, or `exit_signal` shifts by more than one grid step from the prior year's values, flag it as a discontinuous jump.
+2. Run the backtester on the last 3 calendar years with both the new params and the prior year's params.
+3. Use whichever set produced the higher CAGR across those 3 years — not just the optimizer's top-ranked combo on the full training window.
+
+This does not require re-running the optimizer. It is a 2-minute backtester check that guards against the optimizer overreacting to a single extreme year. SPY's params have been stable since 2019 and do not need this check; apply it to QQQ only.
+
 **Three-way comparison — Fixed model (2003–2013 params, frozen) vs Expanding Window (annual re-opt) vs Buy & Hold:**
 
 ![QQQ three-way comparison 2014–2025](results/walkforward/QQQ_walkforward_2014-2025_comparison.png)
