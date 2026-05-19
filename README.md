@@ -36,6 +36,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 - [8. Discussion](#8-discussion)
   - [What Drives the Edge](#what-drives-the-edge)
   - [When the Strategy Struggles](#when-the-strategy-struggles)
+  - [Market Regime Classification](#market-regime-classification)
   - [Limitations and Caveats](#limitations-and-caveats)
 - [9. Risk Considerations](#9-risk-considerations)
 - [10. Technical Reference](#10-technical-reference)
@@ -696,6 +697,26 @@ IWM's edge is thin because small-cap stocks have higher daily volatility. Higher
 - **Staircase bear markets with false recoveries** (dot-com 2000–2002, 2008 GFC): A brief rally re-arms the strategy; if the bear resumes, the strategy buys again into further decline. Multiple losing cycles deplete cash. The GFC was the hardest test.
 - **Slow grinding drawdowns** (2022): Price stays below MA200 for months. The strategy correctly stays out, but any false rally before the real recovery triggers a losing re-entry.
 - **Maximum exposure at a market peak**: After a long bull run, the strategy holds maximum leveraged allocation. A crash at that moment causes maximum damage. Sequence-of-returns risk applies even to rules-based systems.
+- **Prolonged sideways or low-drift markets** (QQQ 2004–2006): Price oscillates around MA200 without establishing a clear trend. The entry signal fires repeatedly — triggering buys into brief dips that recover slightly and stall, never generating momentum but never falling far enough to stay below the exit threshold. Meanwhile, daily volatility decay accumulates on each leveraged position held during the hold period. This is the regime most underappreciated by CAGR-focused backtests: unlike a staircase bear (where price eventually stays below MA200 and the strategy stops re-entering), sideways chop keeps the entry threshold in play indefinitely, churning through cash in repeated 10–15% loss cycles. QQQ's worst strategy year (−40.8% in 2005) occurred precisely in this regime — the index itself was roughly flat, but every leveraged buy accumulated decay before being stopped out. A multi-year episode of this would be far more damaging than the historical record reflects.
+
+### Market Regime Classification
+
+This strategy has a **conditional edge** — it is not an all-weather system. The edge is earned by correctly identifying trending regimes and deploying leverage selectively within them. In regimes it was not designed for, it underperforms or destroys capital. Understanding this distinction is more important than any single CAGR figure.
+
+| Regime | Characteristics | Strategy Behavior | Historical Example |
+|---|---|---|---|
+| Strong trending bull | Sustained price above MA200, periodic 0.5–2% dips | **Excellent** | QQQ 2017 (+98%), 2021 (+79%) |
+| Fast crash + V-recovery | Sharp decline, rapid re-cross of MA200 | **Strong** | COVID 2020 (QQQ +118% over 20 months) |
+| Low-vol steady bull | Index drifts up without meaningful pullbacks | **Moderate** — B&H may lead | QQQ 2019: strategy +4.5% vs B&H +39% |
+| Slow policy-driven bear | Gradual MA200 break, failed re-entries | **Weak to neutral** | 2022: SPY strategy −38%, underperformed B&H by −3.1pp |
+| Prolonged sideways / chop | Price oscillates around MA200 with no trend | **Weak** — false entries + decay compounds | QQQ 2005: strategy −41% vs roughly flat index |
+| Secular bear staircase | Multi-year decline interrupted by bear rallies | **Dangerous** — repeated losing re-entries | Dot-com 2000: −80% in year 1 |
+
+**The LETF volatility drag amplifies regime mismatch.** In sideways or choppy markets, 3× ETFs lose value daily even when the underlying ends flat — this is beta slippage (described in Section 1). An investor holding the base index in a flat year loses nothing; an investor repeatedly buying into brief rallies that stall experiences both the whipsaw exits *and* the daily decay accumulated during each hold period. The longer the chop, the more these losses compound even without a sustained bear market.
+
+**The historically absent danger: inflationary secular stagnation.** The 23-year sample contains no prolonged inflationary sideways regime comparable to the 1970s — an environment of high volatility, no secular trend, and persistent real-return headwinds. Such a regime would be structurally hostile: high daily variance drives high LETF decay costs, oscillating prices repeatedly trigger and abandon the entry signal, and the strategy cannot escape because the exit threshold is never cleanly breached. This is the tail risk the historical CAGR statistics do not price.
+
+The honest forward expectation is that this strategy adds roughly **1–3pp above B&H in trending-bull-dominated environments**. In the two failure regimes above — sideways chop and secular bear staircase — it can underperform dramatically. Sizing accordingly and not over-anchoring to the full-history CAGR is the appropriate takeaway.
 
 ### Does the Edge Survive Into the Future? Overfitting vs. Regime Change
 
