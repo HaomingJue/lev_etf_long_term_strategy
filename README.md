@@ -816,11 +816,21 @@ The MER term is applied **only during the synthetic period** (before real ETF in
 
 ```
 backtester.py                             # CLI backtester (--exit-ma 50/100/200, --no-show)
+walkforward.py                            # expanding-window walk-forward (annual re-opt, 2014–2025)
+param_heatmap.py                          # parameter robustness heatmaps (entry × exit, entry × drop)
 results/backtester/                       # auto-saved results (one folder per preset)
   QQQ/  SPY/  IWM/
     {PRESET}_{start}-{end}_entry{e}_exit{x}_drop{d}_buy{b}_b{base%}_x2{x2%}_ma{ma}.png
     {PRESET}_...._summary.txt
     {PRESET}_...._yearly.csv
+results/walkforward/                      # auto-saved walk-forward and heatmap outputs
+  QQQ_walkforward_2014-2025_comparison.png
+  QQQ_walkforward_2014-2025_yearly.csv
+  SPY_walkforward_2014-2025_comparison.png
+  SPY_walkforward_2014-2025_yearly.csv
+  QQQ_param_schedule.json                 # cached per-year optimal params (skip Phase 1 with --no-rebuild)
+  SPY_param_schedule.json
+  param_robustness_heatmap.png
 leveraged_qqq_exploration/
   optimizer.py                            # MA200 exit optimizer for QQQ (full history)
   optimizer_train.py                      # same optimizer restricted to 2003–2014 only
