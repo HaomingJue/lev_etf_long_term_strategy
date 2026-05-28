@@ -31,41 +31,91 @@ This paper documents the design and validation of a leveraged-ETF dip-buy strate
 
 ## Recommended Configurations
 
-> Each variant is fully walk-forward validated over 2014–2025. **Params shown are from the most recent walk-forward year (2025).** The strategy is re-optimized annually — under annual re-opt the exact params shift modestly year to year, but the walk-forward CAGR/worst-year/max-DD numbers reflect the full 12-year operating performance, not a single year's params. → [§6](#6-results--walk-forward-validation), [§10](#running-the-walk-forward)
+### What the two CAGR numbers mean
+
+The performance tables below report two CAGR figures for each variant. They measure different things; both are reported because both are useful:
+
+- **Full-history CAGR (2003–2026, 23 years).** A single best parameter set was found by running the optimizer on the *entire* historical sample and picking the highest-CAGR combo. The same params were then applied to the same data. This is the **in-sample, hindsight-optimized upper bound** — it answers "what would the best params have produced if we'd known them in advance?" It is not a realistic forward expectation; live trading cannot use future data.
+- **Walk-forward CAGR (2014–2025, 12 years).** Each January, the optimizer is re-run on all prior data only, and the resulting params are applied to the next year. Repeated for 12 years. This is the **realistic forward expectation** — what an investor running the strategy honestly would have achieved with no look-ahead. Anchor your expectations here.
+
+The walk-forward CAGR is sometimes higher than the full-history CAGR (as for QQQ: 27.26% vs 24.48%), which seems counterintuitive. Two reasons: (a) the walk-forward period starts in 2014 — a more bullish 12 years than the 2003–2014 leg of the full sample, so the underlying B&H benchmark is also higher; and (b) annual re-optimization adapts to evolving regimes in ways that a single full-sample optimum cannot. The two numbers are not directly period-matched — read them as separate things, not delta-against-each-other.
+
+---
 
 ### QQQ — pick one of two variants
 
-| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) | Walk-forward CAGR | Worst year | Max DD | Final ($10K) |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Highest CAGR** (recommended for return) | **1.06×MA200** | **0.5%** | **1.00×MA200** | 40% | 0% | 0% | **100%** | **27.26%** | −25.91% (2022) | −64.9% | **$180,025** |
-| **Balanced** (smoother drawdown, opt-in) | **1.05×MA200** | **1.0%** | **1.00×MA200** | 40% | 0% | 0% | **100%** | 23.10% | −25.52% (2022) | **−44.75%** | $120,928 |
+| Variant | Full-history CAGR (2003–2026) | Walk-forward CAGR (2014–2025) | Worst year | Max DD | Walk-forward final ($10K → ) |
+|---|---|---|---|---|---|
+| **Highest CAGR** (default) | 24.48% | **27.26%** | −25.91% (2022) | −64.9% | **$180,025** |
+| **Balanced** (opt-in tie-break) | n/a¹ | 23.10% | −25.52% (2022) | **−44.75%** | $120,928 |
 
-- **Default is the Highest CAGR variant** (plain top-CAGR rule). Run with `python walkforward.py --preset QQQ`.
-- **Balanced variant** uses the tie-break rule: from combos within 1pp training CAGR of the leader, pick the one with the lowest worst calendar year. Run with `python walkforward.py --preset QQQ --tie-tolerance 0.01`.
-- The 2025 params look similar between the two variants because both converged to 100% TQQQ in the latest year. The CAGR/DD gap comes from earlier walk-forward years where the tie-break rule preferred diversified allocations (QLD + base SPY). Full year-by-year schedule comparison: [§6.2](#62-qqq-tie-break-rule).
-- **The balanced variant trades 4pp CAGR for 20pp better max DD — but barely improves the worst calendar year.** Only enable if max DD smoothing matters to you more than terminal wealth.
+¹ The tie-break rule is applied per training window during walk-forward; it has no direct full-history equivalent.
+
+**Live trading params (most recent walk-forward year, 2025):**
+
+| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) |
+|---|---|---|---|---|---|---|---|
+| Highest CAGR | 1.06×MA200 | 0.5% | 1.00×MA200 | 40% | 0% | 0% | **100%** |
+| Balanced | 1.05×MA200 | 1.0% | 1.00×MA200 | 40% | 0% | 0% | **100%** |
+
+> The 2025 params look nearly identical between variants because both converged to 100% TQQQ in the latest window. The walk-forward CAGR gap comes from **earlier** windows, where the Balanced rule preferred diversified allocations (10–20% base SPY, 25–75% QLD). Full year-by-year schedule comparison: [§6.2](#62-qqq-tie-break-rule).
+
+**Annual re-optimization: REQUIRED for QQQ.** Without it, expect a meaningful CAGR penalty.
+
+Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces **25.15% CAGR** versus **27.26%** for annually re-optimized (Highest CAGR variant). The fixed model also has a worse worst year (−35.5% vs −25.9% in 2022). → see [§6](#expanding-window-walk-forward-annual-re-optimization-20142025) three-way comparison.
+
+**How to re-optimize each January:**
+```bash
+# Highest CAGR (default)
+python walkforward.py --preset QQQ
+
+# Balanced (opt-in tie-break)
+python walkforward.py --preset QQQ --tie-tolerance 0.01
+```
+Computational cost: ~30 min per run. The new schedule replaces the old one in `results/walkforward/QQQ_param_schedule*.json`. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
+
+**Honest take on the variant choice:** the Balanced variant trades **4pp CAGR for 20pp better max DD — but the worst calendar year is essentially unchanged**. Only enable if max-DD smoothing matters to you more than terminal wealth. For most investors using annual review at year-end, the Highest CAGR variant is correct.
+
+---
 
 ### SPY — pick one of two variants
 
-| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (UPRO) | Walk-forward CAGR | Worst year | Max DD | Final ($10K) |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| **Recommended (MA100 exit)** | **1.02×MA200** | **0.5%** | **0.95×MA100** | 40% | 0% | 0% | **100%** | **21.92%** | −31.78% (2022) | **−44.80%** | **$107,688** |
-| MA200 exit (legacy) | 1.02×MA200 | 0.5% | 0.97×MA200 | 40% | 0% | 0% | 100% | 20.14% | −37.09% (2022) | −57.87% | $90,307 |
+| Variant | Full-history CAGR (2003–2026) | Walk-forward CAGR (2014–2025) | Worst year | Max DD | Walk-forward final ($10K → ) |
+|---|---|---|---|---|---|
+| **Recommended (MA100 exit)** | 22.40% | **21.92%** | −31.78% (2022) | **−44.80%** | **$107,688** |
+| MA200 exit (legacy) | 21.98% | 20.14% | −37.09% (2022) | −57.87% | $90,307 |
 
-- **MA100 dominates MA200 on every axis** — higher CAGR, better worst year, better max DD, better Sharpe. No reason to use MA200 unless you specifically want backwards-compatibility with earlier versions. Full comparison: [§6.1](#61-ma100-vs-ma200-walk-forward).
-- Run the recommended config with `python walkforward.py --preset SPY --exit-ma 100`.
+**Live trading params (most recent walk-forward year, 2025):**
+
+| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (UPRO) |
+|---|---|---|---|---|---|---|---|
+| Recommended (MA100) | 1.02×MA200 | 0.5% | 0.95×MA100 | 40% | 0% | 0% | **100%** |
+| MA200 (legacy) | 1.02×MA200 | 0.5% | 0.97×MA200 | 40% | 0% | 0% | **100%** |
+
+> MA100 dominates MA200 on every axis (higher CAGR, better worst year, better max DD, better Sharpe). No reason to use MA200 unless you specifically want backwards-compatibility with earlier versions. Full comparison: [§6.1](#61-ma100-vs-ma200-walk-forward).
+
+**Annual re-optimization: OPTIONAL for SPY** (lower benefit than for QQQ).
+
+Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces **19.89% CAGR** versus **21.92%** for annually re-optimized (MA100 variant). The CAGR uplift is real (~2pp) but smaller than for QQQ in relative terms. SPY's optimizer converges to nearly identical params each year, so the schedule is structurally stable — re-optimization mainly updates the worst-year risk picture rather than discovering new params.
+
+**How to re-optimize each January (recommended but not strictly required):**
+```bash
+# Recommended (MA100 exit)
+python walkforward.py --preset SPY --exit-ma 100
+```
+Computational cost: ~30 min. If you skip annual re-opt for SPY, you can safely run the strategy with the fixed 2014-onwards params (entry 1.01–1.02×MA200, drop 0.5%, exit 0.95×MA100, buy 40%, 100% UPRO) — every walk-forward year picked params in that cluster.
+
+---
 
 ### IWM — not recommended
 
 | Variant | Strict OOS CAGR (2015–2026) | IWM B&H | Edge | Result |
 |---|---|---|---|---|
-| Best train (2003–2014) params, frozen | 5.41% | 9.14% | **−3.73pp ✗** | Failed |
+| Best 2003–2014 train params, frozen | 5.41% | 9.14% | **−3.73pp ✗** | Failed OOS |
 
 IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6](#out-of-sample-test-20152026-11-years-genuinely-unseen)
 
 ---
-
-**Operating mode (all live configs):** re-optimize each January on all prior data using `walkforward.py`. The schedule shifts modestly year to year but the long-run walk-forward numbers above reflect this re-optimization throughout the 12-year window. Computational cost ~30 min per preset.
 
 **Drawdown filter (all configs):** calendar-year worst ≥ −40%. Deliberate design choice — see [§9](#9-risk-considerations--design-honesty) for the cost-benefit of tighter alternatives.
 
