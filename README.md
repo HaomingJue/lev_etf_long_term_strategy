@@ -29,25 +29,52 @@ This paper documents the design and validation of a leveraged-ETF dip-buy strate
 
 ---
 
-## Recommended Configuration
+## Recommended Configurations
 
-> Use these for live trading. Each has full walk-forward validation behind it (see [§6](#6-results--walk-forward-validation)).
+> Each variant is fully walk-forward validated over 2014–2025. **Params shown are from the most recent walk-forward year (2025).** The strategy is re-optimized annually — under annual re-opt the exact params shift modestly year to year, but the walk-forward CAGR/worst-year/max-DD numbers reflect the full 12-year operating performance, not a single year's params. → [§6](#6-results--walk-forward-validation), [§10](#running-the-walk-forward)
 
-| Index | Lev ETF | Entry | Drop | Exit | Buy/signal | Exit MA | Notes |
-|---|---|---|---|---|---|---|---|
-| **QQQ** | TQQQ | 1.04×MA200 | 0.5% | 0.95×MA200 | 40% | MA200 | Annual re-opt, plain top-CAGR. Tie-break rule available but disabled by default ([§6.2](#62-qqq-tie-break-rule)) |
-| **SPY** | UPRO | 1.02×MA200 | 0.5% | 0.95×MA100 | 40% | **MA100** | MA100 beats MA200 by +1.78pp CAGR and 5pp worst year (2022) ([§6.1](#61-ma100-vs-ma200-walk-forward)) |
-| **IWM** | TNA | — | — | — | — | — | **Not recommended** — failed out-of-sample test ([§6](#out-of-sample-test-20152026-11-years-genuinely-unseen)) |
+### QQQ — pick one of two variants
 
-**Operating mode:** re-optimize each January on all prior data (~30 min per index). → [§10](#running-the-walk-forward)
-**Drawdown filter:** calendar-year worst ≥ −40% (deliberate design choice — see [§9](#9-risk-considerations--design-honesty)).
+| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) | Walk-forward CAGR | Worst year | Max DD | Final ($10K) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Highest CAGR** (recommended for return) | **1.06×MA200** | **0.5%** | **1.00×MA200** | 40% | 0% | 0% | **100%** | **27.26%** | −25.91% (2022) | −64.9% | **$180,025** |
+| **Balanced** (smoother drawdown, opt-in) | **1.05×MA200** | **1.0%** | **1.00×MA200** | 40% | 0% | 0% | **100%** | 23.10% | −25.52% (2022) | **−44.75%** | $120,928 |
+
+- **Default is the Highest CAGR variant** (plain top-CAGR rule). Run with `python walkforward.py --preset QQQ`.
+- **Balanced variant** uses the tie-break rule: from combos within 1pp training CAGR of the leader, pick the one with the lowest worst calendar year. Run with `python walkforward.py --preset QQQ --tie-tolerance 0.01`.
+- The 2025 params look similar between the two variants because both converged to 100% TQQQ in the latest year. The CAGR/DD gap comes from earlier walk-forward years where the tie-break rule preferred diversified allocations (QLD + base SPY). Full year-by-year schedule comparison: [§6.2](#62-qqq-tie-break-rule).
+- **The balanced variant trades 4pp CAGR for 20pp better max DD — but barely improves the worst calendar year.** Only enable if max DD smoothing matters to you more than terminal wealth.
+
+### SPY — pick one of two variants
+
+| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (UPRO) | Walk-forward CAGR | Worst year | Max DD | Final ($10K) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Recommended (MA100 exit)** | **1.02×MA200** | **0.5%** | **0.95×MA100** | 40% | 0% | 0% | **100%** | **21.92%** | −31.78% (2022) | **−44.80%** | **$107,688** |
+| MA200 exit (legacy) | 1.02×MA200 | 0.5% | 0.97×MA200 | 40% | 0% | 0% | 100% | 20.14% | −37.09% (2022) | −57.87% | $90,307 |
+
+- **MA100 dominates MA200 on every axis** — higher CAGR, better worst year, better max DD, better Sharpe. No reason to use MA200 unless you specifically want backwards-compatibility with earlier versions. Full comparison: [§6.1](#61-ma100-vs-ma200-walk-forward).
+- Run the recommended config with `python walkforward.py --preset SPY --exit-ma 100`.
+
+### IWM — not recommended
+
+| Variant | Strict OOS CAGR (2015–2026) | IWM B&H | Edge | Result |
+|---|---|---|---|---|
+| Best train (2003–2014) params, frozen | 5.41% | 9.14% | **−3.73pp ✗** | Failed |
+
+IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6](#out-of-sample-test-20152026-11-years-genuinely-unseen)
+
+---
+
+**Operating mode (all live configs):** re-optimize each January on all prior data using `walkforward.py`. The schedule shifts modestly year to year but the long-run walk-forward numbers above reflect this re-optimization throughout the 12-year window. Computational cost ~30 min per preset.
+
+**Drawdown filter (all configs):** calendar-year worst ≥ −40%. Deliberate design choice — see [§9](#9-risk-considerations--design-honesty) for the cost-benefit of tighter alternatives.
 
 ---
 
 ## Contents
 
 - [Research Overview](#research-overview)
-- [Recommended Configuration](#recommended-configuration)
+- [Recommended Configurations](#recommended-configurations)
 - [Abstract](#abstract)
 - [Executive Summary](#executive-summary)
 - [1. Strategy Description](#1-strategy-description)
