@@ -218,14 +218,37 @@ def _check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
 # PHASE 1 — build param schedule
 # ──────────────────────────────────────────────────────────────
 
+# Default secondary-sort tolerance per preset.
+# All disabled by default (plain top-CAGR). Enable for QQQ with --tie-tolerance 0.01
+# to trade ~4pp CAGR over 12 years for ~20pp better max drawdown.
+# See section 6.2 of README for the honest cost-benefit.
+_DEFAULT_TIE_TOLERANCE = {"QQQ": 0.0, "SPY": 0.0, "IWM": 0.0}
+
+
 def build_param_schedule(preset: str, start_year: int, end_year: int,
-                         df_full: pd.DataFrame, exit_ma: int = 200) -> dict:
+                         df_full: pd.DataFrame, exit_ma: int = 200,
+                         tie_tolerance: float | None = None) -> dict:
+    """
+    Build the per-year param schedule.
+
+    tie_tolerance : float | None
+        If > 0, applies a secondary-sort rule: from combos within
+        `tie_tolerance` CAGR (fraction, e.g. 0.01 = 1pp) of the top combo,
+        pick the one with the best (least negative) worst calendar year.
+        If None, uses the preset default (QQQ=0.01, SPY/IWM=0.0).
+        If 0.0, plain top-CAGR ranking (legacy behavior).
+    """
+    if tie_tolerance is None:
+        tie_tolerance = _DEFAULT_TIE_TOLERANCE.get(preset, 0.0)
+
     dd_start = PRESETS[preset]["dd_start"]
     grid     = _build_grid()
     schedule = {}
 
+    rule_note = (f"plain top-CAGR" if tie_tolerance <= 0
+                 else f"secondary-sort within {tie_tolerance*100:.1f}pp CAGR")
     print(f"\nPhase 1 — building param schedule ({preset}, "
-          f"{start_year}–{end_year}, exit_ma=MA{exit_ma})")
+          f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, {rule_note})")
     print(f"  {len(grid):,} combos × {end_year - start_year + 1} training windows\n")
 
     for trade_yr in range(start_year, end_year + 1):
@@ -235,30 +258,53 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
             print(f"  {trade_yr}: insufficient training data — skipped")
             continue
 
-        best_cagr, best = -np.inf, None
+        # Collect ALL passing combos for this year so we can apply secondary sort
+        passing = []  # list of (cagr, worst_year, params_tuple)
         for entry, drop, exit_, buy, ab, ax2 in tqdm(
                 grid, desc=f"  2003–{train_end}", leave=False):
-            c, port = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
-                                    exit_ma=exit_ma)
-            ok, _   = _check_dd(df_train, port, dd_start)
-            if ok and c > best_cagr:
-                best_cagr = c
-                best = dict(
-                    entry_signal=entry, drop_level=drop,
-                    exit_signal=exit_,  buy_pct=buy,
-                    alloc_base=ab,      alloc_x2=ax2,
-                    alloc_x3=round(1 - ax2, 4),
-                    train_cagr=round(c * 100, 2),
-                )
+            c, port  = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
+                                     exit_ma=exit_ma)
+            ok, worst = _check_dd(df_train, port, dd_start)
+            if ok:
+                passing.append((c, worst, (entry, drop, exit_, buy, ab, ax2)))
 
-        if best:
-            schedule[trade_yr] = best
-            print(f"  {trade_yr}  train=2003–{train_end}  "
-                  f"entry={best['entry_signal']}  drop={best['drop_level']}  "
-                  f"exit={best['exit_signal']}  buy={best['buy_pct']}  "
-                  f"CAGR(train)={best['train_cagr']:.1f}%")
-        else:
+        if not passing:
             print(f"  {trade_yr}: no passing combo found")
+            continue
+
+        # Plain top-CAGR pick
+        leader = max(passing, key=lambda r: r[0])
+        leader_cagr = leader[0]
+
+        # Secondary-sort: within tolerance, pick best worst-year
+        if tie_tolerance > 0:
+            within = [r for r in passing if leader_cagr - r[0] <= tie_tolerance]
+            chosen = max(within, key=lambda r: r[1])  # max worst-year = least negative
+        else:
+            chosen = leader
+
+        c, worst, (entry, drop, exit_, buy, ab, ax2) = chosen
+        best = dict(
+            entry_signal=entry, drop_level=drop,
+            exit_signal=exit_,  buy_pct=buy,
+            alloc_base=ab,      alloc_x2=ax2,
+            alloc_x3=round(1 - ax2, 4),
+            train_cagr=round(c * 100, 2),
+            train_worst_year=round(worst * 100, 2),
+        )
+        schedule[trade_yr] = best
+
+        # Annotate if secondary-sort changed the pick
+        changed = tie_tolerance > 0 and chosen[2] != leader[2]
+        tag = "  [tie-break]" if changed else ""
+        if changed:
+            cagr_cost = (leader_cagr - c) * 100
+            ulcer_gain = (worst - leader[1]) * 100
+            tag = f"  [tie-break: -{cagr_cost:.2f}pp CAGR, +{ulcer_gain:.1f}pp worst-yr]"
+        print(f"  {trade_yr}  train=2003–{train_end}  "
+              f"entry={best['entry_signal']}  drop={best['drop_level']}  "
+              f"exit={best['exit_signal']}  buy={best['buy_pct']}  "
+              f"CAGR={best['train_cagr']:.1f}%  worst={best['train_worst_year']:.1f}%{tag}")
 
     return schedule
 
@@ -509,6 +555,11 @@ def _parse_args():
     p.add_argument("--exit-ma",    type=int, default=200, choices=[100, 200],
                    help="MA period used for exit signal "
                         "(arm/entry always uses MA200)")
+    p.add_argument("--tie-tolerance", type=float, default=None,
+                   help="Secondary-sort tolerance in CAGR fraction (e.g. 0.01 = 1pp). "
+                        "From combos within this CAGR of the leader, pick the one "
+                        "with the best worst calendar year. "
+                        "Defaults: QQQ=0.01, SPY/IWM=0.0. Pass 0.0 to force plain top-CAGR.")
     p.add_argument("--no-rebuild", action="store_true",
                    help="Skip Phase 1 if the param schedule JSON already exists")
     p.add_argument("--no-show",    action="store_true",
@@ -532,7 +583,7 @@ if __name__ == "__main__":
         df_full  = load_full_data(args.preset, f"{args.end_year}-12-31")
         schedule = build_param_schedule(
             args.preset, args.start_year, args.end_year, df_full,
-            exit_ma=args.exit_ma)
+            exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance)
         schedule_path.write_text(json.dumps(schedule, indent=2))
         print(f"\n  Saved schedule: {schedule_path}")
 

@@ -1,0 +1,134 @@
+{
+  "2014": {
+    "entry_signal": 1.04,
+    "drop_level": 0.005,
+    "exit_signal": 0.95,
+    "buy_pct": 0.4,
+    "alloc_base": 0.0,
+    "alloc_x2": 1.0,
+    "alloc_x3": 0.0,
+    "train_cagr": 9.21,
+    "train_worst_year": -17.71
+  },
+  "2015": {
+    "entry_signal": 1.05,
+    "drop_level": 0.005,
+    "exit_signal": 0.99,
+    "buy_pct": 0.4,
+    "alloc_base": 0.2,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 12.23,
+    "train_worst_year": -20.63
+  },
+  "2016": {
+    "entry_signal": 1.05,
+    "drop_level": 0.005,
+    "exit_signal": 0.99,
+    "buy_pct": 0.4,
+    "alloc_base": 0.1,
+    "alloc_x2": 0.75,
+    "alloc_x3": 0.25,
+    "train_cagr": 9.63,
+    "train_worst_year": -15.58
+  },
+  "2017": {
+    "entry_signal": 1.03,
+    "drop_level": 0.02,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.1,
+    "alloc_x2": 0.25,
+    "alloc_x3": 0.75,
+    "train_cagr": 9.05,
+    "train_worst_year": -16.5
+  },
+  "2018": {
+    "entry_signal": 1.05,
+    "drop_level": 0.005,
+    "exit_signal": 0.99,
+    "buy_pct": 0.3,
+    "alloc_base": 0.2,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 13.89,
+    "train_worst_year": -20.82
+  },
+  "2019": {
+    "entry_signal": 1.06,
+    "drop_level": 0.005,
+    "exit_signal": 1.0,
+    "buy_pct": 0.2,
+    "alloc_base": 0.2,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 13.9,
+    "train_worst_year": -22.44
+  },
+  "2020": {
+    "entry_signal": 1.03,
+    "drop_level": 0.02,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.1,
+    "alloc_x2": 0.25,
+    "alloc_x3": 0.75,
+    "train_cagr": 13.85,
+    "train_worst_year": -16.5
+  },
+  "2021": {
+    "entry_signal": 1.03,
+    "drop_level": 0.02,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.1,
+    "alloc_x2": 0.25,
+    "alloc_x3": 0.75,
+    "train_cagr": 16.73,
+    "train_worst_year": -16.5
+  },
+  "2022": {
+    "entry_signal": 1.03,
+    "drop_level": 0.02,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.1,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 20.33,
+    "train_worst_year": -18.2
+  },
+  "2023": {
+    "entry_signal": 1.02,
+    "drop_level": 0.015,
+    "exit_signal": 1.01,
+    "buy_pct": 0.3,
+    "alloc_base": 0.0,
+    "alloc_x2": 0.25,
+    "alloc_x3": 0.75,
+    "train_cagr": 16.7,
+    "train_worst_year": -23.48
+  },
+  "2024": {
+    "entry_signal": 1.05,
+    "drop_level": 0.01,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.0,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 19.42,
+    "train_worst_year": -27.68
+  },
+  "2025": {
+    "entry_signal": 1.05,
+    "drop_level": 0.01,
+    "exit_signal": 1.0,
+    "buy_pct": 0.4,
+    "alloc_base": 0.0,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 20.95,
+    "train_worst_year": -27.68
+  }
+}
