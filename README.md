@@ -1175,7 +1175,9 @@ flowchart TD
     R --> S([Auto-save PNG + summary TXT + yearly CSV\nto results/backtester/&#123;PRESET&#125;/])
 ```
 
-#### Optimizer
+#### Optimizer (standalone, full-history grid search)
+
+> This is the legacy per-preset optimizer (`leveraged_{preset}_exploration/optimizer.py`). It produces the in-sample, hindsight-optimized full-history results reported in [§3](#3-results--full-history-20032026). For the live operating tool (walk-forward with annual re-opt + optional tie-break), see the next flowchart.
 
 ```mermaid
 flowchart TD
@@ -1190,6 +1192,36 @@ flowchart TD
     I --> J{More combos?}
     J -- Yes --> D
     J -- No --> K[Sort PASSING by CAGR\nSave CSV to ma200/ or ma100/ or ma50/\nPlot equity curves + scatter]
+```
+
+#### Walk-Forward (annual re-optimization, live operating tool)
+
+> `walkforward.py`. Produces the walk-forward numbers reported in [§6](#6-results--walk-forward-validation), [§6.1](#61-ma100-vs-ma200-walk-forward), [§6.2](#62-qqq-tie-break-rule). This is the recommended operating mode for live trading.
+
+```mermaid
+flowchart TD
+    A([python walkforward.py --preset QQQ\n--exit-ma 100/200\n--tie-tolerance 0.01]) --> B[Load full data 2003 → end_year\nPre-compute MA100 and MA200\nBuild synthetic + real lev NAVs]
+    B --> C[Phase 1: Build per-year param schedule]
+    C --> D[For trade year Y in start_year..end_year]
+    D --> E[df_train = data 2003 → year Y-1\nLoop all 15840 combos]
+    E --> F[Run optimizer backtest\narm uses MA200; exit uses MA exit_ma\nReturn CAGR + worst calendar year]
+    F --> G{Calendar-year filter:\nany year ≥ dd_start\nbelow −40%?}
+    G -- Yes --> H[Drop combo]
+    G -- No --> I[Keep combo + worst-year]
+    H & I --> J{More combos?}
+    J -- Yes --> E
+    J -- No --> K{tie_tolerance > 0?}
+    K -- No --> L[Pick top-CAGR combo\nplain top-CAGR rule]
+    K -- Yes --> M[From combos within tie_tolerance\nCAGR of leader,\npick lowest worst-year\ntie-break rule]
+    L & M --> N[Record year Y params + train_cagr + train_worst_year]
+    N --> O{More years?}
+    O -- Yes --> D
+    O -- No --> P[Save schedule JSON\nresults/walkforward/PRESET_param_schedule.json]
+    P --> Q[Phase 2: Continuous walk-forward backtest]
+    Q --> R[Run backtester from start_year to end_year\nAt Jan 1 of each year: swap params per schedule\nPortfolio state holdings/cash/armed continuous across years]
+    R --> S[Compute walk-forward CAGR · yearly returns\nMax drawdown · Sharpe · vs B&H]
+    S --> T[Also run fixed-model comparison\nfirst-year params frozen for full period]
+    T --> U([Save yearly CSV · comparison PNG · commands TXT])
 ```
 
 ### Running the Backtester
