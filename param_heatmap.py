@@ -35,12 +35,14 @@ PRESETS = {
         "label":     "QQQ (NASDAQ-100 / TQQQ)",
     },
     "SPY": {
-        "csv":       os.path.join(BASE, "leveraged_spy_exploration", "ma200", "spy_optimizer_results.csv"),
+        # SPY MA100 is the optimum (highest-CAGR) full-history config — see §6.1.
+        # Per-MA optimizer CSVs live in leveraged_spy_exploration/{ma100,ma200}/.
+        "csv":       os.path.join(BASE, "leveraged_spy_exploration", "ma100", "ma100_exit_results.csv"),
         "opt_entry": 1.02,
         "opt_exit":  0.95,
         "opt_drop":  0.005,
         "bnh_cagr":  11.39,
-        "label":     "SPY (S&P 500 / UPRO)",
+        "label":     "SPY (S&P 500 / UPRO, MA100 exit)",
     },
 }
 

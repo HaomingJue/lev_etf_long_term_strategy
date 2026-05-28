@@ -7,7 +7,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 > QQQ: 27.26% CAGR vs 18.72% B&H — **+8.5pp over 12 years** (MA200 exit)
 > SPY: 21.92% CAGR vs 13.59% B&H — **+8.3pp over 12 years** (MA100 exit, see [section 6.1](#61-ma100-vs-ma200-walk-forward))
 >
-> Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,039,000 SPY** vs $331K / $124K buy-and-hold.
+> Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,132,000 SPY (MA100)** vs $331K / $126K buy-and-hold.
 > These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation.
 
 ---
@@ -25,7 +25,7 @@ This paper documents the design and validation of a leveraged-ETF dip-buy strate
 7. **Can we trade a tiny bit of CAGR for less ulcer on QQQ?** Tested a tie-break rule (pick best worst-year within 1pp training CAGR of the leader). The honest answer: **trade-year impact is larger than expected** — costs ~4pp CAGR over 12 years for ~20pp better max drawdown but barely changes worst calendar year. **Disabled by default; opt-in.** → [§6.2](#62-qqq-tie-break-rule)
 8. **Does the strategy survive every major crisis since 2003?** Tested in GFC, COVID, 2022 rate hikes, and dot-com (which predates the sample). All survived; dot-com QQQ was the weakest case. → [§7](#7-results--crisis-period-stress-tests)
 9. **Is the alpha real, or a parameter spike?** Robustness heatmaps confirm a broad plateau around the optimal combos — not data-mined. → [§8](#parameter-robustness-analysis)
-10. **Why not a max-DD filter instead of calendar-year?** A max-DD ≤ 40% filter would cut QQQ best CAGR from ~21% to ~16% and SPY from ~22% to ~10%. The calendar-year filter is a deliberate design choice. → [§9](#9-risk-considerations--design-honesty)
+10. **Why not a max-DD filter instead of calendar-year?** A max-DD ≤ 40% filter would cut QQQ best CAGR from 21.3% to 19.5% (MA200) and SPY from 20.5% to 16.2% (MA100). The calendar-year filter is a deliberate design choice. → [§9](#9-risk-considerations--design-honesty)
 
 ---
 
@@ -164,7 +164,7 @@ IWM's small-cap volatility creates higher LETF decay, and the strategy's trainin
 
 ## Abstract
 
-We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. After correcting for management expense ratios in the synthetic pre-inception period, the strategy produced CAGR of **24.48% for QQQ** (Sharpe 0.74), **21.98% for SPY** (Sharpe 0.74), and **11.96% for IWM** (Sharpe 0.49) over 2003–2026 — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) produced **27.26% CAGR for QQQ** (+8.54pp vs B&H) and **20.14% for SPY** (+6.55pp vs B&H) with no look-ahead bias — the most realistic simulation of live operation. Switching SPY's exit MA from 200 to 100 in the same walk-forward improves SPY further to **21.92% CAGR (+8.33pp vs B&H), worst year −31.8% vs −37.1%, max drawdown −44.8% vs −57.9%** — MA100 is the recommended SPY exit. The strategy survived all major stress tests (GFC, COVID, 2022 rate hikes). Transaction costs up to 0.2%/trade reduce CAGR by less than 0.6pp. A parameter robustness analysis confirms the alpha sits in a broad plateau rather than an isolated spike. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
+We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. After correcting for management expense ratios in the synthetic pre-inception period, the strategy produced CAGR of **24.48% for QQQ** (MA200 exit, Sharpe 0.74), **22.40% for SPY** (MA100 exit — the optimum SPY config, Sharpe 0.78), and **11.96% for IWM** (MA200, Sharpe 0.49) over 2003–2026 — versus buy-and-hold returns of 16.16%, 11.44%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) produced **27.26% CAGR for QQQ** (+8.54pp vs B&H) and **20.14% for SPY** (+6.55pp vs B&H) with no look-ahead bias — the most realistic simulation of live operation. Switching SPY's exit MA from 200 to 100 in the same walk-forward improves SPY further to **21.92% CAGR (+8.33pp vs B&H), worst year −31.8% vs −37.1%, max drawdown −44.8% vs −57.9%** — MA100 is the recommended SPY exit. The strategy survived all major stress tests (GFC, COVID, 2022 rate hikes). Transaction costs up to 0.2%/trade reduce CAGR by less than 0.6pp. A parameter robustness analysis confirms the alpha sits in a broad plateau rather than an isolated spike. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
 
 ---
 
@@ -173,16 +173,16 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 | Index | Strategy CAGR | B&H CAGR | Edge | Max Drawdown | Sharpe | Avg Trades/Yr |
 |---|---|---|---|---|---|---|
 | QQQ (NASDAQ-100) | **24.48%** | 16.16% | +8.32pp | −69.1% | 0.74 | ~4 |
-| SPY (S&P 500) | **21.98%** | 11.39% | +10.60pp | −56.4% | 0.74 | ~2 |
+| SPY (S&P 500) | **22.40%** | 11.44% | +10.96pp | −52.6% | 0.78 | ~2 |
 | IWM (Russell 2000) | **11.96%** | 10.19% | +1.76pp | −59.3% | 0.49 | ~2 |
 
 > All results: $10,000 starting capital, 2003-01-01 → 2026-05-16, MER-corrected synthetic NAV.
-> Best-CAGR passing strategy per index, MA200 exit, 3× ETF allocation.
+> Best-CAGR passing strategy per index: QQQ and IWM on MA200 exit, SPY on **MA100 exit** (the optimum SPY config). 3× ETF allocation.
 > Max drawdown is intra-period peak-to-trough (not calendar year). Sharpe ratio assumes rf = 0%.
 > This is a low-frequency swing strategy. Most years see 2–5 trades, with positions held weeks to months.
 
 **Key findings:**
-- Meaningful alpha over buy-and-hold for QQQ (+8.32pp) and SPY (+10.60pp). IWM edge is thin (+1.76pp) due to small-cap 3× decay. All numbers MER-corrected for synthetic pre-inception period.
+- Meaningful alpha over buy-and-hold for QQQ (+8.32pp) and SPY (+10.96pp). IWM edge is thin (+1.76pp) due to small-cap 3× decay. All numbers MER-corrected for synthetic pre-inception period.
 - QQQ and SPY hold positive edges in a rigorous single-split OOS test (2015–2026, parameters optimized on 2003–2014 only, then frozen); IWM underperforms out-of-sample — an honest finding disclosed in full.
 - **Annual re-optimization (expanding-window walk-forward, 2014–2025) is the recommended operating mode:** QQQ edge grows to +8.54pp (27.26% vs 18.72% B&H), worst year improves from −35.5% to −25.9%. SPY edge is +6.55pp (20.14% vs 13.59% B&H). These are the realistic forward-looking numbers — fully walk-forward validated with zero look-ahead bias.
 - 3× ETF dominates 2× on CAGR (roughly +6pp), with the trade-off of ~12pp worse worst-year drawdowns.
@@ -367,9 +367,10 @@ The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) 
 
 > **Note on allocation:** The optimizer explored all combinations of base ETF allocation (0–30%), 2× ETF allocation (0–100% of leveraged spend), and 3× ETF allocation (remainder). The original intent was to find the optimal *mix* — perhaps holding some unleveraged base stock for stability and splitting leverage between 2× and 3×. In practice, **100% allocation to the 3× ETF with no base position consistently produced the highest CAGR across all three indices.** The base stock and 2× ETF allocations improve drawdown slightly but cost meaningful CAGR. All headline results below use the top-ranked combo from the optimizer, which in every case was 100% 3×. Section 5 examines the 2× vs 3× trade-off in detail.
 
-### MA200 Exit, 3× Allocation
+### Optimum Per-Index Config, 3× Allocation
 
 > Period: 2003-01-01 → 2026-05-16 | Capital: $10,000
+> Each index uses its own optimum (highest-CAGR full-history) config: QQQ and IWM on MA200 exit, SPY on MA100 exit ([§4](#4-results--exit-ma-comparison-ma200-vs-ma100-vs-ma50)).
 
 #### QQQ — NASDAQ-100 / TQQQ
 
@@ -397,31 +398,33 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 
 ![QQQ full history 2003–2026](results/backtester/QQQ/QQQ_2003-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
-#### SPY — S&P 500 / UPRO
+#### SPY — S&P 500 / UPRO (MA100 exit — the optimum SPY config)
 
 | Metric | Value |
 |---|---|
 | Entry signal | 1.02× MA200 |
 | Drop level | 0.5% |
-| Exit signal | 0.95× MA200 |
-| Buy pct | 30% per signal |
+| Exit signal | 0.95× **MA100** |
+| Buy pct | 40% per signal |
 | Allocation | 0% SPY / 100% UPRO |
-| **Strategy CAGR** | **21.98%** |
-| B&H CAGR (SPY) | 11.39% |
-| Strategy edge | +10.60pp |
-| Final value | $1,038,755 |
-| Worst year | −38.3% (2022) |
-| Max drawdown | −56.4% |
-| Sharpe ratio | 0.74 |
-| Total trades | 46 (~2/yr) |
+| **Strategy CAGR** | **22.40%** |
+| B&H CAGR (SPY) | 11.44% |
+| Strategy edge | +10.96pp |
+| Final value | $1,132,235 |
+| Worst year | −31.78% (2022) |
+| Max drawdown | −52.61% |
+| Sharpe ratio | 0.78 |
+| Total trades | 52 (~2/yr) |
 
 ```bash
-python backtester.py --preset SPY --start 2003-01-01 \
+python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 \
-  --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0 --no-show
+  --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0 --no-show
 ```
 
-![SPY full history 2003–2026](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+![SPY full history 2003–2026 (MA100)](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+
+> Legacy MA200 SPY result for reference: 21.98% CAGR, $1,038,755 final, −38.3% worst year (2022), −56.4% max DD. See [§6.1](#61-ma100-vs-ma200-walk-forward) for the full MA100 vs MA200 comparison.
 
 #### IWM — Russell 2000 / TNA
 
@@ -479,7 +482,7 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 | QQQ | MA200 | **24.48%** | 16.16% | +8.32pp | −40.8% (2005) | 100 |
 | QQQ | MA100 | ~19.9% | 16.16% | ~+3.7pp | −48.5% (2008) | 118 |
 | SPY | MA200 | 21.98% | 11.39% | +10.60pp | −38.3% (2022) | 46 |
-| SPY | MA100 | ~22.2% | 11.39% | ~+10.8pp | **−31.8% (2022)** | 52 |
+| SPY | MA100 | **22.40%** | 11.44% | **+10.96pp** | **−31.8% (2022)** | 52 |
 | IWM | MA200 | **11.96%** | 10.19% | +1.76pp | −23.7% (2011) | 43 |
 | IWM | MA100 | ~9.4% | 10.19% | ~−0.8pp | −20.6% (2008) | 26 |
 
@@ -846,62 +849,60 @@ What the rule does *not* do (despite the original hypothesis):
 
 ## 7. Results — Crisis Period Stress Tests
 
-We ran the strategy against four major market dislocations for both QQQ and SPY, each using its own best-optimized parameters.
+We ran the strategy against four major market dislocations for both QQQ and SPY, each using its own **optimum (highest-CAGR) config**: QQQ entry=1.03/exit=1.01×MA200/buy=40%/100% TQQQ, SPY entry=1.02/exit=0.95×**MA100**/buy=40%/100% UPRO.
 
 ### 7.1 Global Financial Crisis: 2007–2010
 
-| Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
+| Metric | QQQ Strategy | QQQ B&H | SPY Strategy (MA100) | SPY B&H |
 |---|---|---|---|---|
-| CAGR | **+18.20%** | +6.62% | **+8.76%** | −0.82% |
-| Edge | +11.58pp | — | +9.58pp | — |
-| Worst year | −19.4% (2008) | −41.7% (2008) | −14.69% (2008) | −36.8% (2008) |
-| Max drawdown | −44.1% | — | −43.3% | — |
-| Sharpe ratio | 0.62 | — | 0.41 | — |
-| Final value | $19,481 (from $10K) | ~$12,914 | $13,980 (from $10K) | $9,676 |
+| CAGR | **+18.20%** | +6.62% | **+7.51%** | −0.82% |
+| Edge | +11.58pp | — | +8.33pp | — |
+| Worst year | −19.4% (2008) | −41.7% (2008) | −28.42% (2008) | −36.8% (2008) |
+| Max drawdown | −44.1% | — | −52.61% | — |
+| Sharpe ratio | 0.62 | — | 0.39 | — |
+| Final value | $19,481 (from $10K) | ~$12,914 | $13,350 (from $10K) | $9,676 |
 
-Both strategies significantly outperformed through the worst financial crisis in 80 years. QQQ's tight exit (1.01×MA200) fired early in 2008 and kept the strategy largely in cash through the crash. SPY's wider exit (0.95×MA200) also fired in early 2008 — the 5% buffer absorbed more initial decline but still protected the bulk of capital. Both finished with strongly positive CAGR vs a flat-to-negative B&H. QQQ's edge (+11.58pp) was larger than SPY's (+9.58pp) because tech recovered more explosively in 2009.
+Both strategies outperformed through the worst financial crisis in 80 years. QQQ's tight exit (1.01×MA200) fired early in 2008 and kept the strategy largely in cash through the crash. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2008 too. SPY's worst calendar year of −28.42% is the deepest single-year loss in this period — the GFC is the one crisis where SPY MA100's faster exit also takes a sharper single-year hit before recovering. Both finished with positive CAGR vs flat-to-negative B&H; QQQ's edge (+11.58pp) was larger than SPY's (+8.33pp) because tech recovered more explosively in 2009.
 
 ![QQQ GFC 2007–2010](results/backtester/QQQ/QQQ_2007-2010_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
-![SPY GFC 2007–2010](results/backtester/SPY/SPY_2007-2010_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+![SPY GFC 2007–2010 (MA100)](results/backtester/SPY/SPY_2007-2010_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
 
 ### 7.2 COVID Crash and Recovery: 2019-10-01 → 2021-06-30
 
-| Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
+| Metric | QQQ Strategy | QQQ B&H | SPY Strategy (MA100) | SPY B&H |
 |---|---|---|---|---|
-| CAGR | **+117.71%** | +45.15% | **+37.62%** | +26.31% |
-| Edge | +72.56pp | — | +11.31pp | — |
-| Worst year | +35.4% (no down year) | — | −7.29% (2020) | — |
-| Max drawdown | −51.9% | — | −56.4% | — |
-| Sharpe ratio | 1.53 | — | 0.92 | — |
-| Final value | $38,839 (from $10K) | ~$19,152 | $17,454 (from $10K) | $15,029 |
+| CAGR | **+117.71%** | +45.15% | **+64.38%** | +26.31% |
+| Edge | +72.56pp | — | +38.07pp | — |
+| Worst year | +35.4% (no down year) | — | +21.28% (no down year) | — |
+| Max drawdown | −51.9% | — | −43.93% | — |
+| Sharpe ratio | 1.53 | — | 1.41 | — |
+| Final value | $38,839 (from $10K) | ~$19,152 | $23,793 (from $10K) | $15,029 |
 
-COVID was the ideal scenario for both strategies, but the magnitude of the edge differed sharply. QQQ's tight exit fired immediately in the crash and re-armed early in the V-shaped recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return over 20 months. SPY's wider exit delayed re-entry to June 2020, missing the sharpest April–May leg, and its 2020 calendar year was −7.29% despite the market being up. The full 20-month window still returned +37.62% and beat B&H by +11.31pp.
+COVID was the ideal scenario for both strategies. QQQ's tight exit fired immediately in the crash and re-armed early in the V-shaped recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return over 20 months. SPY MA100 captured the rebound far better than the legacy SPY MA200 would have: SPY MA200 would have given +37.62% with a 2020 calendar-year loss of −7.29%; SPY MA100 delivered +64.38% with no down year. The faster MA re-armed in time for the April–May explosive leg that SPY MA200 missed. **This single period accounts for most of the +1.78pp annualized CAGR gap between SPY MA100 and SPY MA200 in walk-forward.**
 
 ![QQQ COVID crash and recovery 2019–2021](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
-![SPY COVID crash and recovery 2019–2021](results/backtester/SPY/SPY_2019-2021_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+![SPY COVID crash and recovery 2019–2021 (MA100)](results/backtester/SPY/SPY_2019-2021_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
 
 ### 7.3 Rate-Hike Bear Market: 2021-06-01 → 2023-06-30
 
-| Metric | QQQ Strategy | QQQ B&H | SPY Strategy | SPY B&H |
+| Metric | QQQ Strategy | QQQ B&H | SPY Strategy (MA100) | SPY B&H |
 |---|---|---|---|---|
-| CAGR | **+27.91%** | +5.08% | +0.67% | +3.76% |
-| Edge | +22.83pp | — | **−3.09pp** | — |
-| Worst year | −22.6% (2022) | −32.5% (2022) | **−38.34% (2022)** | −18.18% (2022) |
-| Max drawdown | −37.3% | — | −50.0% | — |
-| Sharpe ratio | 0.91 | — | 0.18 | — |
-| Final value | $16,666 (from $10K) | ~$10,965 | $10,140 (from $10K) | $10,796 |
+| CAGR | **+27.91%** | +5.08% | **+6.86%** | +3.76% |
+| Edge | +22.83pp | — | +3.10pp | — |
+| Worst year | −22.6% (2022) | −32.5% (2022) | −31.78% (2022) | −18.18% (2022) |
+| Max drawdown | −37.3% | — | −44.40% | — |
+| Sharpe ratio | 0.91 | — | 0.38 | — |
+| Final value | $16,666 (from $10K) | ~$10,965 | $11,476 (from $10K) | $10,796 |
 
-This is the most revealing divergence between QQQ and SPY. QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's wide exit (0.95×MA200 — requiring a 5% drop below the MA) did not fire until March 2022, by which point SPY was already deeply into the bear. The strategy then re-entered in late March and was stopped out again in April — two losing cycles in quick succession. SPY's worst strategy year was −38.34% (2022), more than double QQQ's loss, and the strategy finished barely positive (+0.67%) — actually **underperforming SPY buy-and-hold by 3.09pp**.
+QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2022 too, before the deepest leg of the bear, limiting SPY losses to −31.78% and finishing positive at +6.86% with a small +3.10pp edge over buy-and-hold.
 
-The same exit threshold that protected SPY through the dot-com crash (by keeping it out for two full bear years) became a liability here: the 2022 decline was fast and sharp enough that the 5% buffer simply absorbed more damage before firing.
-
-> **The MA100 exit changes this picture.** Walk-forward SPY with MA100 produced a 2022 return of **−31.78%** vs the MA200 walk-forward's −37.09% — over 5pp recovered, with all other parameters identical. The faster MA cuts shorter the lag between the trend break and the exit. See [section 6.1](#61-ma100-vs-ma200-walk-forward).
+> **What the legacy SPY MA200 config would have done here:** the same period run with MA200 exit produces +0.67% CAGR with a −38.34% worst year — **underperforming SPY B&H by 3.09pp**. The 5% buffer below MA200 only fired in March 2022, by which point SPY was already deeply into the bear, leading to two losing cycles in quick succession. This is the single period that most clearly motivated the switch to MA100 as the recommended SPY exit ([§6.1](#61-ma100-vs-ma200-walk-forward)).
 
 ![QQQ rate-hike bear market 2021–2023](results/backtester/QQQ/QQQ_2021-2023_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
-![SPY rate-hike bear market 2021–2023](results/backtester/SPY/SPY_2021-2023_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+![SPY rate-hike bear market 2021–2023 (MA100)](results/backtester/SPY/SPY_2021-2023_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
 
 ### 7.4 Dot-com Bubble & Recovery: 2000-01-03 → 2003-12-31
 
@@ -920,23 +921,23 @@ The dot-com crash was the hardest test — and shows the strategy's true downsid
 
 **Why the edge nearly vanished:** The multiple re-entries during cascading false rallies are exactly the "staircase bear market" failure mode described in Section 8. Each individual exit was correct — the strategy never rode the full −83% crash. But the repeated buys into brief rallies still produced catastrophic compounding losses. The final edge over buy-and-hold is only +1.13pp, nearly zero.
 
-**Cross-index comparison for context** (each index uses its own best parameters):
+**Cross-index comparison for context** (each index uses its own recommended optimum params):
 
 | Index | Period | Strategy CAGR | B&H CAGR | Edge | Worst Year |
 |---|---|---|---|---|---|
-| QQQ | 2000–2003 | −20.35% | −21.23% | +0.88pp | **~−80% (2000)** |
-| SPY | 2000–2003 | **+5.66%** | −5.21% | **+10.87pp** | −26.48% (2000) |
+| QQQ (MA200) | 2000–2003 | −20.35% | −21.23% | +0.88pp | **~−80% (2000)** |
+| SPY (MA100) | 2000–2003 | **+7.19%** | −5.21% | **+12.40pp** | −23.67% (2002) |
 | IWM | 2001–2003* | +6.96% | +8.05% | −1.09pp | −36.86% (2002) |
 
 *IWM started 2001-01-02 due to May 2000 ETF inception and insufficient warmup before then.
 
-SPY's wider exit threshold (0.95×MA200 — price must drop 5% below MA200 to exit) kept the strategy in cash for all of 2001–2002, avoiding the bulk of the bear market. SPY actually made money through the dot-com crash. IWM's minor underperformance is explained by small-cap stocks having positive 2001 returns while the strategy sat unarmed.
+SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) kept the strategy in cash for most of 2001–2002, avoiding the bulk of the bear market. SPY actually made money through the dot-com crash. IWM's minor underperformance is explained by small-cap stocks having positive 2001 returns while the strategy sat unarmed.
 
-**The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost roughly 80% of their initial capital in the first year alone, with nearly all of that recovered by December 2003 — just barely ahead of buy-and-hold by +0.88pp CAGR. SPY's more defensive exit threshold (0.95× vs 1.01× MA200) proved far more durable, generating a +5.66% CAGR (+10.87pp edge) through the same crash. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
+**The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost roughly 80% of their initial capital in the first year alone, with nearly all of that recovered by December 2003 — just barely ahead of buy-and-hold by +0.88pp CAGR. SPY's defensive exit (now MA100-based) proved far more durable through this regime, generating a +7.19% CAGR (+12.40pp edge) through the same crash. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
 
 ![QQQ dot-com bubble 2000–2003](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
-![SPY dot-com bubble 2000–2003](results/backtester/SPY/SPY_2000-2003_entry1.02_exit0.95_drop0.005_buy0.3_b0_x20_ma200.png)
+![SPY dot-com bubble 2000–2003 (MA100)](results/backtester/SPY/SPY_2000-2003_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
 
 ---
 
@@ -1010,9 +1011,11 @@ A key question the OOS test alone cannot answer is: *is the optimal parameter se
 
 The heatmaps below show **median CAGR across all passing combos** for each (row, col) parameter pair, marginalizing over all remaining free parameters. Blue box = chosen optimal. Bright green region = plateau. Isolated bright cell = spike.
 
+**Each heatmap uses the optimum (highest-CAGR) full-history config for its index:** QQQ on the MA200 grid (since MA200 wins for QQQ); SPY on the **MA100 grid** (since MA100 wins for SPY — see [§4](#4-results--exit-ma-comparison-ma200-vs-ma100-vs-ma50) and [§6.1](#61-ma100-vs-ma200-walk-forward)).
+
 > Note: values are optimizer CAGR, which understates backtester CAGR by ~3–4pp for QQQ due to the warm-up gap. Use relative comparisons across cells, not absolute magnitudes.
 
-![Parameter robustness heatmaps — QQQ and SPY](results/walkforward/param_robustness_heatmap.png)
+![Parameter robustness heatmaps — QQQ (MA200) and SPY (MA100)](results/walkforward/param_robustness_heatmap.png)
 
 **What the heatmaps show:**
 
@@ -1020,11 +1023,11 @@ The heatmaps below show **median CAGR across all passing combos** for each (row,
 
 **QQQ — entry × drop level (top-right panel): 0.5% dip is structural.** The 0.5% drop column is clearly dominant regardless of entry threshold. Moving to 1.0%+ drop meaningfully degrades performance. This is more spike-like: the dip threshold matters and 0.5% is the right regime for QQQ's large-cap, trend-following behavior. This is still interpretable — QQQ produces frequent small dips in bull markets; waiting for a 1%+ drop misses most of them.
 
-**SPY — entry × exit (bottom-left panel): exit threshold is load-bearing.** The exit=0.95× column (leftmost) is dominant. Entry signal barely matters once exit is right — the entire left column is bright regardless of which entry level is used. The strategy's SPY alpha is driven almost entirely by the exit rule: staying in cash until price clearly breaks below MA200 (−5% buffer) is what generates the edge. This is a mixed result: robust to entry choice, sensitive to exit choice.
+**SPY (MA100) — entry × exit (bottom-left panel): exit threshold is load-bearing.** The exit=0.95× column (leftmost) is dominant. Entry signal barely matters once exit is right — the entire left column is bright regardless of which entry level is used. The strategy's SPY alpha is driven almost entirely by the exit rule: staying in cash until price clearly breaks below MA100 (−5% buffer) is what generates the edge. This is a mixed result: robust to entry choice, sensitive to exit choice. The same pattern held on the MA200 grid in earlier versions of this paper, which is structural confirmation that the load-bearing parameter for SPY is the exit threshold itself, not the specific MA period.
 
-**SPY — entry × drop level (bottom-right panel): broader plateau.** Multiple drop levels (0.5%–1.5%) produce similar performance for SPY. This confirms that SPY's entry timing is less critical than QQQ's — SPY's larger, slower trends make dip threshold less important.
+**SPY (MA100) — entry × drop level (bottom-right panel): broader plateau.** Multiple drop levels (0.5%–1.5%) produce similar performance for SPY. This confirms that SPY's entry timing is less critical than QQQ's — SPY's larger, slower trends make dip threshold less important.
 
-**Overall verdict:** The QQQ and SPY strategies are not sitting on isolated parameter spikes. The core alpha is embedded in a recognizable, economically interpretable region of parameter space. The main fragility for QQQ is the drop level (0.5% is structurally superior); for SPY it is the exit threshold (0.95× MA200 drives the bulk of the alpha). These are not arbitrary numbers — they correspond to the natural scale of dips in each index's typical bull-market regime.
+**Overall verdict:** The QQQ and SPY strategies are not sitting on isolated parameter spikes. The core alpha is embedded in a recognizable, economically interpretable region of parameter space. The main fragility for QQQ is the drop level (0.5% is structurally superior); for SPY it is the exit threshold (0.95× MA100 drives the bulk of the alpha). These are not arbitrary numbers — they correspond to the natural scale of dips in each index's typical bull-market regime.
 
 To reproduce:
 ```bash
@@ -1057,7 +1060,7 @@ python param_heatmap.py --no-show
 ### Real risks of the strategy as designed
 
 - **Leveraged ETF daily reset.** 3× ETFs reset leverage daily. In volatile sideways markets, decay compounds against you even with flat overall returns. The strategy mitigates this by exiting during downtrends, but decay occurs in all held positions.
-- **3× ETF worst-year drawdown of −40% to −48%, max drawdown −60% to −69%.** The strategy's headline configurations have produced calendar-year losses approaching −40% (e.g., QQQ −40.8% in 2005, SPY −38.3% in 2022) and intra-period max drawdowns up to −69% (QQQ peak-to-trough during the 2008 GFC synthetic period). Investors must be able to hold through these without abandoning the strategy mid-crisis.
+- **3× ETF worst-year drawdown of −30% to −40%, max drawdown −50% to −69%.** The recommended live configurations have produced calendar-year losses around −30% to −40% — **QQQ −40.8% in 2005** (the recommended MA200 config), **SPY −31.78% in 2022** (the recommended MA100 config — see [§7.3](#73-rate-hike-bear-market-2021-06-01--2023-06-30)) — and intra-period max drawdowns of **−69.1% for QQQ MA200** (full-history peak-to-trough during the 2008 GFC synthetic period) and **−52.61% for SPY MA100**. Investors must be able to hold through these without abandoning the strategy mid-crisis.
 - **This is not a complete financial plan.** The research shows a statistical edge in backtested conditions. It does not constitute financial advice. Any real deployment should be sized appropriately within a broader portfolio.
 
 ### Drawdown filter design choice (calendar year, not max DD)
@@ -1066,20 +1069,20 @@ The optimizer filter eliminates combos whose worst **calendar year** falls below
 
 **1. The cadence matches the operating mode.** The strategy is re-optimized at year boundaries (annual re-opt is the recommended mode — [§6](#6-results--walk-forward-validation)). Calendar-year boundaries are therefore the natural review and rebalance points. A combo whose YTD ends at −38% on Dec 31 is the metric that actually triggers behavioral change at the annual review; a mid-year max DD that recovered by Dec 31 does not change the operating decision for the following year.
 
-**2. A max-DD filter would destroy the strategy.** Empirical test against the existing 15,840-combo grid (full history, MA200 exit):
+**2. A max-DD filter would destroy the strategy.** Empirical test against the optimum-config grids (QQQ MA200, SPY MA100 — these are the recommended configs):
 
-| Filter equivalent to | Worst cal-yr filter | QQQ best CAGR | SPY best CAGR |
+| Filter equivalent to | Worst cal-yr filter | QQQ best CAGR (MA200) | SPY best CAGR (MA100) |
 |---|---|---|---|
-| (none) | — | 21.31% | 22.50% |
-| **Current filter (~−65% max DD)** | **−40%** | **21.31%** | **22.26%** |
-| ~−55% max DD | −35% | 20.98% | 21.09% |
-| ~−45% max DD | −30% | 20.69% | 18.79% |
-| **Intuitive (~−40% max DD)** | **−25%** | **19.51%** | **16.13%** |
-| ~−30% max DD | −20% | 16.47% | 9.70% |
+| (none) | — | 21.31% | 20.51% |
+| **Current filter (~−65% max DD)** | **−40%** | **21.31%** | **20.51%** |
+| ~−55% max DD | −35% | 20.98% | 20.51% |
+| ~−45% max DD | −30% | 20.69% | 19.16% |
+| **Intuitive (~−40% max DD)** | **−25%** | **19.51%** | **16.17%** |
+| ~−30% max DD | −20% | 16.47% | 13.46% |
 
-Tightening to ~−40% max DD costs **−1.8pp CAGR for QQQ and −6.1pp CAGR for SPY**. Over 12 years, that's roughly 20% less terminal wealth for QQQ and 45% less for SPY. A 30% max-DD filter eliminates essentially all combos (best QQQ CAGR drops to 1.6% — worse than cash). This is a hard constraint of 3× ETFs, not a tuning problem.
+Tightening to ~−40% max DD costs **−1.8pp CAGR for QQQ and −4.3pp CAGR for SPY**. Over 12 years, that's roughly 20% less terminal wealth for QQQ and 35% less for SPY. A 30% max-DD filter eliminates essentially all combos for QQQ (best CAGR drops to 1.6% — worse than cash). This is a hard constraint of 3× ETFs, not a tuning problem.
 
-**3. The filter is mostly cosmetic anyway.** The current −40% calendar-year filter passes 99.2% of QQQ combos and 90.7% of SPY combos. It catches only obvious blow-ups; the real ranking is done by CAGR.
+**3. The filter is mostly cosmetic anyway.** The current −40% calendar-year filter passes 99.2% of QQQ combos and 99.8% of SPY combos. It catches only obvious blow-ups; the real ranking is done by CAGR.
 
 **4. The risk is documented separately.** Investors must look at the *max drawdown* numbers in each headline table (Section 3) and the crisis stress tests (Section 7) to understand the true peak-to-trough exposure. The filter does not protect against that — it informs combo selection, not investor expectations.
 
