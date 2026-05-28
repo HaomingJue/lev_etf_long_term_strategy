@@ -1,5 +1,5 @@
-# Walk-forward command log — SPY 2014–2025
-# Generated: 2026-05-18
+# Walk-forward command log — SPY 2014–2025 (exit MA200)
+# Generated: 2026-05-28
 #
 # Each block is the equivalent backtester.py call for that trade year.
 # Re-run any year with: python backtester.py [args]

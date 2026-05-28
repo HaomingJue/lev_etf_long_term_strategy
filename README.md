@@ -4,8 +4,8 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 > [!TIP]
 > **Walk-forward validated edge (annual re-optimization, 2014–2025, no look-ahead bias):**
-> QQQ: 27.26% CAGR vs 18.72% B&H — **+8.5pp over 12 years**
-> SPY: 20.14% CAGR vs 13.59% B&H — **+6.6pp over 12 years**
+> QQQ: 27.26% CAGR vs 18.72% B&H — **+8.5pp over 12 years** (MA200 exit)
+> SPY: 21.92% CAGR vs 13.59% B&H — **+8.3pp over 12 years** (MA100 exit, see [section 6.1](#61-ma100-vs-ma200-walk-forward))
 >
 > Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,039,000 SPY** vs $331K / $124K buy-and-hold.
 > These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation.
@@ -28,6 +28,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 - [4. Results — Exit MA Comparison](#4-results--exit-ma-comparison-ma200-vs-ma100-vs-ma50)
 - [5. Results — 2× vs 3× Leverage](#5-results--2-vs-3-leverage)
 - [6. Results — Walk-Forward Validation](#6-results--walk-forward-validation)
+  - [6.1 MA100 vs MA200 Walk-Forward](#61-ma100-vs-ma200-walk-forward)
 - [7. Results — Crisis Period Stress Tests](#7-results--crisis-period-stress-tests)
   - [7.1 Global Financial Crisis: 2007–2010](#71-global-financial-crisis-20072010)
   - [7.2 COVID Crash and Recovery](#72-covid-crash-and-recovery-2019-10-01--2021-06-30)
@@ -49,7 +50,7 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ## Abstract
 
-We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. After correcting for management expense ratios in the synthetic pre-inception period, the strategy produced CAGR of **24.48% for QQQ** (Sharpe 0.74), **21.98% for SPY** (Sharpe 0.74), and **11.96% for IWM** (Sharpe 0.49) over 2003–2026 — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) produced **27.26% CAGR for QQQ** (+8.54pp vs B&H) and **20.14% for SPY** (+6.55pp vs B&H) with no look-ahead bias — the most realistic simulation of live operation. The strategy survived all major stress tests (GFC, COVID, 2022 rate hikes). Transaction costs up to 0.2%/trade reduce CAGR by less than 0.6pp. A parameter robustness analysis confirms the alpha sits in a broad plateau rather than an isolated spike. A faster MA100 exit improves SPY but degrades QQQ. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
+We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only during confirmed uptrends on meaningful single-day dips, and exits when the trend breaks. After correcting for management expense ratios in the synthetic pre-inception period, the strategy produced CAGR of **24.48% for QQQ** (Sharpe 0.74), **21.98% for SPY** (Sharpe 0.74), and **11.96% for IWM** (Sharpe 0.49) over 2003–2026 — versus buy-and-hold returns of 16.16%, 11.39%, and 10.19% respectively. In a rigorous walk-forward test (parameters optimized on 2003–2014 only, then frozen for 2015–2026), QQQ achieved 21.41% CAGR vs 19.38% B&H (+2.03pp) and SPY achieved 15.71% vs 13.80% (+1.91pp). IWM underperformed out-of-sample (5.41% vs 9.14% B&H) — an honest result disclosed in full. An expanding-window walk-forward (2014–2025, re-optimizing parameters each year on all prior data) produced **27.26% CAGR for QQQ** (+8.54pp vs B&H) and **20.14% for SPY** (+6.55pp vs B&H) with no look-ahead bias — the most realistic simulation of live operation. Switching SPY's exit MA from 200 to 100 in the same walk-forward improves SPY further to **21.92% CAGR (+8.33pp vs B&H), worst year −31.8% vs −37.1%, max drawdown −44.8% vs −57.9%** — MA100 is the recommended SPY exit. The strategy survived all major stress tests (GFC, COVID, 2022 rate hikes). Transaction costs up to 0.2%/trade reduce CAGR by less than 0.6pp. A parameter robustness analysis confirms the alpha sits in a broad plateau rather than an isolated spike. The 3× ETF consistently outperforms the 2× ETF on CAGR but with meaningfully worse drawdowns.
 
 ---
 
@@ -71,7 +72,7 @@ We tested a rules-based strategy that buys leveraged ETFs (TQQQ/UPRO/TNA) only d
 - QQQ and SPY hold positive edges in a rigorous single-split OOS test (2015–2026, parameters optimized on 2003–2014 only, then frozen); IWM underperforms out-of-sample — an honest finding disclosed in full.
 - **Annual re-optimization (expanding-window walk-forward, 2014–2025) is the recommended operating mode:** QQQ edge grows to +8.54pp (27.26% vs 18.72% B&H), worst year improves from −35.5% to −25.9%. SPY edge is +6.55pp (20.14% vs 13.59% B&H). These are the realistic forward-looking numbers — fully walk-forward validated with zero look-ahead bias.
 - 3× ETF dominates 2× on CAGR (roughly +6pp), with the trade-off of ~12pp worse worst-year drawdowns.
-- MA100 exit marginally helps SPY. MA100 and MA50 exits both hurt QQQ significantly. Use MA200 for QQQ and IWM.
+- **Exit MA recommendation:** MA200 for QQQ and IWM. MA100 for SPY — walk-forward validated, +1.78pp CAGR and 5.3pp better worst year vs MA200 ([section 6.1](#61-ma100-vs-ma200-walk-forward)). MA100 and MA50 both hurt QQQ significantly.
 - The strategy excelled during all three major stress events: 2007–2010 GFC, COVID 2020, and the 2022 rate-hike bear market.
 - The dot-com crash (2000–2003) is the strategy's weakest case: QQQ lost 80% of capital in the first year due to repeated false-rally re-entries. SPY survived with positive CAGR (+6%) thanks to its looser exit threshold.
 - **The strategy requires a periodically bullish, trending market to work.** In sustained choppy or sideways conditions, repeated false dip signals whipsaw the leveraged position — as seen in QQQ's −40% year in 2005 and IWM's out-of-sample failure. This is also why IWM was explored: small-cap indices are structurally noisier and less trend-consistent, making leveraged dip-buying less reliable. The strategy is not all-weather; it amplifies returns in trending bull markets and protects capital in clear bear markets, but struggles when the market oscillates without direction.
@@ -367,13 +368,13 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 | IWM | MA200 | **11.96%** | 10.19% | +1.76pp | −23.7% (2011) | 43 |
 | IWM | MA100 | ~9.4% | 10.19% | ~−0.8pp | −20.6% (2008) | 26 |
 
-> MA100 and MA50 variant numbers are approximate (pre-MER-correction); the ~0.2pp correction does not change any conclusions.
+> MA100 and MA50 full-history numbers are approximate (pre-MER-correction); the ~0.2pp correction does not change any conclusions. Walk-forward MA100 SPY is reported with full MER correction in [section 6.1](#61-ma100-vs-ma200-walk-forward).
 
 ### Conclusions on Exit MA
 
 **QQQ — MA200 wins decisively.** MA200 produces +4.57pp more CAGR than MA100 and a better worst year. The MA200 is slow enough to ignore normal bull-market volatility; MA100 triggers false exits that cut off profitable compounding runs. Do not use MA100 or MA50 for QQQ.
 
-**SPY — MA100 is marginally better.** With SPY's low exit threshold (price must drop 5% *below* the MA), both MAs trigger at similar market moments. MA100 gives essentially identical CAGR (+22.40% vs 22.21%) but reduces the worst single year from −38.3% to −31.8%. For risk-conscious investors, MA100 is the better SPY choice.
+**SPY — MA100 wins on both axes once walk-forward is applied.** In-sample full-history results put MA100 and MA200 within 0.2pp on CAGR with MA100 ahead on worst year (−31.8% vs −38.3%). The stronger test is the expanding-window walk-forward (annual re-optimization, see [section 6.1](#61-ma100-vs-ma200-walk-forward)): there MA100 produces **21.92% CAGR vs 20.14% for MA200 (+1.78pp), worst year −31.8% vs −37.1% (+5.3pp), and max drawdown −44.8% vs −57.9% (+13pp)**. Every MA100 walk-forward window converged on identical params (entry≈1.01–1.02, exit=0.95, drop=0.5%, buy=40%), which is a stronger parameter-robustness signal than MA200's mild year-to-year drift. **MA100 is the recommended SPY exit MA.**
 
 **IWM — MA200 only.** IWM's thin leveraged edge (1.95pp) evaporates entirely with MA100 (−0.55pp vs B&H), and worsens further with MA50. The more frequent exits due to IWM's higher volatility destroy any remaining edge.
 
@@ -403,6 +404,8 @@ The optimizer's answer was unambiguous: **100% 3×, 0% 2×, 0% base stock topped
 ---
 
 ## 6. Results — Walk-Forward Validation
+
+> **Note on exit MA:** This section uses the MA200 exit signal throughout. [Section 6.1](#61-ma100-vs-ma200-walk-forward) re-runs the SPY expanding-window walk-forward with an MA100 exit and finds it materially better. The MA200 SPY numbers below remain accurate but are no longer the recommended SPY configuration.
 
 ### Methodology
 
@@ -567,7 +570,7 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 
 **QQQ: annual re-optimization provides clear, material benefit.** CAGR improves by +2.11pp (27.26% vs 25.15%) and the worst year shrinks from −35.5% to −25.9% — nearly 10pp of tail risk eliminated. The mechanism is intuitive: QQQ's optimal parameters are regime-sensitive. The optimizer absorbed the 2016–2017 bull market and tightened the exit, which paid off in 2018. After the 2019 choppy recovery, it raised the dip trigger from 0.5% to 2.0% — requiring a more meaningful pullback before buying — which prevented costly false entries during the COVID crash.
 
-**SPY: annual re-optimization primarily reduces drawdown rather than boosting CAGR.** The CAGR gain is negligible (+0.15pp) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. But the worst year still improves meaningfully (−37.1% vs −43.9% in 2022), suggesting the annual pass is worth running for risk management alone.
+**SPY (MA200 exit): annual re-optimization primarily reduces drawdown rather than boosting CAGR.** The CAGR gain is negligible (+0.15pp) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. But the worst year still improves meaningfully (−37.1% vs −43.9% in 2022), suggesting the annual pass is worth running for risk management alone. **The bigger lever for SPY is switching exit to MA100** — see [section 6.1](#61-ma100-vs-ma200-walk-forward), which delivers an additional +1.78pp CAGR and 5.3pp better worst year on top of the expanding-window benefit.
 
 **The core strategy does not depend on annual tuning.** The fixed (2003–2013) model still beats buy-and-hold by +6.4pp for both indices — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite.
 
@@ -587,6 +590,63 @@ This does not require re-running the optimizer. It is a 2-minute backtester chec
 ![SPY three-way comparison 2014–2025](results/walkforward/SPY_walkforward_2014-2025_comparison.png)
 
 > To reproduce: `python walkforward.py --preset QQQ` (or `--preset SPY`). Phase 1 (optimizer) takes ~30 min and is cached to `results/walkforward/`. Re-run Phase 2 only with `--no-rebuild`.
+
+### 6.1 MA100 vs MA200 Walk-Forward
+
+Section 4 hinted that MA100 was marginally better for SPY based on full-history backtests. The harder question is whether MA100 still wins under the same expanding-window walk-forward methodology used above — annual re-optimization on prior data only, no look-ahead. The answer is yes, by a wider margin than the full-history numbers suggested.
+
+**Param schedule (MA100 exit, expanding window, SPY):**
+
+Every year converged to the same combo regardless of training window length:
+
+| Year traded | Entry | Drop | Exit | Buy% |
+|---|---|---|---|---|
+| 2014–2016 | 1.01× | 0.5% | 0.95× | 40% |
+| 2017–2025 | 1.02× | 0.5% | 0.95× | 40% |
+
+This is stricter parameter stability than MA200, which drifted between exit 0.95 and 0.97 across the 12 windows.
+
+**SPY MA100 vs MA200 — expanding window comparison:**
+
+| Metric | MA200 | MA100 | Δ |
+|---|---|---|---|
+| Strategy CAGR | 20.14% | **21.92%** | **+1.78pp** |
+| Edge vs B&H | +6.55pp | **+8.33pp** | +1.78pp |
+| Worst year (2022) | −37.09% | **−31.78%** | +5.31pp |
+| Max drawdown | −57.87% | **−44.80%** | +13.07pp |
+| Sharpe ratio | 0.69 | **0.76** | +0.07 |
+| Final value | $90,307 | **$107,688** | +$17,381 |
+| Fixed-model CAGR (2003–2013 params, frozen) | 19.99% | 19.89% | −0.10pp |
+| Fixed-model worst year | −43.91% | −45.18% | −1.27pp |
+
+The annual-re-optimization mode (expanding window) is what should drive the recommendation. There MA100 wins on every metric: higher CAGR, better worst year, materially better max drawdown, and a higher Sharpe.
+
+The fixed-model comparison is more nuanced — frozen 2003–2013 params produce nearly identical CAGRs and a slightly worse worst year for MA100. This says the 2003–2013 sample alone wasn't enough to make MA100 look better; only adding post-2013 data tips the balance. That's not a red flag — re-optimizing each year is the operating mode this paper recommends anyway — but it does mean the case for MA100 SPY is weaker if you refuse to re-optimize.
+
+**Year-by-year breakdown — MA100 SPY expanding window:**
+
+| Year | MA100 Strategy | MA200 Strategy | SPY B&H |
+|---|---|---|---|
+| 2014 | +45.6% | +45.6% | +14.6% |
+| 2015 | −17.4% | −17.4% | +1.2% |
+| 2016 | +4.8% | +14.1% | +12.0% |
+| 2017 | +71.4% | +71.4% | +21.7% |
+| 2018 | −8.0% | −15.3% | −4.6% |
+| 2019 | +44.9% | +44.9% | +31.2% |
+| 2020 | +21.3% | −8.9% | +18.3% |
+| 2021 | +98.6% | +98.6% | +28.7% |
+| 2022 | **−31.8%** | −37.1% | −18.2% |
+| 2023 | +11.9% | +42.2% | +26.2% |
+| 2024 | +63.6% | +63.6% | +24.9% |
+| 2025 | +24.4% | +18.1% | +18.6% |
+
+MA100's biggest wins are 2020 (+30pp better — caught the post-COVID up-leg cleanly) and 2022 (+5pp better worst-year). It gives back ground in 2016 (−9pp) and 2023 (−30pp, the strategy's biggest single-year miss). Net effect over 12 years is decisively in MA100's favor.
+
+![SPY MA100 walk-forward 2014–2025](results/walkforward/SPY_walkforward_2014-2025_ma100_comparison.png)
+
+> To reproduce: `python walkforward.py --preset SPY --exit-ma 100`. Phase 1 takes ~30 min and is cached to `results/walkforward/SPY_param_schedule_ma100.json`.
+
+**Recommendation:** Use MA100 as the SPY exit MA. QQQ and IWM stay on MA200 — section 4's full-history result for those indices was conclusive enough (MA100 cuts QQQ's CAGR by ~4.6pp, and IWM's edge already evaporates with MA100).
 
 ---
 
@@ -642,6 +702,8 @@ COVID was the ideal scenario for both strategies, but the magnitude of the edge 
 This is the most revealing divergence between QQQ and SPY. QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's wide exit (0.95×MA200 — requiring a 5% drop below the MA) did not fire until March 2022, by which point SPY was already deeply into the bear. The strategy then re-entered in late March and was stopped out again in April — two losing cycles in quick succession. SPY's worst strategy year was −38.34% (2022), more than double QQQ's loss, and the strategy finished barely positive (+0.67%) — actually **underperforming SPY buy-and-hold by 3.09pp**.
 
 The same exit threshold that protected SPY through the dot-com crash (by keeping it out for two full bear years) became a liability here: the 2022 decline was fast and sharp enough that the 5% buffer simply absorbed more damage before firing.
+
+> **The MA100 exit changes this picture.** Walk-forward SPY with MA100 produced a 2022 return of **−31.78%** vs the MA200 walk-forward's −37.09% — over 5pp recovered, with all other parameters identical. The faster MA cuts shorter the lag between the trend break and the exit. See [section 6.1](#61-ma100-vs-ma200-walk-forward).
 
 ![QQQ rate-hike bear market 2021–2023](results/backtester/QQQ/QQQ_2021-2023_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
 
@@ -834,10 +896,13 @@ results/backtester/                       # auto-saved results (one folder per p
 results/walkforward/                      # auto-saved walk-forward and heatmap outputs
   QQQ_walkforward_2014-2025_comparison.png
   QQQ_walkforward_2014-2025_yearly.csv
-  SPY_walkforward_2014-2025_comparison.png
+  SPY_walkforward_2014-2025_comparison.png       # MA200 exit (default)
   SPY_walkforward_2014-2025_yearly.csv
+  SPY_walkforward_2014-2025_ma100_comparison.png # MA100 exit (--exit-ma 100)
+  SPY_walkforward_2014-2025_ma100_yearly.csv
   QQQ_param_schedule.json                 # cached per-year optimal params (skip Phase 1 with --no-rebuild)
-  SPY_param_schedule.json
+  SPY_param_schedule.json                 # MA200 schedule
+  SPY_param_schedule_ma100.json           # MA100 schedule
   param_robustness_heatmap.png
 leveraged_qqq_exploration/
   optimizer.py                            # MA200 exit optimizer for QQQ (full history)
@@ -911,7 +976,7 @@ python backtester.py --preset QQQ --start 2003-01-01 \
   --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 \
   --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 
-# SPY MA200 best
+# SPY MA200 full-history best (legacy — for the recommended MA100 SPY config, see below)
 python backtester.py --preset SPY --start 2003-01-01 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 \
   --buy-pct 0.3 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
@@ -935,10 +1000,26 @@ python backtester.py --preset QQQ --start 2015-01-01 \
   --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 \
   --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 
-# MA100 exit variant
+# SPY MA100 (recommended exit MA — see section 6.1 for walk-forward validation)
 python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.95 \
   --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
+```
+
+#### Walk-forward (annual re-optimization)
+
+```bash
+# QQQ walk-forward (MA200 exit, only choice for QQQ)
+python walkforward.py --preset QQQ
+
+# SPY walk-forward — MA100 exit (recommended)
+python walkforward.py --preset SPY --exit-ma 100
+
+# SPY walk-forward — MA200 exit (legacy / comparison)
+python walkforward.py --preset SPY
+
+# Re-run Phase 2 only (uses cached schedule)
+python walkforward.py --preset SPY --exit-ma 100 --no-rebuild --no-show
 ```
 
 ### Running the Optimizers

@@ -126,6 +126,7 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
         "lev3": _build_lev_nav(base, dl(lev3_tk), 3, annual_mer=_MER_3X[preset]),
     }).dropna(subset=["base"])
     df["ret"]   = df["base"].pct_change().fillna(0)
+    df["MA100"] = df["base"].rolling(100).mean()
     df["MA200"] = df["base"].rolling(200).mean()
     return df
 
@@ -142,13 +143,15 @@ def _build_grid():
             if x < e]
 
 
-def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2):
+def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
+                  exit_ma: int = 200):
     ax3  = 1.0 - ax2
     f    = df.iloc[0]
     nb   = df["base"].values / f["base"]
     n2   = df["lev2"].values / f["lev2"]
     n3   = df["lev3"].values / f["lev3"]
-    ma   = df["MA200"].values / f["base"]
+    ma_arm  = df["MA200"].values / f["base"]              # arm always uses MA200
+    ma_exit = df[f"MA{exit_ma}"].values / f["base"]       # exit uses selected MA
 
     cash = CAPITAL
     s_b = s_2 = s_3 = 0.0
@@ -157,14 +160,15 @@ def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2):
     port[0] = CAPITAL
 
     for i in range(1, len(df)):
-        if np.isnan(ma[i]) or ma[i] == 0:
+        if (np.isnan(ma_arm[i]) or ma_arm[i] == 0
+                or np.isnan(ma_exit[i]) or ma_exit[i] == 0):
             port[i] = port[i-1]
             continue
 
         vb = s_b * nb[i]; v2 = s_2 * n2[i]; v3 = s_3 * n3[i]
         tot = cash + vb + v2 + v3
 
-        if nb[i] < ma[i] * exit_ and (s_2 > 0 or s_3 > 0):
+        if nb[i] < ma_exit[i] * exit_ and (s_2 > 0 or s_3 > 0):
             cash += v2 + v3
             s_2 = s_3 = 0.0
             if not bt and ab > 0:
@@ -174,10 +178,10 @@ def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2):
                 bt = True
             armed = False
         else:
-            if not armed and nb[i] > ma[i] * entry:
+            if not armed and nb[i] > ma_arm[i] * entry:
                 armed = True
             d = (nb[i-1] - nb[i]) / nb[i-1] if nb[i-1] > 0 else 0.0
-            if armed and nb[i] > ma[i] * entry and d >= drop and cash > 0.01:
+            if armed and nb[i] > ma_arm[i] * entry and d >= drop and cash > 0.01:
                 tot = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
                 if not bf and ab > 0:
                     sp = min(max(tot * ab - s_b * nb[i], 0), cash)
@@ -215,13 +219,13 @@ def _check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
 # ──────────────────────────────────────────────────────────────
 
 def build_param_schedule(preset: str, start_year: int, end_year: int,
-                         df_full: pd.DataFrame) -> dict:
+                         df_full: pd.DataFrame, exit_ma: int = 200) -> dict:
     dd_start = PRESETS[preset]["dd_start"]
     grid     = _build_grid()
     schedule = {}
 
     print(f"\nPhase 1 — building param schedule ({preset}, "
-          f"{start_year}–{end_year})")
+          f"{start_year}–{end_year}, exit_ma=MA{exit_ma})")
     print(f"  {len(grid):,} combos × {end_year - start_year + 1} training windows\n")
 
     for trade_yr in range(start_year, end_year + 1):
@@ -234,7 +238,8 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
         best_cagr, best = -np.inf, None
         for entry, drop, exit_, buy, ab, ax2 in tqdm(
                 grid, desc=f"  2003–{train_end}", leave=False):
-            c, port = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2)
+            c, port = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
+                                    exit_ma=exit_ma)
             ok, _   = _check_dd(df_train, port, dd_start)
             if ok and c > best_cagr:
                 best_cagr = c
@@ -264,7 +269,7 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
 
 def run_walkforward(preset: str, schedule: dict,
                     start_year: int, end_year: int,
-                    capital: float, no_show: bool):
+                    capital: float, no_show: bool, exit_ma: int = 200):
 
     int_sched = {int(k): v for k, v in schedule.items()}
     p0        = int_sched[min(int_sched)]
@@ -281,13 +286,14 @@ def run_walkforward(preset: str, schedule: dict,
         alloc_base=p0["alloc_base"],
         alloc_x2=p0["alloc_x2"],
         alloc_x3=p0["alloc_x3"],
-        exit_ma=200,
+        exit_ma=exit_ma,
         cost_per_trade=0.0,
         no_show=no_show,
         save_plot=None,
     )
 
-    print(f"\nPhase 2 — walk-forward backtest ({preset}, {start_year}–{end_year})\n")
+    print(f"\nPhase 2 — walk-forward backtest ({preset}, {start_year}–{end_year}, "
+          f"exit_ma=MA{exit_ma})\n")
     hist, year_df, trans_df, base_tk = run_backtest(args, param_schedule=int_sched)
     print_results(hist, year_df, trans_df, base_tk, args)
 
@@ -312,32 +318,37 @@ def run_walkforward(preset: str, schedule: dict,
     out_dir = Path(__file__).parent / "results" / "walkforward"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    slug = f"{preset}_walkforward_{start_year}-{end_year}"
+    # MA200 keeps original filenames for back-compat; non-200 gets a suffix
+    ma_tag = "" if exit_ma == 200 else f"_ma{exit_ma}"
+    slug = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}"
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
     print(f"\n  Saved: results/walkforward/{slug}_yearly.csv")
 
     _save_command_log(int_sched, preset, start_year, end_year,
-                      out_dir / f"{slug}_commands.txt")
+                      out_dir / f"{slug}_commands.txt", exit_ma=exit_ma)
 
     # Fixed model: 2003-(start_year-1) params frozen for the full period
     print(f"\nRunning fixed model (2003-{start_year-1} params, frozen) for comparison …")
     hist_fixed, year_df_fixed = _run_fixed_model(
-        preset, p0, start_year, end_year, capital)
+        preset, p0, start_year, end_year, capital, exit_ma=exit_ma)
 
     _print_comparison_table(year_df, year_df_fixed, hist, hist_fixed, base_tk,
                             start_year, end_year)
 
     _plot_comparison(hist, hist_fixed, base_tk, preset, start_year, end_year,
-                     out_dir / f"{slug}_comparison.png", no_show)
+                     out_dir / f"{slug}_comparison.png", no_show,
+                     exit_ma=exit_ma)
 
     return hist, year_df
 
 
 def _save_command_log(int_sched: dict, preset: str, start_year: int,
-                      end_year: int, save_path: Path):
+                      end_year: int, save_path: Path, exit_ma: int = 200):
     import datetime
+    ma_flag = "" if exit_ma == 200 else f" --exit-ma {exit_ma}"
     lines = [
-        f"# Walk-forward command log — {preset} {start_year}–{end_year}",
+        f"# Walk-forward command log — {preset} {start_year}–{end_year} "
+        f"(exit MA{exit_ma})",
         f"# Generated: {datetime.date.today()}",
         f"#",
         f"# Each block is the equivalent backtester.py call for that trade year.",
@@ -348,7 +359,8 @@ def _save_command_log(int_sched: dict, preset: str, start_year: int,
         p = int_sched[yr]
         lines += [
             f"# Year {yr}  (trained on 2003–{yr-1})",
-            f"python backtester.py --preset {preset} --start {yr}-01-01 --end {yr}-12-31 \\",
+            f"python backtester.py --preset {preset} --start {yr}-01-01 "
+            f"--end {yr}-12-31{ma_flag} \\",
             f"  --entry-signal {p['entry_signal']} --drop-level {p['drop_level']} "
             f"--exit-signal {p['exit_signal']} \\",
             f"  --buy-pct {p['buy_pct']} --alloc-base {p.get('alloc_base', 0.0)} "
@@ -360,7 +372,8 @@ def _save_command_log(int_sched: dict, preset: str, start_year: int,
 
 
 def _run_fixed_model(preset: str, first_params: dict,
-                     start_year: int, end_year: int, capital: float):
+                     start_year: int, end_year: int, capital: float,
+                     exit_ma: int = 200):
     """Run backtester with 2003-(start_year-1) params frozen for the full period."""
     p = first_params
     args = argparse.Namespace(
@@ -375,7 +388,7 @@ def _run_fixed_model(preset: str, first_params: dict,
         alloc_base=p["alloc_base"],
         alloc_x2=p["alloc_x2"],
         alloc_x3=p["alloc_x3"],
-        exit_ma=200,
+        exit_ma=exit_ma,
         cost_per_trade=0.0,
         no_show=True,
         save_plot=None,
@@ -441,7 +454,8 @@ def _print_comparison_table(year_exp, year_fix, hist_exp, hist_fix,
 
 
 def _plot_comparison(hist_exp, hist_fix, base_tk, preset,
-                     start_year, end_year, save_path, no_show):
+                     start_year, end_year, save_path, no_show,
+                     exit_ma: int = 200):
     fig, ax = plt.subplots(figsize=(14, 7))
 
     days   = (hist_exp.index[-1] - hist_exp.index[0]).days
@@ -460,7 +474,8 @@ def _plot_comparison(hist_exp, hist_fix, base_tk, preset,
             linewidth=1.5, color="darkorange")
 
     ax.set_title(
-        f"Walk-Forward Comparison — {preset}  |  {start_year}–{end_year}\n"
+        f"Walk-Forward Comparison — {preset}  |  {start_year}–{end_year}  "
+        f"|  exit MA{exit_ma}\n"
         f"Fixed (2003-{start_year-1} params, frozen)  vs  "
         f"Expanding window (re-optimized each year)  vs  {base_tk} B&H",
         fontsize=10,
@@ -491,6 +506,9 @@ def _parse_args():
     p.add_argument("--start-year", type=int, default=2014)
     p.add_argument("--end-year",   type=int, default=2025)
     p.add_argument("--capital",    type=float, default=10_000)
+    p.add_argument("--exit-ma",    type=int, default=200, choices=[100, 200],
+                   help="MA period used for exit signal "
+                        "(arm/entry always uses MA200)")
     p.add_argument("--no-rebuild", action="store_true",
                    help="Skip Phase 1 if the param schedule JSON already exists")
     p.add_argument("--no-show",    action="store_true",
@@ -503,7 +521,9 @@ if __name__ == "__main__":
 
     out_dir       = Path(__file__).parent / "results" / "walkforward"
     out_dir.mkdir(parents=True, exist_ok=True)
-    schedule_path = out_dir / f"{args.preset}_param_schedule.json"
+    # MA200 keeps the original schedule filename for back-compat
+    sched_suffix  = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
+    schedule_path = out_dir / f"{args.preset}_param_schedule{sched_suffix}.json"
 
     if args.no_rebuild and schedule_path.exists():
         print(f"Loading cached schedule: {schedule_path}")
@@ -511,7 +531,8 @@ if __name__ == "__main__":
     else:
         df_full  = load_full_data(args.preset, f"{args.end_year}-12-31")
         schedule = build_param_schedule(
-            args.preset, args.start_year, args.end_year, df_full)
+            args.preset, args.start_year, args.end_year, df_full,
+            exit_ma=args.exit_ma)
         schedule_path.write_text(json.dumps(schedule, indent=2))
         print(f"\n  Saved schedule: {schedule_path}")
 
@@ -519,4 +540,5 @@ if __name__ == "__main__":
         args.preset, schedule,
         args.start_year, args.end_year,
         args.capital, args.no_show,
+        exit_ma=args.exit_ma,
     )
