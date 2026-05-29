@@ -315,10 +315,14 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
 
 def run_walkforward(preset: str, schedule: dict,
                     start_year: int, end_year: int,
-                    capital: float, no_show: bool, exit_ma: int = 200):
+                    capital: float, no_show: bool,
+                    exit_ma: int = 200, tie_tolerance: float = 0.0):
 
     int_sched = {int(k): v for k, v in schedule.items()}
-    p0        = int_sched[min(int_sched)]
+    # Fixed-model baseline = the params for the START year (trained on data
+    # through start_year-1). Falls back to the earliest schedule row if the
+    # start year isn't present.
+    p0 = int_sched.get(start_year, int_sched[min(int_sched)])
 
     args = argparse.Namespace(
         preset=preset,
@@ -364,9 +368,12 @@ def run_walkforward(preset: str, schedule: dict,
     out_dir = Path(__file__).parent / "results" / "walkforward"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # MA200 keeps original filenames for back-compat; non-200 gets a suffix
-    ma_tag = "" if exit_ma == 200 else f"_ma{exit_ma}"
-    slug = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}"
+    # MA200 keeps original filenames for back-compat; non-200 gets a suffix.
+    # Tie-break runs add _tiebreak so Highest CAGR and Balanced variants
+    # never collide on the same output files.
+    ma_tag  = "" if exit_ma == 200 else f"_ma{exit_ma}"
+    tie_tag = "_tiebreak" if tie_tolerance > 0 else ""
+    slug    = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}"
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
     print(f"\n  Saved: results/walkforward/{slug}_yearly.csv")
 
@@ -549,8 +556,8 @@ def _parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument("--preset",     default="QQQ", choices=["QQQ", "SPY", "IWM"])
-    p.add_argument("--start-year", type=int, default=2014)
-    p.add_argument("--end-year",   type=int, default=2025)
+    p.add_argument("--start-year", type=int, default=2015)
+    p.add_argument("--end-year",   type=int, default=2026)
     p.add_argument("--capital",    type=float, default=10_000)
     p.add_argument("--exit-ma",    type=int, default=200, choices=[100, 200],
                    help="MA period used for exit signal "
@@ -635,4 +642,5 @@ if __name__ == "__main__":
         args.start_year, args.end_year,
         args.capital, args.no_show,
         exit_ma=args.exit_ma,
+        tie_tolerance=_tie_tol_resolved,
     )

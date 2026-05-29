@@ -1,15 +1,4 @@
 {
-  "2014": {
-    "entry_signal": 1.04,
-    "drop_level": 0.005,
-    "exit_signal": 0.95,
-    "buy_pct": 0.4,
-    "alloc_base": 0.0,
-    "alloc_x2": 1.0,
-    "alloc_x3": 0.0,
-    "train_cagr": 9.21,
-    "train_worst_year": -17.71
-  },
   "2015": {
     "entry_signal": 1.05,
     "drop_level": 0.005,
