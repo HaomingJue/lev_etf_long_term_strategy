@@ -100,13 +100,13 @@ Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces 
 
 **How to re-optimize each January:**
 ```bash
-# Highest CAGR (default) — rebuilds the full schedule including the new year's row
-python walkforward.py --preset QQQ
+# Highest CAGR (default) — extends the schedule to include the upcoming trade year
+python walkforward.py --preset QQQ --end-year <upcoming-year>
 
 # Balanced (opt-in tie-break)
-python walkforward.py --preset QQQ --tie-tolerance 0.01
+python walkforward.py --preset QQQ --end-year <upcoming-year> --tie-tolerance 0.01
 ```
-Computational cost: ~30 min per run for the full 2014→current-year rebuild. To append only the newest year (much faster, ~5 min per variant), run `python add_2026_row.py` after editing its `JOBS` list and target trade-year for the upcoming year — it merges into the existing JSON instead of overwriting. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
+Computational cost: ~30 min per run. The new schedule replaces the old one in `results/walkforward/QQQ_param_schedule*.json`. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
 
 **Honest take on the variant choice:** the Balanced variant trades **4pp CAGR for 20pp better max DD — but the worst calendar year is essentially unchanged**. Only enable if max-DD smoothing matters to you more than terminal wealth. For most investors using annual review at year-end, the Highest CAGR variant is correct.
 
