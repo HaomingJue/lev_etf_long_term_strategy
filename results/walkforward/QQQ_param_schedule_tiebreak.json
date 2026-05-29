@@ -130,5 +130,16 @@
     "alloc_x3": 1.0,
     "train_cagr": 20.95,
     "train_worst_year": -27.68
+  },
+  "2026": {
+    "entry_signal": 1.05,
+    "drop_level": 0.01,
+    "exit_signal": 1.0,
+    "buy_pct": 0.3,
+    "alloc_base": 0.0,
+    "alloc_x2": 0.0,
+    "alloc_x3": 1.0,
+    "train_cagr": 20.63,
+    "train_worst_year": -27.68
   }
 }

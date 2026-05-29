@@ -81,14 +81,18 @@ The walk-forward CAGR is sometimes higher than the full-history CAGR (as for QQQ
 
 ¹ The tie-break rule is applied per training window during walk-forward; it has no direct full-history equivalent.
 
-**Live trading params (most recent walk-forward year, 2025):**
+> **Schedule year convention.** In every table and JSON file in this repo, a row labeled **year N** was trained on data from 2003-01-02 through **Dec 31 of year N−1** and is intended for trading during **calendar year N**. The 2026 row below was produced in 2026-01 from data ending 2025-12-31; the previous 2025 row was produced in 2025-01 from data ending 2024-12-31. Always use the latest row (or re-run the January re-opt if the current calendar year does not have a row yet).
+
+**Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
 
 | Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) |
 |---|---|---|---|---|---|---|---|
-| Highest CAGR | 1.06×MA200 | 0.5% | 1.00×MA200 | 40% | 0% | 0% | **100%** |
-| Balanced | 1.05×MA200 | 1.0% | 1.00×MA200 | 40% | 0% | 0% | **100%** |
+| Highest CAGR | 1.03×MA200 | 0.5% | 1.01×MA200 | 40% | 0% | 0% | **100%** |
+| Balanced (opt-in tie-break) | 1.05×MA200 | 1.0% | 1.00×MA200 | 30% | 0% | 0% | **100%** |
 
-> The 2025 params look nearly identical between variants because both converged to 100% TQQQ in the latest window. The walk-forward CAGR gap comes from **earlier** windows, where the Balanced rule preferred diversified allocations (10–20% base SPY, 25–75% QLD). Full year-by-year schedule comparison: [§6.2](#62-qqq-tie-break-rule).
+> **Year-over-year shift, Highest CAGR variant.** The 2025 schedule row was entry 1.06 / exit 1.00; 2026 pulled back to entry 1.03 / exit 1.01. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and the continuity-filter discussion in [§6.2](#62-qqq-tie-break-rule). The Balanced variant is essentially unchanged from 2025 (only `buy_pct` shifted 40% → 30%).
+>
+> For reference, both 2026 variants converged to 100% TQQQ, just like the 2025 rows. The walk-forward CAGR gap between Highest CAGR and Balanced comes from **earlier** windows, where the Balanced rule preferred diversified allocations (10–20% base SPY, 25–75% QLD).
 
 **Annual re-optimization: REQUIRED for QQQ.** Without it, expect a meaningful CAGR penalty.
 
@@ -96,13 +100,13 @@ Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces 
 
 **How to re-optimize each January:**
 ```bash
-# Highest CAGR (default)
+# Highest CAGR (default) — rebuilds the full schedule including the new year's row
 python walkforward.py --preset QQQ
 
 # Balanced (opt-in tie-break)
 python walkforward.py --preset QQQ --tie-tolerance 0.01
 ```
-Computational cost: ~30 min per run. The new schedule replaces the old one in `results/walkforward/QQQ_param_schedule*.json`. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
+Computational cost: ~30 min per run for the full 2014→current-year rebuild. To append only the newest year (much faster, ~5 min per variant), run `python add_2026_row.py` after editing its `JOBS` list and target trade-year for the upcoming year — it merges into the existing JSON instead of overwriting. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
 
 **Honest take on the variant choice:** the Balanced variant trades **4pp CAGR for 20pp better max DD — but the worst calendar year is essentially unchanged**. Only enable if max-DD smoothing matters to you more than terminal wealth. For most investors using annual review at year-end, the Highest CAGR variant is correct.
 
@@ -115,14 +119,14 @@ Computational cost: ~30 min per run. The new schedule replaces the old one in `r
 | **Recommended (MA100 exit)** | 22.40% | **21.92%** | −31.78% (2022) | **−44.80%** | **$107,688** |
 | MA200 exit (legacy) | 21.98% | 20.14% | −37.09% (2022) | −57.87% | $90,307 |
 
-**Live trading params (most recent walk-forward year, 2025):**
+**Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
 
 | Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (UPRO) |
 |---|---|---|---|---|---|---|---|
 | Recommended (MA100) | 1.02×MA200 | 0.5% | 0.95×MA100 | 40% | 0% | 0% | **100%** |
 | MA200 (legacy) | 1.02×MA200 | 0.5% | 0.97×MA200 | 40% | 0% | 0% | **100%** |
 
-> MA100 dominates MA200 on every axis (higher CAGR, better worst year, better max DD, better Sharpe). No reason to use MA200 unless you specifically want backwards-compatibility with earlier versions. Full comparison: [§6.1](#61-ma100-vs-ma200-walk-forward).
+> SPY's schedule is structurally stable — the 2026 row is identical to 2014–2025 for both variants. MA100 dominates MA200 on every axis (higher CAGR, better worst year, better max DD, better Sharpe). No reason to use MA200 unless you specifically want backwards-compatibility with earlier versions. Full comparison: [§6.1](#61-ma100-vs-ma200-walk-forward).
 
 **Annual re-optimization: OPTIONAL for SPY** (lower benefit than for QQQ).
 
