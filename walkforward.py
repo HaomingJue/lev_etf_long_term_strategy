@@ -562,6 +562,13 @@ def _parse_args():
                         "Defaults: QQQ=0.01, SPY/IWM=0.0. Pass 0.0 to force plain top-CAGR.")
     p.add_argument("--no-rebuild", action="store_true",
                    help="Skip Phase 1 if the param schedule JSON already exists")
+    p.add_argument("--only-year",  type=int, default=None,
+                   help="Optimize only this single trade year (training data = "
+                        "2003 to Dec 31 of year-1) and MERGE the result into the "
+                        "existing schedule JSON, preserving all other years. "
+                        "Skips Phase 2 (backtest, plots, CSVs). Use this for the "
+                        "annual January re-opt — much faster than rebuilding the "
+                        "whole schedule.")
     p.add_argument("--no-show",    action="store_true",
                    help="Suppress interactive plot window")
     return p.parse_args()
@@ -570,22 +577,58 @@ def _parse_args():
 if __name__ == "__main__":
     args = _parse_args()
 
-    out_dir       = Path(__file__).parent / "results" / "walkforward"
+    # --only-year: scope the run to a single window, skip Phase 2
+    if args.only_year is not None:
+        args.start_year = args.only_year
+        args.end_year   = args.only_year
+
+    out_dir = Path(__file__).parent / "results" / "walkforward"
     out_dir.mkdir(parents=True, exist_ok=True)
-    # MA200 keeps the original schedule filename for back-compat
+
+    # Schedule path: MA200 keeps the original filename for back-compat;
+    # non-200 adds _ma{N}; tie-break runs (tolerance > 0) add _tiebreak so
+    # the Highest CAGR and Balanced variants never collide on the same file.
+    _tie_tol_resolved = (args.tie_tolerance
+                         if args.tie_tolerance is not None
+                         else _DEFAULT_TIE_TOLERANCE.get(args.preset, 0.0))
     sched_suffix  = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
+    if _tie_tol_resolved > 0:
+        sched_suffix += "_tiebreak"
     schedule_path = out_dir / f"{args.preset}_param_schedule{sched_suffix}.json"
 
     if args.no_rebuild and schedule_path.exists():
         print(f"Loading cached schedule: {schedule_path}")
         schedule = json.loads(schedule_path.read_text())
     else:
-        df_full  = load_full_data(args.preset, f"{args.end_year}-12-31")
+        # For --only-year, just need data through that year's training cutoff.
+        end_buffer = (f"{args.only_year}-01-15"
+                      if args.only_year is not None
+                      else f"{args.end_year}-12-31")
+        df_full  = load_full_data(args.preset, end_buffer)
         schedule = build_param_schedule(
             args.preset, args.start_year, args.end_year, df_full,
             exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance)
-        schedule_path.write_text(json.dumps(schedule, indent=2))
-        print(f"\n  Saved schedule: {schedule_path}")
+
+        if args.only_year is not None:
+            # Merge into existing schedule — preserve all other years.
+            existing = {}
+            if schedule_path.exists():
+                existing = json.loads(schedule_path.read_text())
+            for yr_int, row in schedule.items():
+                existing[str(yr_int)] = row
+            schedule_path.write_text(json.dumps(existing, indent=2))
+            years_now = sorted(int(k) for k in existing.keys())
+            print(f"\n  Merged year {args.only_year} into {schedule_path}")
+            print(f"  Schedule now spans: {years_now[0]}–{years_now[-1]} "
+                  f"({len(years_now)} rows)")
+        else:
+            schedule_path.write_text(json.dumps(schedule, indent=2))
+            print(f"\n  Saved schedule: {schedule_path}")
+
+    # --only-year: skip Phase 2 — there's no meaningful continuous backtest window
+    if args.only_year is not None:
+        print(f"  Phase 2 skipped (--only-year mode).")
+        sys.exit(0)
 
     run_walkforward(
         args.preset, schedule,

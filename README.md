@@ -100,13 +100,17 @@ Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces 
 
 **How to re-optimize each January:**
 ```bash
-# Highest CAGR (default) — extends the schedule to include the upcoming trade year
-python walkforward.py --preset QQQ --end-year <upcoming-year>
+# Highest CAGR — appends the new row to QQQ_param_schedule.json
+python walkforward.py --preset QQQ --only-year <upcoming-year>
 
-# Balanced (opt-in tie-break)
-python walkforward.py --preset QQQ --end-year <upcoming-year> --tie-tolerance 0.01
+# Balanced — appends to QQQ_param_schedule_tiebreak.json (separate file)
+python walkforward.py --preset QQQ --only-year <upcoming-year> --tie-tolerance 0.01
 ```
-Computational cost: ~30 min per run. The new schedule replaces the old one in `results/walkforward/QQQ_param_schedule*.json`. Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
+Computational cost: ~5 min per run. `--only-year` runs the optimizer for that single training window (2003 → Dec 31 of year-1), merges the result into the existing schedule JSON, and skips Phase 2. The Balanced variant writes to a separate `_tiebreak.json` file so the two variants never collide.
+
+If you want to rebuild the full 2014→current-year walk-forward simulation (Phase 2 backtest, comparison plot, yearly CSV), use `--end-year <year>` instead of `--only-year` — but expect ~30 min per run and a partial-year row if the current year isn't complete.
+
+Apply the latest year's params to the next 12 months of trading. See [§6.2 continuity-filter note](#62-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
 
 **Honest take on the variant choice:** the Balanced variant trades **4pp CAGR for 20pp better max DD — but the worst calendar year is essentially unchanged**. Only enable if max-DD smoothing matters to you more than terminal wealth. For most investors using annual review at year-end, the Highest CAGR variant is correct.
 
@@ -134,10 +138,12 @@ Evidence: a *fixed model* using 2003–2013 params frozen through 2025 produces 
 
 **How to re-optimize each January (recommended but not strictly required):**
 ```bash
-# Recommended (MA100 exit)
-python walkforward.py --preset SPY --exit-ma 100
+# Recommended (MA100 exit) — appends to SPY_param_schedule_ma100.json
+python walkforward.py --preset SPY --exit-ma 100 --only-year <upcoming-year>
 ```
-Computational cost: ~30 min. If you skip annual re-opt for SPY, you can safely run the strategy with the fixed 2014-onwards params (entry 1.01–1.02×MA200, drop 0.5%, exit 0.95×MA100, buy 40%, 100% UPRO) — every walk-forward year picked params in that cluster.
+Computational cost: ~5 min with `--only-year` (single window, merged into existing JSON; Phase 2 skipped). Use `--end-year <year>` instead if you want to rebuild the full walk-forward simulation (~30 min).
+
+If you skip annual re-opt for SPY, you can safely run the strategy with the fixed 2014-onwards params (entry 1.01–1.02×MA200, drop 0.5%, exit 0.95×MA100, buy 40%, 100% UPRO) — every walk-forward year picked params in that cluster.
 
 ---
 
