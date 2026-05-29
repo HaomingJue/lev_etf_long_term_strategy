@@ -153,7 +153,7 @@ If you skip annual re-opt for SPY, you can safely run the strategy with the fixe
 |---|---|---|---|---|
 | Best 2003–2014 train params, frozen | 5.41% | 9.14% | **−3.73pp ✗** | Failed OOS |
 
-IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6](#out-of-sample-test-20152026-11-years-genuinely-unseen)
+IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026-11-years-genuinely-unseen)
 
 ---
 
@@ -522,7 +522,9 @@ This replicates real-world conditions: an investor who finished optimizing in la
 | SPY | **26.35%** | 9.25% | **+17.10pp** | −14.6% (2011) | −39.3% | 0.86 |
 | IWM | 15.26% | 11.32% | +3.94pp | −25.4% (2011) | −66.1% | 0.54 |
 
-### Out-of-Sample Test: 2015–2026 (11 years, genuinely unseen)
+### Strict OOS Test: Train 2003–2014, Test 2015–2026 (11 years, genuinely unseen)
+
+> **Heads-up — two "frozen-params" tests exist in this paper.** This is the **strict single-split** version (train 2003–2014, test 2015–2026). The walk-forward section below ([§6 expanding-window](#expanding-window-walk-forward-annual-re-optimization-20142025)) also runs a frozen-params baseline, but with **different windows** (train 2003–2013, test 2014–2025). The numbers don't match across the two tests — the +57% 2014 strategy year is in this section's *training* window but the walk-forward section's *test* window, which alone accounts for ~4pp of the gap. Both tests are valid; this one is the harder bar.
 
 These results use only the parameters found from 2003–2014 data. The strategy had no information about what happened post-2014.
 
@@ -610,9 +612,9 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 | 2024 | +56.7% | +25.6% | +63.6% | +24.9% |
 | 2025 | +16.6% | +21.8% | +18.1% | +18.6% |
 
-**Three-way comparison: Fixed (2003–2013) vs Expanding Window vs B&H**
+**Three-way comparison (test window: 2014–2025): Fixed (trained 2003–2013) vs Expanding Window (annual re-opt) vs B&H**
 
-> All three start from $10,000 on 2014-01-01.
+> All three start from $10,000 on 2014-01-01. **Note:** the "Fixed" baseline here is a *different* frozen-params test from the [strict OOS test earlier in this section](#strict-oos-test-train-20032014-test-20152026-11-years-genuinely-unseen). That earlier test trains on 2003–2014 and tests on 2015–2026; this one trains on 2003–2013 and tests on 2014–2025. The +57% strategy return in 2014 is the dominant reason the Fixed-edge-vs-B&H differs (+6.43pp here vs +2.03pp in the strict OOS for QQQ).
 
 #### QQQ
 
@@ -662,7 +664,7 @@ SPY params were remarkably stable across all 12 windows — entry settled at 1.0
 
 **SPY (MA200 exit): annual re-optimization primarily reduces drawdown rather than boosting CAGR.** The CAGR gain is negligible (+0.15pp) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. But the worst year still improves meaningfully (−37.1% vs −43.9% in 2022), suggesting the annual pass is worth running for risk management alone. **The bigger lever for SPY is switching exit to MA100** — see [section 6.1](#61-ma100-vs-ma200-walk-forward), which delivers an additional +1.78pp CAGR and 5.3pp better worst year on top of the expanding-window benefit.
 
-**The core strategy does not depend on annual tuning.** The fixed (2003–2013) model still beats buy-and-hold by +6.4pp for both indices — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite.
+**The core strategy does not depend on annual tuning.** The fixed (2003–2013) model still beats buy-and-hold by +6.4pp for both indices over the 2014–2025 window — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite. (For the stricter "single train/test split" version of this claim — train 2003–2014, test 2015–2026 — see the [strict OOS test above in this section](#strict-oos-test-train-20032014-test-20152026-11-years-genuinely-unseen); the edge is smaller there (+2.03pp for QQQ) because the +57% 2014 strategy year falls inside the training window.)
 
 **Recommendation: run the optimizer annually and update params for the coming year.** The computational cost is approximately 30 minutes per preset. The benefit — better alignment with evolving market regimes and meaningfully better worst-case outcomes — justifies it. For QQQ specifically, where parameter drift is largest, skipping annual updates leaves both CAGR and risk management on the table.
 
