@@ -1,5 +1,5 @@
 Preset          : QQQ
-Period          : 2015-01-01 -> 2026-12-31
+Period          : 2015-01-01 -> 2026-05-30
 Entry signal    : 1.04x MA200
 Exit signal     : 0.95x MA200
 Drop level      : 0.50%
@@ -7,10 +7,10 @@ Buy pct         : 40% per signal
 Alloc base      : 0%  lev2 0%  lev3 100%
 Cost per trade  : 0.000%
 
-Strategy CAGR   : 22.46%
-B&H CAGR (QQQ)  : 19.70%
-Strategy edge   : +2.76pp
-Final value     : $100,756.88
+Strategy CAGR   : 22.57%
+B&H CAGR (QQQ)  : 19.74%
+Strategy edge   : +2.83pp
+Final value     : $101,816.47
 Worst year      : -35.97%
 Max drawdown    : -64.86%
 Sharpe ratio    : 0.67

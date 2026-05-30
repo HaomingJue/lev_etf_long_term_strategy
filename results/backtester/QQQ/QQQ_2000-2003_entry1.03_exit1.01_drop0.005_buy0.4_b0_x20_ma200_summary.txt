@@ -10,7 +10,7 @@ Cost per trade  : 0.000%
 Strategy CAGR   : -20.35%
 B&H CAGR (QQQ)  : -21.23%
 Strategy edge   : +0.88pp
-Final value     : $4,035.50
+Final value     : $4,035.51
 Worst year      : -80.29%
 Max drawdown    : -90.32%
 Sharpe ratio    : -0.01

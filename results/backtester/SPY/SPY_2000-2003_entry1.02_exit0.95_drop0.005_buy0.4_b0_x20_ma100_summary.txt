@@ -10,7 +10,7 @@ Cost per trade  : 0.000%
 Strategy CAGR   : 7.19%
 B&H CAGR (SPY)  : -5.21%
 Strategy edge   : +12.40pp
-Final value     : $13,189.31
+Final value     : $13,189.30
 Worst year      : -23.67%
 Max drawdown    : -38.19%
 Sharpe ratio    : 0.38

@@ -1,5 +1,5 @@
 Preset          : IWM
-Period          : 2015-01-01 -> 2026-12-31
+Period          : 2015-01-01 -> 2026-05-30
 Entry signal    : 1.02x MA200
 Exit signal     : 0.95x MA200
 Drop level      : 1.50%
@@ -7,10 +7,10 @@ Buy pct         : 40% per signal
 Alloc base      : 0%  lev2 0%  lev3 100%
 Cost per trade  : 0.000%
 
-Strategy CAGR   : 6.74%
-B&H CAGR (IWM)  : 9.59%
-Strategy edge   : -2.85pp
-Final value     : $21,037.79
+Strategy CAGR   : 6.57%
+B&H CAGR (IWM)  : 9.54%
+Strategy edge   : -2.96pp
+Final value     : $20,670.67
 Worst year      : -31.71%
 Max drawdown    : -66.52%
 Sharpe ratio    : 0.36

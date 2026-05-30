@@ -700,6 +700,45 @@ def plot_results(hist, base_tk, args):
     else:
         plt.show(block=True)
 
+    # --- drawdown figure ---
+    bh_dd    = (hist["BuyHold"]  / hist["BuyHold"].cummax()  - 1) * 100
+    strat_dd = (hist["Strategy"] / hist["Strategy"].cummax() - 1) * 100
+
+    fig2, ax2 = plt.subplots(figsize=(14, 5))
+    ax2.plot(hist.index, bh_dd,    color="steelblue",  linewidth=1.2,
+             label=f"{base_tk} B&H")
+    ax2.plot(hist.index, strat_dd, color="darkorange", linewidth=1.2,
+             label="Strategy")
+    ax2.fill_between(hist.index, strat_dd, 0, alpha=0.15, color="darkorange")
+    ax2.set_title(
+        f"Drawdown — {base_tk}  |  "
+        f"Entry >{args.entry_signal}x MA200 & drop >{args.drop_level*100:.1f}%  |  "
+        f"Exit <{args.exit_signal}x MA{args.exit_ma}",
+        fontsize=10,
+    )
+    ax2.set_ylabel("Drawdown (%)")
+    ax2.set_xlabel("Date")
+    ax2.legend(fontsize=11)
+    ax2.grid(True, alpha=0.4)
+    ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
+    plt.tight_layout()
+
+    if args.save_plot:
+        p = Path(args.save_plot)
+        dd_path = p.with_name(p.stem + "_drawdown" + p.suffix)
+    elif args.no_show:
+        out_dir = _auto_out_dir(args)
+        dd_path = out_dir / f"{_run_slug(args)}_drawdown.png"
+    else:
+        dd_path = None
+
+    if dd_path:
+        plt.savefig(dd_path, dpi=150)
+        print(f"  Saved: {dd_path}")
+        plt.close()
+    else:
+        plt.show(block=True)
+
 
 # ----------------------------------------------------------
 # ENTRY POINT

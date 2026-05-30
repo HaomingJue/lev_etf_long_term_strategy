@@ -373,6 +373,7 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 ```
 
 ![QQQ full history 2003–2026](results/backtester/QQQ/QQQ_2003-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ full history 2003–2026 — drawdown](results/backtester/QQQ/QQQ_2003-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 
 #### SPY — S&P 500 / UPRO (MA100 exit — the optimum SPY config)
 
@@ -399,6 +400,7 @@ python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
 ```
 
 ![SPY full history 2003–2026 (MA100)](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY full history 2003–2026 (MA100) — drawdown](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 #### IWM — Russell 2000 / TNA
 
@@ -425,6 +427,7 @@ python backtester.py --preset IWM --start 2003-01-01 \
 ```
 
 ![IWM full history 2003–2026](results/backtester/IWM/IWM_2003-2026_entry1.05_exit0.95_drop0.015_buy0.3_b10_x20_ma200.png)
+![IWM full history 2003–2026 — drawdown](results/backtester/IWM/IWM_2003-2026_entry1.05_exit0.95_drop0.015_buy0.3_b10_x20_ma200_drawdown.png)
 
 ---
 
@@ -553,8 +556,11 @@ These results use only the parameters found from 2003–2014 data. The strategy 
 **Note on SPY worst year under strict OOS:** The −45.18% in 2022 is a single-window tail-event metric and noisier than the expanding-window number reported in the next subsection (where SPY's 2022 lands at −31.78% under annual re-optimization). The frozen single-split test concentrates regime risk into one year; the expanding-window simulation distributes it across re-optimized params.
 
 ![QQQ strict OOS 2015–2026 (2003–2014 train params)](results/backtester/QQQ/QQQ_2015-2026_entry1.04_exit0.95_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ strict OOS 2015–2026 — drawdown](results/backtester/QQQ/QQQ_2015-2026_entry1.04_exit0.95_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 ![SPY strict OOS 2015–2026 (2003–2014 train params)](results/backtester/SPY/SPY_2015-2026_entry1.01_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY strict OOS 2015–2026 — drawdown](results/backtester/SPY/SPY_2015-2026_entry1.01_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 ![IWM strict OOS 2015–2026 (2003–2014 train params, failed)](results/backtester/IWM/IWM_2015-2026_entry1.02_exit0.95_drop0.015_buy0.4_b0_x20_ma200.png)
+![IWM strict OOS 2015–2026 — drawdown](results/backtester/IWM/IWM_2015-2026_entry1.02_exit0.95_drop0.015_buy0.4_b0_x20_ma200_drawdown.png)
 
 ### Full-History Best Params: Reference Comparison
 
@@ -569,7 +575,9 @@ For context, the same 2015–2026 period run with parameters optimized on the **
 The large QQQ gap (−17.37pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−4.98pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
 
 ![QQQ full-history params on 2015–2026 (for reference)](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ full-history params on 2015–2026 — drawdown](results/backtester/QQQ/QQQ_2015-2026_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 ![SPY full-history params on 2015–2026 (for reference)](results/backtester/SPY/SPY_2015-2026_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY full-history params on 2015–2026 — drawdown](results/backtester/SPY/SPY_2015-2026_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 ### Expanding-Window Walk-Forward (Annual Re-Optimization, 2015–2026)
 
@@ -691,7 +699,9 @@ This does not require re-running the optimizer. It is a 2-minute backtester chec
 **Three-way comparison — Fixed model (2003–2014 params, frozen) vs Expanding Window (annual re-opt) vs Buy & Hold:**
 
 ![QQQ three-way comparison 2015–2026](results/walkforward/QQQ_walkforward_2015-2026_comparison.png)
+![QQQ three-way comparison 2015–2026 — drawdown](results/walkforward/QQQ_walkforward_2015-2026_comparison_drawdown.png)
 ![SPY three-way comparison 2015–2026](results/walkforward/SPY_walkforward_2015-2026_ma100_comparison.png)
+![SPY three-way comparison 2015–2026 — drawdown](results/walkforward/SPY_walkforward_2015-2026_ma100_comparison_drawdown.png)
 
 > To reproduce: `python walkforward.py --preset QQQ --start-year 2015 --end-year 2026 --no-rebuild` (QQQ) or `python walkforward.py --preset SPY --exit-ma 100 --start-year 2015 --end-year 2026 --no-rebuild` (SPY). Phase 1 (optimizer) is cached to `results/walkforward/`. To extend with a new trade year, use `--only-year` instead (see §1 Recommended Configurations).
 
@@ -751,6 +761,7 @@ The rule consistently picked combos with allocation diversification (some `alloc
 | 2026 (YTD) | +17.8% | +0.1% | −17.7pp | Tie-break sat out the YTD rally |
 
 ![QQQ tie-break walk-forward 2015–2026](results/walkforward/QQQ_walkforward_2015-2026_tiebreak_comparison.png)
+![QQQ tie-break walk-forward 2015–2026 — drawdown](results/walkforward/QQQ_walkforward_2015-2026_tiebreak_comparison_drawdown.png)
 
 **Honest assessment:**
 
@@ -797,8 +808,10 @@ We ran the strategy against four major market dislocations for both QQQ and SPY,
 Both strategies outperformed through the worst financial crisis in 80 years. QQQ's tight exit (1.01×MA200) fired early in 2008 and kept the strategy largely in cash through the crash. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2008 too. SPY's worst calendar year of −28.42% is the deepest single-year loss in this period — the GFC is the one crisis where SPY MA100's faster exit also takes a sharper single-year hit before recovering. Both finished with positive CAGR vs flat-to-negative B&H; QQQ's edge (+11.58pp) was larger than SPY's (+8.33pp) because tech recovered more explosively in 2009.
 
 ![QQQ GFC 2007–2010](results/backtester/QQQ/QQQ_2007-2010_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ GFC 2007–2010 — drawdown](results/backtester/QQQ/QQQ_2007-2010_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 
 ![SPY GFC 2007–2010 (MA100)](results/backtester/SPY/SPY_2007-2010_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY GFC 2007–2010 (MA100) — drawdown](results/backtester/SPY/SPY_2007-2010_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 ### 7.2 COVID Crash and Recovery: 2019-10-01 → 2021-06-30
 
@@ -814,8 +827,10 @@ Both strategies outperformed through the worst financial crisis in 80 years. QQQ
 COVID was the ideal scenario for both strategies. QQQ's tight exit fired immediately in the crash and re-armed early in the V-shaped recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return over 20 months. SPY MA100 captured the rebound cleanly, re-arming in time for the April–May explosive leg and finishing +64.38% with no down year.
 
 ![QQQ COVID crash and recovery 2019–2021](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ COVID crash and recovery 2019–2021 — drawdown](results/backtester/QQQ/QQQ_2019-2021_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 
 ![SPY COVID crash and recovery 2019–2021 (MA100)](results/backtester/SPY/SPY_2019-2021_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY COVID crash and recovery 2019–2021 (MA100) — drawdown](results/backtester/SPY/SPY_2019-2021_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 ### 7.3 Rate-Hike Bear Market: 2021-06-01 → 2023-06-30
 
@@ -831,8 +846,10 @@ COVID was the ideal scenario for both strategies. QQQ's tight exit fired immedia
 QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2022 too, before the deepest leg of the bear, limiting SPY losses to −31.78% and finishing positive at +6.86% with a small +3.10pp edge over buy-and-hold. The 2022 rate-hike bear is one of the strongest validators of MA100 as SPY's exit MA — the faster exit fired before the steepest leg of the decline, where a slower MA would have ridden it down.
 
 ![QQQ rate-hike bear market 2021–2023](results/backtester/QQQ/QQQ_2021-2023_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ rate-hike bear market 2021–2023 — drawdown](results/backtester/QQQ/QQQ_2021-2023_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 
 ![SPY rate-hike bear market 2021–2023 (MA100)](results/backtester/SPY/SPY_2021-2023_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY rate-hike bear market 2021–2023 (MA100) — drawdown](results/backtester/SPY/SPY_2021-2023_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 ### 7.4 Dot-com Bubble & Recovery: 2000-01-03 → 2003-12-31
 
@@ -866,8 +883,10 @@ SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) kept the strategy in 
 **The verdict:** The dot-com crash reveals the true catastrophic downside for QQQ specifically. An investor who deployed the QQQ strategy at peak valuations (January 2000) would have lost roughly 80% of their initial capital in the first year alone, with nearly all of that recovered by December 2003 — just barely ahead of buy-and-hold by +0.88pp CAGR. SPY's defensive exit (now MA100-based) proved far more durable through this regime, generating a +7.19% CAGR (+12.40pp edge) through the same crash. This reinforces that QQQ's tight exit signal is optimized for bull-market regimes — in a prolonged multi-year bear, SPY's structural conservatism is a meaningful advantage.
 
 ![QQQ dot-com bubble 2000–2003](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200.png)
+![QQQ dot-com bubble 2000–2003 — drawdown](results/backtester/QQQ/QQQ_2000-2003_entry1.03_exit1.01_drop0.005_buy0.4_b0_x20_ma200_drawdown.png)
 
 ![SPY dot-com bubble 2000–2003 (MA100)](results/backtester/SPY/SPY_2000-2003_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100.png)
+![SPY dot-com bubble 2000–2003 (MA100) — drawdown](results/backtester/SPY/SPY_2000-2003_entry1.02_exit0.95_drop0.005_buy0.4_b0_x20_ma100_drawdown.png)
 
 ---
 

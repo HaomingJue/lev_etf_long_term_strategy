@@ -1,13 +1,8 @@
 # Walk-forward command log — SPY 2015–2026 (exit MA100)
-# Generated: 2026-05-29
+# Generated: 2026-05-30
 #
 # Each block is the equivalent backtester.py call for that trade year.
 # Re-run any year with: python backtester.py [args]
-
-# Year 2014  (trained on 2003–2013)
-python backtester.py --preset SPY --start 2014-01-01 --end 2014-12-31 --exit-ma 100 \
-  --entry-signal 1.01 --drop-level 0.005 --exit-signal 0.95 \
-  --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 
 # Year 2015  (trained on 2003–2014)
 python backtester.py --preset SPY --start 2015-01-01 --end 2015-12-31 --exit-ma 100 \

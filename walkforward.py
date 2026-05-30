@@ -545,6 +545,40 @@ def _plot_comparison(hist_exp, hist_fix, base_tk, preset,
         plt.show(block=True)
     plt.close()
 
+    # --- drawdown figure ---
+    bh_dd    = (hist_exp["BuyHold"]  / hist_exp["BuyHold"].cummax()  - 1) * 100
+    fix_dd   = (hist_fix["Strategy"] / hist_fix["Strategy"].cummax() - 1) * 100
+    exp_dd   = (hist_exp["Strategy"] / hist_exp["Strategy"].cummax() - 1) * 100
+
+    fig2, ax2 = plt.subplots(figsize=(14, 5))
+    ax2.plot(hist_exp.index, bh_dd,  color="steelblue",      linewidth=1.2,
+             label=f"{base_tk} B&H")
+    ax2.plot(hist_fix.index, fix_dd, color="mediumseagreen",  linewidth=1.2,
+             linestyle="--", label=f"Fixed model 2003-{start_year-1}")
+    ax2.plot(hist_exp.index, exp_dd, color="darkorange",      linewidth=1.2,
+             label="Expanding window")
+    ax2.fill_between(hist_exp.index, exp_dd, 0, alpha=0.12, color="darkorange")
+    ax2.set_title(
+        f"Drawdown — Walk-Forward {preset}  |  {start_year}–{end_year}  "
+        f"|  exit MA{exit_ma}",
+        fontsize=10,
+    )
+    ax2.set_ylabel("Drawdown (%)")
+    ax2.set_xlabel("Date")
+    ax2.legend(fontsize=11)
+    ax2.grid(True, alpha=0.4)
+    ax2.yaxis.set_major_formatter(
+        mticker.FuncFormatter(lambda x, _: f"{x:.0f}%"))
+    plt.tight_layout()
+
+    p = Path(save_path)
+    dd_path = p.with_name(p.stem + "_drawdown" + p.suffix)
+    plt.savefig(dd_path, dpi=150)
+    print(f"  Saved: {dd_path}")
+    if not no_show:
+        plt.show(block=True)
+    plt.close()
+
 
 # ──────────────────────────────────────────────────────────────
 # CLI
