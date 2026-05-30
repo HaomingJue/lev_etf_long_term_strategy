@@ -160,7 +160,20 @@ IWM's small-cap volatility creates higher LETF decay, and the strategy's trainin
 
 # Part 2 — How We Got Here (Exploration)
 
-The work behind the recommendation: what we tested, what we eliminated, and how the chosen params emerged. Sections 1–2 set up the strategy and methodology; sections 3–5 explore the parameter space (allocation, exit MA, leverage); section 6 validates the chosen approach under realistic out-of-sample conditions.
+The recommendation in Part 1 didn't fall out of one optimizer run. It came from working through a chain of questions, each answer setting up the next. Here's the path the rest of this paper takes:
+
+1. **Why bother with a strategy at all?** ([§1](#1-strategy-description)) — Buy-and-hold 3× ETFs blew up >99% in 2000–2002 and ~95% in 2008. Holding forever isn't viable. We need to be *in* leveraged ETFs during confirmed uptrends only.
+2. **How do we identify "confirmed uptrend"?** ([§2](#2-methodology)–[§3](#3-full-history-grid-search-20032026)) — Design a dip-buy strategy with **MA200** as the trend filter (the canonical long-term trend indicator). Run a 15,840-combo grid search to find the best parameter set per index.
+3. **Could a faster exit MA help?** ([§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50)) — Test MA200 vs MA100 vs MA50 for the exit signal. SPY wins with MA100; QQQ stays on MA200; MA50 is too jumpy for any index.
+4. **Could 2× leverage be the better trade-off?** ([§5](#5-choosing-the-leverage-2-vs-3)) — Smaller drawdowns, but the CAGR sacrifice is too large. 3× still wins.
+5. **Does the edge survive out-of-sample?** ([§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)) — Train on 2003–2014, test on 2015–2026. Yes for QQQ/SPY (+2–3pp edge over B&H), no for IWM. **This validates the structure**.
+6. **Does annual re-optimization help on top of that?** ([§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)) — Yes, materially for QQQ (+2.35pp on top of the OOS baseline), modestly for SPY (+~2pp + meaningfully smaller drawdown). **This is the recommended operating mode**.
+7. **Could we trade some CAGR for less max drawdown?** ([§6.2](#62-qqq-tie-break-rule)) — Tie-break rule for QQQ. Honest answer: costs ~4pp CAGR, barely changes worst calendar year. Disabled by default.
+8. **How would each chosen config have handled the actual historical crises?** ([§7](#7-crisis-period-stress-tests)) — Dot-com bubble, 2008 GFC, COVID crash, 2022 rate-hike, each tested with the optimum config per index.
+
+If you only have 5 minutes, the path is [§3](#3-full-history-grid-search-20032026) → [§6](#6-walk-forward-validation) → [§7](#7-crisis-period-stress-tests).
+
+The walk-forward number ([§6](#6-walk-forward-validation)) is the honest forward expectation. The full-history number ([§3](#3-full-history-grid-search-20032026)) is hindsight-optimized and biased upward — don't anchor on it.
 
 ## 1. Strategy Description
 
@@ -423,7 +436,7 @@ python backtester.py --preset IWM --start 2003-01-01 \
 
 ## 4. Choosing the Exit MA (MA200 vs MA100 vs MA50)
 
-The hypothesis: a faster exit MA would cut losses in sharp reversals without meaningfully hurting upside. We optimized each exit MA independently across the same 15,840-combo grid.
+[§3](#3-full-history-grid-search-20032026) gave us a working configuration per index using MA200 for both arming and exit. But MA200 is a slow signal — by the time price has broken meaningfully below the 200-day average, a lot of damage may already be done. **Could a faster exit MA cut tail losses without sacrificing too much trend capture?** This section tests MA200 vs MA100 vs MA50 for the exit signal specifically (arm stays on MA200 throughout).
 
 ### Optimizer Leaderboard by Exit MA
 
@@ -469,6 +482,8 @@ The hypothesis: a faster exit MA would cut losses in sharp reversals without mea
 
 ## 5. Choosing the Leverage (2× vs 3×)
 
+With the exit MA settled in [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50), one more dial is worth testing before locking in the strategy: **leverage level itself.** Going from 3× to 2× should cut drawdowns ~33% with less compounding decay — could that be the better risk/return trade?
+
 The optimizer grid included `alloc_x2` (fraction of leveraged spending going to the 2× ETF) and `alloc_x3` (remainder going to the 3× ETF), as well as `alloc_base` (a separate unleveraged base position). The idea was that mixing in some 2× exposure or holding a small base stock position might reduce drawdowns enough to justify the CAGR cost — perhaps enabling more aggressive position sizing elsewhere.
 
 The optimizer's answer was unambiguous: **100% 3×, 0% 2×, 0% base stock topped the leaderboard for every index.** Partial allocations to 2× or base improved worst-year drawdown marginally but reduced CAGR by 3–6pp — a poor trade over 23 years of compounding. The table below isolates the 2× vs 3× comparison directly, holding all other parameters equal.
@@ -492,7 +507,9 @@ The optimizer's answer was unambiguous: **100% 3×, 0% 2×, 0% base stock topped
 
 ## 6. Walk-Forward Validation
 
-> **Section structure.** §6 first runs a **strict single-split** out-of-sample test (train 2003–2014, hold out 2015–2026), then extends that into an **expanding-window walk-forward** (annual re-optimization 2015–2026). The two share the same training cutoff and test window, so the strict-OOS result is exactly the **Fixed-model baseline** of the walk-forward — they are equivalent by construction. The expanding-window result then shows how much *additional* edge annual re-optimization adds on top of that baseline.
+[§3](#3-full-history-grid-search-20032026)–[§5](#5-choosing-the-leverage-2-vs-3) found a configuration that looks great on the full 23 years. But the optimizer has seen *every* day it's tuning against — those numbers are in-sample by definition. The real question is whether anything survives once we hide future data from the optimizer. This section answers it twice: first with a strict single train/test split (frozen 2003–2014 params applied to 2015–2026), then with an expanding-window walk-forward that simulates re-optimizing every January with only the data available at that time. The two tests share the same training cutoff and test window, so the strict-OOS result is exactly the **Fixed-model baseline** of the walk-forward — they are equivalent by construction. The expanding-window result then shows how much *additional* edge annual re-optimization adds on top of that baseline.
+
+> **Section structure.** §6 first runs the **strict single-split** OOS test, then extends to the **expanding-window walk-forward** (annual re-opt 2015–2026).
 >
 > **Exit MA convention:** SPY uses the MA100 exit established in [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50); QQQ and IWM use MA200. All §6 tables and charts reflect those per-index choices.
 
@@ -766,7 +783,7 @@ What the rule does *not* do (despite the original hypothesis):
 
 # Part 3 — Validation with Chosen Parameters
 
-Having justified the chosen configs in Part 2, we now test them under historical stress: every major US equity crisis since 2003, plus a robustness check of the parameter neighborhood.
+Configs locked in Part 2. One final question before publication: **how would each chosen config have handled the actual bear markets in our sample?** Aggregate CAGR is the right top-line metric, but it can hide what happens during the specific weeks each crisis was the most painful to be invested. §7 plays the recommended configs forward through four named crises and reports period CAGR, worst calendar year inside the period, and max drawdown for each. §8 then does a separate robustness check: is the optimum a sharp spike or a broad plateau in parameter space?
 
 ## 7. Crisis Period Stress Tests
 
@@ -942,11 +959,13 @@ The heatmaps below show **median CAGR across all passing combos** for each (row,
 
 **QQQ — entry × drop level (top-right panel): 0.5% dip is structural.** The 0.5% drop column is clearly dominant regardless of entry threshold. Moving to 1.0%+ drop meaningfully degrades performance. This is more spike-like: the dip threshold matters and 0.5% is the right regime for QQQ's large-cap, trend-following behavior. This is still interpretable — QQQ produces frequent small dips in bull markets; waiting for a 1%+ drop misses most of them.
 
-**SPY (MA100) — entry × exit (bottom-left panel): exit threshold is load-bearing.** The exit=0.95× column (leftmost) is dominant. Entry signal barely matters once exit is right — the entire left column is bright regardless of which entry level is used. The strategy's SPY alpha is driven almost entirely by the exit rule: staying in cash until price clearly breaks below MA100 (−5% buffer) is what generates the edge. This is a mixed result: robust to entry choice, sensitive to exit choice.
+**SPY (MA100) — entry × exit (bottom-left panel): exit threshold is load-bearing.** Looking at the production grid alone, only the exit=0.95 column is consistently bright — adjacent grid values (0.97, 0.99) are noticeably darker. That reads as a spike, not a plateau. Honest reading: the SPY exit is more fragile than QQQ's.
+
+To stress-test this, we re-ran the full-history SPY MA100 optimizer with a shifted grid: `entry ∈ [0.98, 0.99, 1.00, 1.01, 1.02, 1.03]` × `exit ∈ [0.91, 0.93, 0.94, 0.95, 0.97, 0.99]` (denser around 0.95, including sub-MA200 entries). The result reproduces the original optimum exactly — **(entry=1.02, exit=0.95) still wins by both CAGR and worst calendar year.** Two refinements emerge: (a) exit values 0.93 and 0.94 are within ~0.4pp CAGR of 0.95 (so there's a small micro-plateau on CAGR — the original "knife-edge" framing was partly a discretization artifact); but (b) those wider exits trade away ~7pp on the worst-year metric (−39.7% vs −32.95%), so 0.95 is still the right choice on the *combined* CAGR-plus-worst-year ranking. No sub-MA200 entry made the top 20 — for SPY too, the "confirmed uptrend" premise (entry > 1.0) is structurally necessary. Files: `leveraged_spy_exploration/optimizer_shifted_grid.py` and `leveraged_spy_exploration/ma100_shifted/`.
 
 **SPY (MA100) — entry × drop level (bottom-right panel): broader plateau.** Multiple drop levels (0.5%–1.5%) produce similar performance for SPY. This confirms that SPY's entry timing is less critical than QQQ's — SPY's larger, slower trends make dip threshold less important.
 
-**Overall verdict:** The QQQ and SPY strategies are not sitting on isolated parameter spikes. The core alpha is embedded in a recognizable, economically interpretable region of parameter space. The main fragility for QQQ is the drop level (0.5% is structurally superior); for SPY it is the exit threshold (0.95× MA100 drives the bulk of the alpha). These are not arbitrary numbers — they correspond to the natural scale of dips in each index's typical bull-market regime.
+**Overall verdict:** The QQQ strategy sits on a broad plateau (entry × exit), which is strong robustness. The SPY strategy is robust on entry and drop but **narrowly load-bearing on exit** — the working band on the exit axis is roughly 0.93–0.95×MA100, with 0.95 the best pick. That narrower-than-QQQ band is a real fragility, but the exit threshold's economic interpretation (price has clearly broken below the 100-day average) is interpretable, not arbitrary. Both alphas are real, not data artifacts; SPY's just has less safety margin around its load-bearing parameter than QQQ's.
 
 To reproduce:
 ```bash
