@@ -14,14 +14,21 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 ## Research Overview
 
-Six questions, six answers — each links to where it's worked out in detail.
+The recommendation in Part 1 came from working through a chain of questions, each answer setting up the next. The arc:
 
-1. **Can you safely hold 3× ETFs long-term?** No. Volatility decay and bear crashes make permanent ownership ruinous. We built a rules-based system that only holds 3× ETFs during confirmed uptrends. → [§1](#1-strategy-description)
-2. **What's the optimum parameter set per index?** A 15,840-combo grid search across entry/drop/exit/buy/allocation. **100% 3× ETF allocation wins on CAGR across all three indices** (~+6pp vs the 2× alternative; ~12pp worse worst-year drawdowns). Per-index exit MA: **MA200 for QQQ and IWM, MA100 for SPY**. MA50 hurts all three. → [§3](#3-full-history-grid-search-20032026), [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50), [§5](#5-choosing-the-leverage-2-vs-3)
-3. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (single-split OOS positive: +2.76pp / +2.23pp). IWM failed OOS (−2.85pp vs B&H) and is **not recommended**. → [§6](#6-walk-forward-validation)
-4. **Does annual re-optimization help?** Yes, substantially. Expanding-window walk-forward (annual re-opt, 2015–2026): **QQQ +5.11pp, SPY +4.30pp (MA100)** over B&H — the recommended operating mode. → [§6](#6-walk-forward-validation)
-5. **Does the strategy survive every major crisis since 2003?** Tested in GFC, COVID, 2022 rate hikes, and dot-com (predates the sample, weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
-6. **Honest design choices and their cost.** The optimum sits in a broad parameter plateau (not data-mined). The drawdown filter is calendar-year-based, not max-DD-based — a deliberate choice that costs ~1.8pp CAGR (QQQ) / ~4.3pp (SPY) if tightened. An opt-in QQQ "tie-break" rule trades CAGR for max-DD smoothing (tested, mostly didn't deliver). → [§6.1](#61-qqq-tie-break-rule), [§8](#parameter-robustness-analysis), [§9](#9-risk-considerations--design-honesty)
+1. **Can you safely hold 3× ETFs long-term?** No — TQQQ lost >99% in 2000–2002 and ~95% in 2008. The strategy needs to hold 3× ETFs *only* during confirmed uptrends and exit on trend break. → [§1](#1-strategy-description)
+2. **What's the optimum parameter set per index?** A 15,840-combo grid search (entry × drop × exit × buy × allocation) with a **MA200** trend filter and −40% calendar-year DD filter. **100% 3× ETF wins on CAGR across all three indices** (~+6pp vs the 2× alternative, accepting ~10pp worse worst-year DD). → [§2](#2-methodology), [§3](#3-full-history-grid-search-20032026)
+3. **Could a faster exit MA help?** Yes — for SPY. **MA200 for QQQ and IWM, MA100 for SPY** (verified head-to-head; MA100 SPY beats MA200 SPY on every metric under annual re-opt). MA50 hurts all three. → [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50)
+4. **Could 2× leverage be the better risk/return trade?** No. 2× cuts worst-year DD ~10pp but loses 5–6pp CAGR. 3× wins for any investor who can hold through −30% to −40% calendar years. → [§5](#5-choosing-the-leverage-2-vs-3)
+5. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (strict single-split OOS: **+2.76pp / +2.23pp** over B&H, 2015–2026). IWM failed OOS (−2.85pp) and is **not recommended**. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
+6. **Does annual re-optimization add more edge?** Yes. Expanding-window walk-forward 2015–2026: **QQQ +5.11pp, SPY +4.30pp** over B&H — the re-opt itself contributes ~+2.35pp for QQQ on top of the OOS baseline. **This is the recommended operating mode.** → [§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)
+7. **Is the optimum on a robust plateau or a fragile spike?** QQQ sits on a broad plateau on the entry × exit grid — moving 1–2 grid steps barely changes performance. SPY is more narrowly load-bearing on the exit axis (working band ~0.93–0.95×MA100). A separate **shifted-grid sweep** confirmed `(entry=1.02, exit=0.95)` is still #1, and no sub-MA200 entry survives — strong evidence the "confirmed-uptrend" premise is structural for SPY too. → [§8 robustness](#parameter-robustness-analysis)
+8. **Could we trade some CAGR for less max DD?** Tested via the QQQ tie-break rule. Honest answer: costs ~4pp CAGR, barely changes the worst calendar year (it smooths intra-year drawdown only). Disabled by default; opt-in if max DD matters more than terminal wealth. → [§6.2](#62-qqq-tie-break-rule)
+9. **How would each chosen config have handled real historical crises?** Tested in GFC (2007–2010), COVID (2019–2021), 2022 rate-hike, and dot-com bubble (2000–2003, the weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
+
+**Honest design choices and their cost** (read before deploying): the drawdown filter is calendar-year-based, not max-DD-based — a deliberate choice that costs ~1.8pp CAGR (QQQ) / ~4.3pp (SPY) if tightened to a ~25% YTD cap. The walk-forward number is the honest forward expectation; full-history numbers are hindsight-optimized — don't anchor on them. → [§9](#9-risk-considerations--design-honesty)
+
+**5-minute path:** [§3 optimum config](#3-full-history-grid-search-20032026) → [§6 walk-forward validation](#6-walk-forward-validation) → [§7 crisis stress tests](#7-crisis-period-stress-tests).
 
 ---
 
@@ -160,20 +167,7 @@ IWM's small-cap volatility creates higher LETF decay, and the strategy's trainin
 
 # Part 2 — How We Got Here (Exploration)
 
-The recommendation in Part 1 didn't fall out of one optimizer run. It came from working through a chain of questions, each answer setting up the next. Here's the path the rest of this paper takes:
-
-1. **Why bother with a strategy at all?** ([§1](#1-strategy-description)) — Buy-and-hold 3× ETFs blew up >99% in 2000–2002 and ~95% in 2008. Holding forever isn't viable. We need to be *in* leveraged ETFs during confirmed uptrends only.
-2. **How do we identify "confirmed uptrend"?** ([§2](#2-methodology)–[§3](#3-full-history-grid-search-20032026)) — Design a dip-buy strategy with **MA200** as the trend filter (the canonical long-term trend indicator). Run a 15,840-combo grid search to find the best parameter set per index.
-3. **Could a faster exit MA help?** ([§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50)) — Test MA200 vs MA100 vs MA50 for the exit signal. SPY wins with MA100; QQQ stays on MA200; MA50 is too jumpy for any index.
-4. **Could 2× leverage be the better trade-off?** ([§5](#5-choosing-the-leverage-2-vs-3)) — Smaller drawdowns, but the CAGR sacrifice is too large. 3× still wins.
-5. **Does the edge survive out-of-sample?** ([§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)) — Train on 2003–2014, test on 2015–2026. Yes for QQQ/SPY (+2–3pp edge over B&H), no for IWM. **This validates the structure**.
-6. **Does annual re-optimization help on top of that?** ([§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)) — Yes, materially for QQQ (+2.35pp on top of the OOS baseline), modestly for SPY (+~2pp + meaningfully smaller drawdown). **This is the recommended operating mode**.
-7. **Could we trade some CAGR for less max drawdown?** ([§6.2](#62-qqq-tie-break-rule)) — Tie-break rule for QQQ. Honest answer: costs ~4pp CAGR, barely changes worst calendar year. Disabled by default.
-8. **How would each chosen config have handled the actual historical crises?** ([§7](#7-crisis-period-stress-tests)) — Dot-com bubble, 2008 GFC, COVID crash, 2022 rate-hike, each tested with the optimum config per index.
-
-If you only have 5 minutes, the path is [§3](#3-full-history-grid-search-20032026) → [§6](#6-walk-forward-validation) → [§7](#7-crisis-period-stress-tests).
-
-The walk-forward number ([§6](#6-walk-forward-validation)) is the honest forward expectation. The full-history number ([§3](#3-full-history-grid-search-20032026)) is hindsight-optimized and biased upward — don't anchor on it.
+The supporting analysis for each numbered question in the [Research Overview](#research-overview) above. Sections are ordered along the same exploration arc — §1 motivates the strategy, §2–§3 find the per-index optimum, §4–§5 refine exit MA and leverage, §6 validates out-of-sample and quantifies the annual re-opt benefit, §6.2 explores a tie-break refinement.
 
 ## 1. Strategy Description
 
@@ -1061,6 +1055,38 @@ For QQQ specifically, a **tie-break rule** is documented in [§6.1](#61-qqq-tie-
 ---
 
 ## 10. Technical Reference
+
+### Python Script Reference
+
+All scripts are runnable with `python <script>.py [args]`. Most accept `--no-show` to skip interactive plot windows when running headless (cron, CI, remote SSH).
+
+**Tier 1 — Production / live operating tools** (the only two scripts a live user needs)
+
+| Script | Purpose | Key args | Outputs |
+|---|---|---|---|
+| [`walkforward.py`](walkforward.py) | Annual walk-forward re-optimizer. Phase 1 builds the per-year param schedule; Phase 2 runs the continuous backtest with annual param swap; also runs a fixed-model baseline. | `--preset {QQQ,SPY,IWM}` · `--exit-ma {100,200}` · `--start-year` · `--end-year` · `--only-year YYYY` (append one year, skip Phase 2) · `--tie-tolerance 0.01` (Balanced variant) · `--no-rebuild` (Phase 2 only) · `--no-show` | `results/walkforward/{preset}_param_schedule[*].json` · `_yearly.csv` · `_commands.txt` · `_comparison.png` |
+| [`backtester.py`](backtester.py) | Run a single config on a single date range. Used to verify walk-forward picks, spot-check crisis periods, and generate per-config plots referenced in §3, §4, §6, §7. | `--preset` · `--start` · `--end` · `--entry-signal` · `--drop-level` · `--exit-signal` · `--buy-pct` · `--alloc-base / --alloc-x2 / --alloc-x3` · `--exit-ma {50,100,200}` · `--cost-per-trade` · `--no-show` | `results/backtester/{PRESET}/{...}.png` · `_summary.txt` · `_yearly.csv` |
+
+**Tier 2 — Robustness diagnostics**
+
+| Script | Purpose | Key args | Outputs |
+|---|---|---|---|
+| [`param_heatmap.py`](param_heatmap.py) | 2×2 heatmap of median CAGR across passing combos for QQQ (MA200) and SPY (MA100), entry × exit and entry × drop. The §8 production-grid robustness check. | `--no-show` | `results/walkforward/param_robustness_heatmap.png` |
+| [`leveraged_spy_exploration/optimizer_shifted_grid.py`](leveraged_spy_exploration/optimizer_shifted_grid.py) | Re-runs the full SPY MA100 grid with **shifted axes** (entry 0.98–1.03, exit 0.91–0.99) to confirm the production optimum isn't an edge-of-grid artifact. Run periodically as a drift-detection diagnostic. | `--no-show` | `leveraged_spy_exploration/ma100_shifted/ma100_shifted_results.csv` · `_equity.png` · `_scatter.png` |
+| [`leveraged_spy_exploration/heatmap_shifted.py`](leveraged_spy_exploration/heatmap_shifted.py) | Heatmap rendered from the shifted-grid CSV; same 2-panel layout as `param_heatmap.py` for direct visual comparison. | `--no-show` | `leveraged_spy_exploration/ma100_shifted/heatmap_shifted.png` |
+
+**Tier 3 — Per-index exploration scripts** (used to build §3–§5 results; kept for reproducibility, not needed for live operation)
+
+Each `leveraged_{qqq,spy,iwm}_exploration/` folder contains the same four scripts:
+
+| Script | Purpose | Outputs |
+|---|---|---|
+| `optimizer.py` | Full-history (2003–2026) grid search with **MA200 exit**. Produces the §3 "Optimum Per-Index Config" tables and the §4 MA200 leaderboard rows. | `ma200/optimizer_results.csv` · `optimizer_equity.png` · `optimizer_scatter.png` |
+| `optimizer_train.py` | Same optimizer restricted to **2003–2014** training window only. Used to produce the §6 Strict OOS training params. | `ma200_train/optimizer_results.csv` |
+| `optimizer_ma100_exit.py` | Full-history grid search with **MA100 exit**. Produces the §4 MA100 leaderboard rows and (for SPY) the production config. | `ma100/ma100_exit_results.csv` · plots |
+| `optimizer_ma50_exit.py` | Full-history grid search with **MA50 exit**. Used only to confirm MA50 hurts in §4. | `ma50/ma50_exit_results.csv` · plots |
+
+> **Bottom-line dependency**: If a live user wants to update their schedule annually, they only need `walkforward.py --preset QQQ --only-year <year>` and the SPY equivalent. Everything in Tiers 2 and 3 is research support — kept in the repo so a reader can independently reproduce the paper's findings, but **not part of the operating loop**.
 
 ### Leveraged ETF Mapping
 
