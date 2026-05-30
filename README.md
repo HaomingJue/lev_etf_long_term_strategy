@@ -961,15 +961,43 @@ The heatmaps below show **median CAGR across all passing combos** for each (row,
 
 **SPY (MA100) — entry × exit (bottom-left panel): exit threshold is load-bearing.** Looking at the production grid alone, only the exit=0.95 column is consistently bright — adjacent grid values (0.97, 0.99) are noticeably darker. That reads as a spike, not a plateau. Honest reading: the SPY exit is more fragile than QQQ's.
 
-To stress-test this, we re-ran the full-history SPY MA100 optimizer with a shifted grid: `entry ∈ [0.98, 0.99, 1.00, 1.01, 1.02, 1.03]` × `exit ∈ [0.91, 0.93, 0.94, 0.95, 0.97, 0.99]` (denser around 0.95, including sub-MA200 entries). The result reproduces the original optimum exactly — **(entry=1.02, exit=0.95) still wins by both CAGR and worst calendar year.** Two refinements emerge: (a) exit values 0.93 and 0.94 are within ~0.4pp CAGR of 0.95 (so there's a small micro-plateau on CAGR — the original "knife-edge" framing was partly a discretization artifact); but (b) those wider exits trade away ~7pp on the worst-year metric (−39.7% vs −32.95%), so 0.95 is still the right choice on the *combined* CAGR-plus-worst-year ranking. No sub-MA200 entry made the top 20 — for SPY too, the "confirmed uptrend" premise (entry > 1.0) is structurally necessary. Files: `leveraged_spy_exploration/optimizer_shifted_grid.py` and `leveraged_spy_exploration/ma100_shifted/`.
+To stress-test this, we re-ran the full-history SPY MA100 optimizer with a shifted grid: `entry ∈ [0.98, 0.99, 1.00, 1.01, 1.02, 1.03]` × `exit ∈ [0.91, 0.93, 0.94, 0.95, 0.97, 0.99]` (denser around 0.95, including sub-MA200 entries). The result reproduces the original optimum exactly — **(entry=1.02, exit=0.95) still wins by both CAGR and worst calendar year.** Two refinements emerge: (a) exit values 0.93 and 0.94 are within ~0.4pp CAGR of 0.95 (so there's a small micro-plateau on CAGR — the original "knife-edge" framing was partly a discretization artifact); but (b) those wider exits trade away ~7pp on the worst-year metric (−39.7% vs −32.95%), so 0.95 is still the right choice on the *combined* CAGR-plus-worst-year ranking. No sub-MA200 entry made the top 20 — for SPY too, the "confirmed uptrend" premise (entry > 1.0) is structurally necessary.
+
+![SPY MA100 shifted-grid heatmap](leveraged_spy_exploration/ma100_shifted/heatmap_shifted.png)
+
+**Reading the shifted-grid heatmap:** the brightest cell sits at `(entry=1.02, exit=0.95)` — the original optimum, marked with the blue ★. Two things to notice:
+
+- **Exit axis (left panel, horizontal):** the bright region extends across exits 0.91–0.95 at the optimum entry row, then drops sharply past 0.97. That's a real but *narrow* plateau (~5pp wide on the exit axis), consistent with the prose above. Outside the entry=1.01–1.02 band, even exit=0.95 is mediocre — confirming exit is load-bearing only when the entry is right.
+- **Entry axis (left panel, vertical):** the entry=0.98 and 0.99 rows are uniformly red. Arming below MA200 produces poor results across *every* exit value tested. Strong evidence that confirmed-uptrend entries are structurally necessary, not just optimal-by-coincidence.
+- **Drop axis (right panel):** confirms the previous-panel finding — the 0.5%–1.0% drop band is a broad bright region at the optimum entry, with 0.5% the consistent winner.
+
+Files: `leveraged_spy_exploration/optimizer_shifted_grid.py` and `leveraged_spy_exploration/ma100_shifted/`. To regenerate the heatmap: `python leveraged_spy_exploration/heatmap_shifted.py --no-show`.
 
 **SPY (MA100) — entry × drop level (bottom-right panel): broader plateau.** Multiple drop levels (0.5%–1.5%) produce similar performance for SPY. This confirms that SPY's entry timing is less critical than QQQ's — SPY's larger, slower trends make dip threshold less important.
 
 **Overall verdict:** The QQQ strategy sits on a broad plateau (entry × exit), which is strong robustness. The SPY strategy is robust on entry and drop but **narrowly load-bearing on exit** — the working band on the exit axis is roughly 0.93–0.95×MA100, with 0.95 the best pick. That narrower-than-QQQ band is a real fragility, but the exit threshold's economic interpretation (price has clearly broken below the 100-day average) is interpretable, not arbitrary. Both alphas are real, not data artifacts; SPY's just has less safety margin around its load-bearing parameter than QQQ's.
 
+### Production grid vs shifted grid — the operating decision
+
+The shifted-grid sweep raises a natural follow-up: should the annual walk-forward re-optimization use the **production grid** (entry 1.01–1.06, exit 0.95–1.02) or the **shifted grid** (entry 0.98–1.03, exit 0.91–0.99)?
+
+**Decision: keep the production grid for walk-forward.** The shifted grid is kept as an annual diagnostic — run it once a year alongside the production walk-forward to detect any optimum drift. Switch only if a meaningful migration occurs.
+
+Reasoning:
+
+1. **Same optimum.** Full-history sweeps on both grids return `(entry=1.02, exit=0.95)` as #1. No current benefit to switching.
+2. **Production grid enforces "confirmed uptrend" structurally.** Every entry value is > 1.0, which is the strategy's premise. The shifted grid permits sub-MA200 entries (0.98–1.00) that would silently relax that premise if any year's optimizer picked them. None did in the full-history sweep — but allowing them in production means we'd have to manually veto if a future year picked one. Cleaner to keep them out of the grid.
+3. **Shifted grid's wider exits carry tail risk.** Exit values 0.91 and 0.93 produce nearly the same CAGR as 0.95 but with ~7pp worse worst calendar year. If a future window's training data temporarily made one of those top-rank, walk-forward would pick it — degrading the worst-year metric the paper has been optimizing for from day one.
+4. **All existing walk-forward results use the production grid.** Switching invalidates the 11+ years of headline numbers in §6, §6.1, §6.2, §7 — substantial churn for no improvement.
+5. **Diagnostic discipline:** run `python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show` once a year. If the optimum migrates to a new entry/exit pair, *that's* the signal to revisit the grid choice. Until then, no action.
+
+(This is analogous to the §5 decision to lock in 3× leverage rather than re-test it every year — once a sweep shows the optimum is structurally stable, there's no upside to repeatedly second-guessing it. Only a clear migration warrants revisiting.)
+
 To reproduce:
 ```bash
-python param_heatmap.py --no-show
+python param_heatmap.py --no-show                                    # production heatmap
+python leveraged_spy_exploration/heatmap_shifted.py --no-show        # shifted-grid heatmap
+python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show # full shifted sweep (~5 min)
 ```
 
 ### Limitations and Caveats
