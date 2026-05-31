@@ -710,7 +710,7 @@ This does not require re-running the optimizer. It is a 2-minute backtester chec
 
 The expanding-window walk-forward in section 6 above picks the top-CAGR combo per training window. The natural follow-up: for QQQ, where the optimizer's CAGR plateau is broad (see [§8 robustness heatmaps](#parameter-robustness-analysis)), can we pick a combo with a less ulcer-inducing worst year without giving up much CAGR? We tested this. The honest answer: **the cost is bigger than the benefit for the user concern that motivated it.**
 
-**The rule:** from all passing combos within 1pp **training CAGR** of the top-CAGR combo, pick the one with the highest (least negative) worst calendar year in the training window. Applied to **QQQ only** — see [§6.2](#62-spy-tie-break-analysis) for the SPY equivalent, which was run and found to make every metric worse. The rule defaults to **disabled** (plain top-CAGR) — enable with `--tie-tolerance 0.01`.
+**The rule:** from all passing combos within 1pp **training CAGR** of the top-CAGR combo, pick the one with the highest (least negative) worst calendar year in the training window. Applied to **QQQ only**; the SPY equivalent is in [§6.2](#62-spy-tie-break-analysis). The rule defaults to **disabled** (plain top-CAGR) — enable with `--tie-tolerance 0.01`.
 
 **Param schedule chosen by the tie-break rule (QQQ, 2015–2026):**
 
@@ -789,9 +789,9 @@ What the rule does *not* do (despite the original hypothesis):
 
 ### 6.2 SPY Tie-Break Analysis
 
-The §6.1 rule note originally stated: *"Applied to QQQ only — SPY's parameter region is too tight for the rule to find anything different."* This was an untested assertion. Running it reveals a cleaner and more decisive finding: **the tie-break does find different params for SPY, and they make every metric worse**.
+We applied the same tie-break rule (`--tie-tolerance 0.01`) to SPY to test whether it offers a similar risk/return trade-off to the QQQ case. The result is unambiguous: **the tie-break finds different params but makes every metric worse — there is no dimension where it helps.**
 
-**What changed:** the rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR) to `drop_level=1.0% / buy_pct=30%`, sometimes adding `alloc_base=10%`. These combos have better worst-year records in training — which is why the tie-break selects them. Out-of-sample, they perform materially worse on every axis.
+The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR) to `drop_level=1.0% / buy_pct=30%`, sometimes adding `alloc_base=10%`. These combos have better worst-year records in training — which is why the tie-break selects them. Out-of-sample, they underperform on every axis.
 
 **Param schedule chosen by the SPY tie-break rule (2015–2026, MA100 exit):**
 
