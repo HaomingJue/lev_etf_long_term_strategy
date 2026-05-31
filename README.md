@@ -23,7 +23,7 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 5. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (strict single-split OOS: **+2.76pp / +2.23pp** over B&H, 2015–2026). IWM failed OOS (−2.85pp) and is **not recommended**. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
 6. **Does annual re-optimization add more edge?** Yes. Expanding-window walk-forward 2015–2026: **QQQ +5.11pp, SPY +4.30pp** over B&H — the re-opt itself contributes ~+2.35pp for QQQ on top of the OOS baseline. **This is the recommended operating mode.** → [§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)
 7. **Is the optimum on a robust plateau or a fragile spike?** QQQ sits on a broad plateau on the entry × exit grid — moving 1–2 grid steps barely changes performance. SPY is more narrowly load-bearing on the exit axis (working band ~0.93–0.95×MA100). A separate **shifted-grid sweep** confirmed `(entry=1.02, exit=0.95)` is still #1, and no sub-MA200 entry survives — strong evidence the "confirmed-uptrend" premise is structural for SPY too. → [§8 robustness](#parameter-robustness-analysis)
-8. **Could we trade some CAGR for less max DD?** Tested via the QQQ tie-break rule. Honest answer: costs ~4pp CAGR, barely changes the worst calendar year (it smooths intra-year drawdown only). Disabled by default; opt-in if max DD matters more than terminal wealth. → [§6.2](#62-qqq-tie-break-rule)
+8. **Could we trade some CAGR for less max DD?** Tested via tie-break rules on both QQQ and SPY. QQQ: costs ~4pp CAGR, barely changes worst calendar year (smooths intra-year drawdown only). SPY: makes every metric worse — costs 3.35pp CAGR *and* deepens worst year by 6pp. Disabled for both by default. → [§6.1](#61-qqq-tie-break-rule), [§6.2](#62-spy-tie-break-analysis)
 9. **How would each chosen config have handled real historical crises?** Tested in GFC (2007–2010), COVID (2019–2021), 2022 rate-hike, and dot-com bubble (2000–2003, the weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
 
 **Honest design choices and their cost** (read before deploying): the drawdown filter is calendar-year-based, not max-DD-based — a deliberate choice that costs ~1.8pp CAGR (QQQ) / ~4.3pp (SPY) if tightened to a ~25% YTD cap. The walk-forward number is the honest forward expectation; full-history numbers are hindsight-optimized — don't anchor on them. → [§9](#9-risk-considerations--design-honesty)
@@ -52,6 +52,7 @@ We tested a rules-based dip-buy strategy on leveraged ETFs (TQQQ/UPRO/TNA) acros
   - [5. Choosing the Leverage (2× vs 3×)](#5-choosing-the-leverage-2-vs-3)
   - [6. Walk-Forward Validation](#6-walk-forward-validation)
     - [6.1 QQQ Tie-Break Exploration](#61-qqq-tie-break-rule)
+    - [6.2 SPY Tie-Break Analysis](#62-spy-tie-break-analysis)
 - **Part 3 — Validation with Chosen Parameters**
   - [7. Crisis Period Stress Tests](#7-crisis-period-stress-tests)
   - [8. Discussion & Parameter Robustness](#8-discussion)
@@ -709,7 +710,7 @@ This does not require re-running the optimizer. It is a 2-minute backtester chec
 
 The expanding-window walk-forward in section 6 above picks the top-CAGR combo per training window. The natural follow-up: for QQQ, where the optimizer's CAGR plateau is broad (see [§8 robustness heatmaps](#parameter-robustness-analysis)), can we pick a combo with a less ulcer-inducing worst year without giving up much CAGR? We tested this. The honest answer: **the cost is bigger than the benefit for the user concern that motivated it.**
 
-**The rule:** from all passing combos within 1pp **training CAGR** of the top-CAGR combo, pick the one with the highest (least negative) worst calendar year in the training window. Applied to **QQQ only** — SPY's parameter region is too tight for the rule to find anything different (every SPY window already converges to a small CAGR cluster). The rule defaults to **disabled** (plain top-CAGR) — enable with `--tie-tolerance 0.01`.
+**The rule:** from all passing combos within 1pp **training CAGR** of the top-CAGR combo, pick the one with the highest (least negative) worst calendar year in the training window. Applied to **QQQ only** — see [§6.2](#62-spy-tie-break-analysis) for the SPY equivalent, which was run and found to make every metric worse. The rule defaults to **disabled** (plain top-CAGR) — enable with `--tie-tolerance 0.01`.
 
 **Param schedule chosen by the tie-break rule (QQQ, 2015–2026):**
 
@@ -783,6 +784,76 @@ What the rule does *not* do (despite the original hypothesis):
 **Why the rule didn't deliver what we hoped:** A 1pp constraint on *training-window CAGR* is loose: many combos pass it, including diversified allocations that look similar over a 10-year training window but behave very differently in a single trade year. The diversification helps in choppy years but caps upside in big-rally years — and the big-rally years (2017, 2020, 2021) drive most of the strategy's long-run wealth. The honest correction to my earlier "almost no CAGR cost" prediction: training-CAGR-similar combos are not trade-year-CAGR-similar.
 
 > To reproduce the tie-break run: `python walkforward.py --preset QQQ --tie-tolerance 0.01 --start-year 2015 --end-year 2026 --no-rebuild`. Files saved with `_tiebreak` suffix.
+
+---
+
+### 6.2 SPY Tie-Break Analysis
+
+The §6.1 rule note originally stated: *"Applied to QQQ only — SPY's parameter region is too tight for the rule to find anything different."* This was an untested assertion. Running it reveals a cleaner and more decisive finding: **the tie-break does find different params for SPY, and they make every metric worse**.
+
+**What changed:** the rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR) to `drop_level=1.0% / buy_pct=30%`, sometimes adding `alloc_base=10%`. These combos have better worst-year records in training — which is why the tie-break selects them. Out-of-sample, they perform materially worse on every axis.
+
+**Param schedule chosen by the SPY tie-break rule (2015–2026, MA100 exit):**
+
+| Year | Entry | Drop | Exit | Buy% | Base% |
+|---|---|---|---|---|---|
+| 2015 | 1.01× | 0.5% | 0.95× | 40% | 10% |
+| 2016 | 1.01× | 0.5% | 0.95× | 40% | 10% |
+| 2017 | 1.02× | 1.0% | 0.95× | 30% | 0% |
+| 2018 | 1.02× | 1.0% | 0.95× | 30% | 0% |
+| 2019 | 1.02× | 1.0% | 0.95× | 30% | 0% |
+| 2020 | 1.02× | 1.0% | 0.95× | 30% | 0% |
+| 2021 | 1.01× | 1.0% | 0.95× | 30% | 0% |
+| 2022 | 1.01× | 1.0% | 0.95× | 30% | 0% |
+| 2023 | 1.02× | 1.0% | 0.95× | 40% | 10% |
+| 2024 | 1.02× | 0.5% | 0.95× | 30% | 10% |
+| 2025 | 1.02× | 0.5% | 0.95× | 30% | 10% |
+| 2026 | 1.02× | 0.5% | 0.95× | 30% | 10% |
+
+**SPY tie-break vs plain top-CAGR — expanding-window walk-forward (2015–2026):**
+
+| Metric | Plain top-CAGR | Tie-break (1pp tol) | Δ |
+|---|---|---|---|
+| Strategy CAGR | **18.26%** | 14.91% | **−3.35pp** |
+| Edge vs SPY B&H | **+4.30pp** | +0.93pp | −3.37pp |
+| Worst year | **−31.78%** (2022) | −37.75% (2022) | **−5.97pp worse** |
+| Max drawdown | **−44.80%** | −48.38% | **−3.58pp worse** |
+| Sharpe ratio | 0.61 | 0.61 | 0.00 |
+| Final value ($10K →) | **$67,672** | $48,806 | −$18,866 |
+
+**Year-by-year:**
+
+| Year | Plain top-CAGR | Tie-break | Δ | Notes |
+|---|---|---|---|---|
+| 2015 | −12.1% | −10.3% | +1.8pp | Marginally better |
+| 2016 | +4.8% | +5.6% | +0.8pp | Similar |
+| 2017 | +71.4% | +65.6% | **−5.8pp** | Lower buy_pct capped the bull year |
+| 2018 | −8.0% | −7.7% | +0.3pp | Nearly identical |
+| 2019 | +44.9% | +42.3% | −2.6pp | Lower buy_pct costs upside |
+| 2020 | +21.3% | +13.9% | **−7.4pp** | Missed COVID recovery entries |
+| 2021 | +98.6% | +92.7% | **−5.9pp** | Capped the rally |
+| 2022 | **−31.8%** | −37.8% | **−6.0pp worse** | 1% drop trigger bought into declining tape |
+| 2023 | +11.9% | −1.3% | **−13.2pp** | 1% threshold missed most 2023 dip entries |
+| 2024 | +63.6% | +62.2% | −1.4pp | Near-identical |
+| 2025 | +21.6% | +20.9% | −0.7pp | Near-identical |
+| 2026 (YTD) | −12.0% | −10.4% | +1.6pp | Slightly better |
+
+**Verdict: the tie-break damages SPY on every meaningful metric. Do not use it.**
+
+Unlike QQQ — where the tie-break bought ~10pp better max drawdown at a ~4pp CAGR cost — SPY's tie-break offers no trade-off worth taking. It costs 3.35pp CAGR, makes the worst year 6pp worse, and deepens max drawdown. There is no dimension where it helps.
+
+**Why the tie-break hurts SPY:**
+
+1. **`drop_level=1.0%` is miscalibrated for SPY.** SPY's lower daily volatility means 1% single-day drops are rarer and often signal genuine selling pressure rather than brief dips. The plain top-CAGR choice of 0.5% correctly captures normal SPY daily fluctuations; the 1.0% trigger buys into deteriorating conditions. This is why 2022 and 2023 — the two years where entry timing matters most — are both worse under the tie-break.
+
+2. **`buy_pct=30%` caps every rally without reducing key downside years.** Lighter position sizing costs 5–7pp in every strong bull year (2017, 2020, 2021). The marginal gains in flat years do not compound meaningfully over 11 years.
+
+3. **The training-window worst-year metric is a misleading proxy for SPY.** The combos the rule selects look similar to plain top-CAGR in 10-year training windows but diverge out-of-sample — primarily in market regimes where deployment speed and size (the exact parameters the tie-break loosens) matter most.
+
+![SPY tie-break walk-forward 2015–2026](results/walkforward/SPY_walkforward_2015-2026_ma100_tiebreak_comparison.png)
+![SPY tie-break walk-forward 2015–2026 — drawdown](results/walkforward/SPY_walkforward_2015-2026_ma100_tiebreak_comparison_drawdown.png)
+
+> To reproduce: `python walkforward.py --preset SPY --exit-ma 100 --tie-tolerance 0.01 --start-year 2015 --end-year 2026 --no-show`. Files saved with `_ma100_tiebreak` suffix.
 
 ---
 
