@@ -195,13 +195,17 @@ The strategy never holds a leveraged ETF unconditionally. Two rules govern all b
 **Buying:**
 1. **Arm** — Wait until the base ETF (e.g. QQQ) closes above `MA200 × entry_signal`. This confirms the market is in an established uptrend.
 2. **Trigger** — Once armed, wait for a single-day price drop of at least `drop_level`. That dip fires a buy.
-3. **Position sizing** — On the first buy of a cycle, a small base-ETF position is established as a portfolio stabilizer (if `alloc_base > 0`). Then cash is deployed into the leveraged ETF (`buy_pct × total portfolio`), split between 2× and 3× ETFs by `alloc_x2` / `alloc_x3`.
-4. **Subsequent signals** — Each additional dip while armed adds more to the leveraged position only.
+3. **First buy of a cycle:**
+   - If `alloc_base > 0`: buy enough of the base ETF to reach `alloc_base × total_portfolio` (one-time per cycle, never repeated). Note: this only moves cash into the base ETF — total portfolio value is unchanged.
+   - Then deploy leveraged: `min(buy_pct × total_portfolio, available_cash)`, split between 3× and 2× ETFs by `alloc_x3` / `alloc_x2`. `alloc_x2 + alloc_x3` always equals 1 — they split the leveraged tranche, not the total portfolio.
+4. **Each subsequent dip while armed:**
+   - Skip the base fill (already done for this cycle). Buy leveraged only: `min(buy_pct × total_portfolio, available_cash)`.
 
 **Selling:**
-- If price falls below `exit_MA × exit_signal` while holding any leveraged ETF, sell all 2× and 3× positions back to cash.
-- Trim the base position if it has grown above `alloc_base × total portfolio`.
-- Dis-arm — the strategy must see a fresh uptrend signal before buying again.
+- If price falls below `exit_MA × exit_signal` while holding any leveraged ETF:
+  - Sell all 2× and 3× positions immediately back to cash.
+  - **One-time base trim (first exit of cycle only):** if the base ETF has grown above `alloc_base × total_portfolio`, sell the excess back to cash. This never fires again until the next cycle begins.
+  - Dis-arm — the strategy must see a fresh uptrend signal before buying again.
 
 **Plain English:** Only hold leveraged ETFs when the trend is clearly up and the market dips briefly. Exit immediately when the trend breaks. Never ride a 3× ETF through a bear market.
 
@@ -218,16 +222,19 @@ The strategy never holds a leveraged ETF unconditionally. Two rules govern all b
 | | ② Leveraged buy: 30% × $10,000 = $3,000 total | | | | | | |
 | | → SSO: 25% × $3,000 = $750 | | $2,000 | $750 | — | $7,250 | $10,000 |
 | | → UPRO: 75% × $3,000 = $2,250 | | $2,000 | $750 | $2,250 | $5,000 | $10,000 |
-| 12 | SPY drops $447 → $444 (−0.67%) while still armed | **SECOND BUY** (no base re-buy) | | | | | |
-| | Leveraged buy: 30% × $10,000 = $3,000 | | | | | | |
+| 12 | SPY drops $447 → $444 (−0.67%) while still armed | **SECOND BUY** (lev only — base already filled) | | | | | |
+| | Leveraged: min(30% × $10,000, $5,000 cash) = $3,000 | | | | | | |
 | | → SSO: $750 more; UPRO: $2,250 more | | $2,000 | $1,500 | $4,500 | $2,000 | $10,000 |
 | Later | SPY falls to $416, below 0.95×$440 = $418 | **EXIT** | | | | | |
-| | Sell all SSO + UPRO → cash. Trim base if needed. Dis-arm. | | $2,000 | — | — | $8,000 | $10,000 |
+| | Sell all SSO + UPRO → cash. | | $2,000 | — | — | $8,000 | $10,000 |
+| | One-time base trim: SPY value ($2,000) = 20% of $10,000 → no trim needed. Dis-arm. | | $2,000 | — | — | $8,000 | $10,000 |
 
 Key observations from this example:
-- The **base position (SPY) is bought only once** per cycle and kept through the exit — it acts as a stabiliser, not a trading position.
+- The **base position (SPY) is bought only once** per cycle — one-time fill on the first buy, never re-bought on subsequent dips.
 - Each subsequent dip **adds to leveraged positions only**, compounding exposure as the dip deepens.
-- The exit **clears all leveraged positions immediately** but leaves the base intact (trimmed to 20% target).
+- The leveraged buy each time is `min(buy_pct × total_portfolio, available_cash)` — capped by cash, not by a fixed dollar amount.
+- `alloc_x2` and `alloc_x3` split only the **leveraged tranche** (they always sum to 100%); `alloc_base` is a separate one-time base fill from cash.
+- The exit **clears all leveraged positions immediately**. The base stays — trimmed to `alloc_base × total` on the first exit only, never again that cycle.
 - With `alloc_x2=25%` and `alloc_x3=75%`, each $3,000 leveraged tranche splits $750 into SSO and $2,250 into UPRO.
 
 ---
@@ -239,9 +246,9 @@ Key observations from this example:
 | `entry_signal` | Price must be above `MA200 × entry_signal` to arm (e.g. 1.03 = 3% above MA200) |
 | `drop_level` | Minimum single-day drop to trigger a buy (e.g. 0.005 = 0.5%) |
 | `exit_signal` | Exit when price falls below `exit_MA × exit_signal` (e.g. 0.95 = 5% below) |
-| `buy_pct` | Fraction of total portfolio deployed per buy signal |
-| `alloc_base` | Target allocation to the unleveraged base ETF (portfolio stabilizer) |
-| `alloc_x2 / x3` | Split of leveraged spending between 2× and 3× ETFs (must sum to 1) |
+| `buy_pct` | Fraction of total portfolio deployed into leveraged ETFs per buy signal, capped by available cash |
+| `alloc_base` | Target allocation to the unleveraged base ETF (one-time fill on first buy; one-time trim on first exit) |
+| `alloc_x2 / x3` | Split of the leveraged tranche between 2× and 3× ETFs — must sum to 1; independent of `alloc_base` |
 | `exit_ma` | Moving average period for the exit trigger: 50, 100, or 200 (entry always uses MA200) |
 
 ---
