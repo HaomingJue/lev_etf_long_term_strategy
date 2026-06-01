@@ -71,7 +71,7 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATA    = "2003-01-01"
+START_DATE    = "2003-01-01"
 END           = "2026-05-08"
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
@@ -99,13 +99,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading QQQ, QLD, TQQQ ...")
-    qqq = download("QQQ", START_DATA, END)
+    qqq = download("QQQ", START_DATE, END)
     try:
-        qld  = download("QLD",  START_DATA, END)
+        qld  = download("QLD",  START_DATE, END)
     except Exception:
         qld  = pd.Series(dtype=float)
     try:
-        tqqq = download("TQQQ", START_DATA, END)
+        tqqq = download("TQQQ", START_DATE, END)
     except Exception:
         tqqq = pd.Series(dtype=float)
 

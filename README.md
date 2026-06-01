@@ -327,7 +327,7 @@ Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose cale
 
 **The optimizer CAGR numbers are systematically lower than backtester CAGR for the same parameters — by 3–4pp for QQQ.**
 
-The root cause: the optimizer downloads data starting from `START_DATA = 2003-01-01` with no prior history. The MA200 requires 200 trading days (~10 months) to become valid, so the strategy sits in cash until approximately October/November 2003. This means the optimizer **misses the March 2003 QQQ bottom entirely** — a +104% single-year gain from the dot-com trough.
+The root cause: the optimizer downloads data starting from `START_DATE = 2003-01-01` with no prior history. The MA200 requires 200 trading days (~10 months) to become valid, so the strategy sits in cash until approximately October/November 2003. This means the optimizer **misses the March 2003 QQQ bottom entirely** — a +104% single-year gain from the dot-com trough.
 
 The backtester avoids this by pre-downloading 420 calendar days of history before the strategy start date, so MA200 is fully warmed up on day 1. This is why the backtester 2003 shows +104% for QQQ while the optimizer shows only +12%.
 
@@ -1273,7 +1273,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([python optimizer.py --no-show]) --> B[Download data from START_DATA=2003-01-01\nNOTE: no pre-history → MA200 warms up over\nfirst ~200 trading days in-sample]
+    A([python optimizer.py --no-show]) --> B[Download data from START_DATE=2003-01-01\nNOTE: no pre-history → MA200 warms up over\nfirst ~200 trading days in-sample]
     B --> C[Build parameter grid 15840 combos]
     C --> D[Loop all combos with tqdm]
     D --> E[Run backtest → CAGR + portfolio array]

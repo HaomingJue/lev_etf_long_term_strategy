@@ -54,7 +54,7 @@ PRESETS = {
     "IWM": {"base": "IWM", "lev2": "UWM",  "lev3": "TNA",  "dd_start": 2009},
 }
 
-START_DATA    = "2003-01-01"
+START_DATE    = "2003-01-01"
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
 
@@ -112,7 +112,7 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
 
     def dl(tk):
         try:
-            s = yf.download(tk, start=START_DATA, end=end,
+            s = yf.download(tk, start=START_DATE, end=end,
                             auto_adjust=True, progress=False)["Close"].squeeze().dropna()
             s.name = tk
             return s

@@ -87,7 +87,7 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATA  = "2003-01-01"   # QQQ inception — synthetic lev before real ETF dates
+START_DATE  = "2003-01-01"   # QQQ inception — synthetic lev before real ETF dates
 END         = "2026-05-08"
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40    # year-end drawdown cap

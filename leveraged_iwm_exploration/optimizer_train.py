@@ -67,7 +67,7 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATA  = "2003-01-01"
+START_DATE  = "2003-01-01"
 END         = "2014-12-31"   # training period only — do not change
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40
@@ -96,13 +96,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading IWM, UWM, TNA …")
-    iwm = download("IWM", START_DATA, END)
+    iwm = download("IWM", START_DATE, END)
     try:
-        uwm = download("UWM", START_DATA, END)
+        uwm = download("UWM", START_DATE, END)
     except Exception:
         uwm = pd.Series(dtype=float)
     try:
-        tna = download("TNA", START_DATA, END)
+        tna = download("TNA", START_DATE, END)
     except Exception:
         tna = pd.Series(dtype=float)
 

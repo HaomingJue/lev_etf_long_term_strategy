@@ -56,7 +56,7 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
     return stitched
 
 
-START_DATA    = "2003-01-01"
+START_DATE    = "2003-01-01"
 END           = "2026-05-08"
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
@@ -80,13 +80,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading SPY, SSO, UPRO ...")
-    spy = download("SPY", START_DATA, END)
+    spy = download("SPY", START_DATE, END)
     try:
-        sso  = download("SSO",  START_DATA, END)
+        sso  = download("SSO",  START_DATE, END)
     except Exception:
         sso  = pd.Series(dtype=float)
     try:
-        upro = download("UPRO", START_DATA, END)
+        upro = download("UPRO", START_DATE, END)
     except Exception:
         upro = pd.Series(dtype=float)
     lev2_nav = build_lev_nav(spy, sso,  2)

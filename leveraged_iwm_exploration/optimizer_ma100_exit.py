@@ -56,7 +56,7 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
     return stitched
 
 
-START_DATA    = "2003-01-01"
+START_DATE    = "2003-01-01"
 END           = "2026-05-08"
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
@@ -80,13 +80,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading IWM, UWM, TNA ...")
-    iwm = download("IWM", START_DATA, END)
+    iwm = download("IWM", START_DATE, END)
     try:
-        uwm = download("UWM", START_DATA, END)
+        uwm = download("UWM", START_DATE, END)
     except Exception:
         uwm = pd.Series(dtype=float)
     try:
-        tna = download("TNA", START_DATA, END)
+        tna = download("TNA", START_DATE, END)
     except Exception:
         tna = pd.Series(dtype=float)
     lev2_nav = build_lev_nav(iwm, uwm, 2)

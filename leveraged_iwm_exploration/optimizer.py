@@ -87,7 +87,7 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATA  = "2003-01-01"   # start date — synthetic lev before real ETF dates
+START_DATE  = "2003-01-01"   # start date — synthetic lev before real ETF dates
 END         = "2026-05-08"
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40    # year-end drawdown cap
@@ -120,13 +120,13 @@ def load_data():
     # UWM (2x) inception: Jan 2007.  TNA (3x) inception: Nov 2008.
     # Synthetic NAVs fill the gap before real ETFs existed.
     print("Downloading IWM, UWM, TNA …")
-    iwm = download("IWM", START_DATA, END)
+    iwm = download("IWM", START_DATE, END)
     try:
-        uwm = download("UWM", START_DATA, END)
+        uwm = download("UWM", START_DATE, END)
     except Exception:
         uwm = pd.Series(dtype=float)
     try:
-        tna = download("TNA", START_DATA, END)
+        tna = download("TNA", START_DATE, END)
     except Exception:
         tna = pd.Series(dtype=float)
 

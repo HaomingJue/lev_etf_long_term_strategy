@@ -67,7 +67,7 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATA  = "2003-01-01"
+START_DATE  = "2003-01-01"
 END         = "2014-12-31"   # training period only — do not change
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40
