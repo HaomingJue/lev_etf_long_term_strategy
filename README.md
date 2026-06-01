@@ -278,9 +278,16 @@ Three major US equity indices were tested over the same period for fair comparis
 | Russell 2000 | IWM (May 2000) | UWM (Jan 2007) | TNA (Nov 2008) | 2003-01-01 |
 
 All three start from **2003-01-01** for fair comparison. Key rationale:
-- All three indices have reliable base ETF data from 2003.
-- The 1990s bull market disproportionately inflated SPY parameter optimization when starting earlier.
-- This start date captures the dot-com recovery (2003 bottom) through the 2026 present, including the 2008 GFC, 2020 COVID crash, and 2022 rate-hike bear market.
+
+1. **Fair common floor across all three indices.** IWM launched May 2000, QQQ March 1999, SPY January 1993 — they have different histories before 2003. Starting from 2003 gives all three a shared baseline without relying on older data of varying quality.
+
+2. **Dot-com bubble synthetic bias.** During 2000–2002, QQQ fell ~83% from peak to trough. Since none of the real leveraged ETFs existed yet (TQQQ: Feb 2010, UPRO: Jun 2009, TNA: Nov 2008), those years are 100% synthetic — computed from the volatility decay model. Synthetic 3× QQQ during the dot-com crash would show ~99%+ losses, an extreme event based entirely on a mathematical approximation, not real traded prices. Optimizing against it would bias the optimizer toward excessive conservatism (very high entry thresholds, aggressive exits) that does not generalize to normal bear markets. Excluding this period makes the optimizer's output more representative of realistic future regimes.
+
+3. **1990s bull market bias for SPY.** SPY has data back to 1993. Including the 1990s tech boom — an exceptionally strong, low-volatility decade — in SPY's optimization inflates parameters tuned to that regime and overstates expected performance.
+
+4. **Minimizes synthetic data dependency.** Starting from 2003 means ~6–7 years of synthetic leveraged NAV before real ETFs launched. Starting from 2000 would extend that to ~9–10 years, further increasing reliance on the decay model approximation.
+
+5. **Captures a complete, representative market cycle.** 2003–present includes the full dot-com recovery (2003 bottom), the 2008 GFC crash and recovery, the 2020 COVID crash, and the 2022 rate-hike bear market — a diverse set of regimes the strategy must survive.
 
 ### Synthetic Leveraged NAV
 
