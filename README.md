@@ -84,7 +84,8 @@ The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but
 | Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
 |---|---|---|
 | CAGR | 24.48% | **24.45%** |
-| Final value ($10K →) | $1,667,000 | **$121,079** |
+| Final value ($10K invested Jan 2003 →) | $1,667,000 | — |
+| Final value ($10K invested Jan 2015 →) | — | **$121,079** |
 | Worst calendar year | −40.8% (2005) | −25.88% (2022) |
 | Max drawdown | −69.1% | −53.75% |
 
@@ -120,7 +121,8 @@ Apply the latest year's params to the next 12 months of trading. See [§6.1 cont
 | Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
 |---|---|---|
 | CAGR | 22.40% | **18.32%** |
-| Final value ($10K →) | $1,132,235 | **$68,124** |
+| Final value ($10K invested Jan 2003 →) | $1,132,235 | — |
+| Final value ($10K invested Jan 2015 →) | — | **$68,124** |
 | Worst calendar year | −31.78% (2022) | −31.78% (2022) |
 | Max drawdown | −52.61% | −44.80% |
 
