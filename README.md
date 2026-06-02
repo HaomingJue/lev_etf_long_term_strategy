@@ -4,8 +4,8 @@ A systematic investigation into whether a disciplined dip-buying approach applie
 
 > [!TIP]
 > **Walk-forward validated edge (annual re-optimization, 2015–2026, no look-ahead bias):**
-> QQQ: 24.81% CAGR vs 19.70% B&H — **+5.1pp over 11+ years** (MA200 exit)
-> SPY: 18.26% CAGR vs 13.96% B&H — **+4.3pp over 11+ years** (MA100 exit, see [§6](#6-walk-forward-validation))
+> QQQ: 24.45% CAGR vs 19.74% B&H — **+4.71pp over 11+ years** (MA200 exit)
+> SPY: 18.32% CAGR vs 13.98% B&H — **+4.34pp over 11+ years** (MA100 exit, see [§6](#6-walk-forward-validation))
 >
 > Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,132,000 SPY (MA100)** vs $331K / $126K buy-and-hold.
 > These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation.
@@ -20,8 +20,8 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 2. **What's the optimum parameter set per index?** Since holding 3× long-term is off the table, the strategy needs a principled signal for when dip-buying is safe and when to exit. **MA200 is the structural choice for "confirmed bull market"** — the core premise is: only buy dips when the base ETF is trading above its 200-day moving average (uptrend intact), and exit the moment price breaks back below it. With that MA200 premise fixed, a 15,840-combo grid search then optimizes the fine-tuning parameters around it (how far above MA200 before arming, dip size required, exit threshold, position sizing, allocation split between 2× and 3× ETFs) under a −40% calendar-year DD safety filter. **100% 3× ETF wins on CAGR across all three indices** (~+6pp vs the 2× alternative, accepting ~10pp worse worst-year DD). → [§2](#2-methodology), [§3](#3-full-history-grid-search-20032026)
 3. **Could a faster exit MA help?** Yes — for SPY. **MA200 for QQQ and IWM, MA100 for SPY** (verified head-to-head; MA100 SPY beats MA200 SPY on every metric under annual re-opt). MA50 hurts all three. → [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50)
 4. **Could 2× leverage be the better risk/return trade?** No. 2× cuts worst-year DD ~10pp but loses 5–6pp CAGR. 3× wins for any investor who can hold through −30% to −40% calendar years. → [§5](#5-choosing-the-leverage-2-vs-3)
-5. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (strict single-split OOS: **+2.76pp / +2.23pp** over B&H, 2015–2026). IWM failed OOS (−2.85pp) and is **not recommended**. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
-6. **Does annual re-optimization add more edge?** Yes. Expanding-window walk-forward 2015–2026: **QQQ +5.11pp, SPY +4.30pp** over B&H — the re-opt itself contributes ~+2.35pp for QQQ on top of the OOS baseline. **This is the recommended operating mode.** → [§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)
+5. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (strict single-split OOS: **+2.83pp / +2.27pp** over B&H, 2015–2026). IWM failed OOS (−4.59pp) and is **not recommended**. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
+6. **Does annual re-optimization add more edge?** Yes. Expanding-window walk-forward 2015–2026: **QQQ +4.71pp, SPY +4.34pp** over B&H — the re-opt itself contributes ~+1.88pp for QQQ on top of the OOS baseline. **This is the recommended operating mode.** → [§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)
 7. **Is the optimum on a robust plateau or a fragile spike?** QQQ sits on a broad plateau on the entry × exit grid — moving 1–2 grid steps barely changes performance. SPY is more narrowly load-bearing on the exit axis (working band ~0.93–0.95×MA100). A separate **shifted-grid sweep** confirmed `(entry=1.02, exit=0.95)` is still #1, and no sub-MA200 entry survives — strong evidence the "confirmed-uptrend" premise is structural for SPY too. → [§8 robustness](#parameter-robustness-analysis)
 8. **Could we trade some CAGR for less max DD?** Tested via tie-break rules on both QQQ and SPY. QQQ: costs ~4pp CAGR, barely changes worst calendar year (smooths intra-year drawdown only). SPY: makes every metric worse — costs 3.35pp CAGR *and* deepens worst year by 6pp. Disabled for both by default. → [§6.1](#61-qqq-tie-break-rule), [§6.2](#62-spy-tie-break-analysis)
 9. **How would each chosen config have handled real historical crises?** Tested in GFC (2007–2010), COVID (2019–2021), 2022 rate-hike, and dot-com bubble (2000–2003, the weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
@@ -34,7 +34,7 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 
 ## Abstract
 
-We tested a rules-based dip-buy strategy on leveraged ETFs (TQQQ/UPRO/TNA) across QQQ, SPY, and IWM. Under annual re-optimization (the recommended operating mode), the strategy produced walk-forward CAGRs of **24.81% for QQQ and 18.26% for SPY** over 2015–2026 — edges of **+5.11pp and +4.30pp** over buy-and-hold — and survived every major crisis since 2003. **IWM failed out-of-sample and is not recommended;** the full result is disclosed in [§6](#6-walk-forward-validation). The strategy requires periodically trending bull markets to work; it amplifies returns in clean trends and protects capital in clear bears, but struggles in sustained sideways chop and multi-year secular bears (worst observed case: synthetic QQQ during the dot-com bubble).
+We tested a rules-based dip-buy strategy on leveraged ETFs (TQQQ/UPRO/TNA) across QQQ, SPY, and IWM. Under annual re-optimization (the recommended operating mode), the strategy produced walk-forward CAGRs of **24.45% for QQQ and 18.32% for SPY** over 2015–2026 — edges of **+4.71pp and +4.34pp** over buy-and-hold — and survived every major crisis since 2003. **IWM failed out-of-sample and is not recommended;** the full result is disclosed in [§6](#6-walk-forward-validation). The strategy requires periodically trending bull markets to work; it amplifies returns in clean trends and protects capital in clear bears, but struggles in sustained sideways chop and multi-year secular bears (worst observed case: synthetic QQQ during the dot-com bubble).
 
 ---
 
@@ -75,7 +75,7 @@ The performance tables below report two CAGR figures for each variant. They meas
 - **Full-history CAGR (2003–2026, 23 years).** A single best parameter set was found by running the optimizer on the *entire* historical sample and picking the highest-CAGR combo. The same params were then applied to the same data. This is the **in-sample, hindsight-optimized upper bound** — it answers "what would the best params have produced if we'd known them in advance?" It is not a realistic forward expectation; live trading cannot use future data.
 - **Walk-forward CAGR (2015–2026, 11+ years).** Each January, the optimizer is re-run on all prior data only, and the resulting params are applied to the next year. The first row trains on 2003–2014 and is applied to 2015 trading; the cycle repeats through 2026. This is the **realistic forward expectation** — what an investor running the strategy honestly would have achieved with no look-ahead. The 2026 row is partial (Jan → today). Anchor your expectations here.
 
-The walk-forward and full-history CAGRs are close for QQQ (24.81% vs 24.48%) but not directly period-matched: full-history covers 2003–2026 (23 yrs) while walk-forward covers 2015–2026 (11+ yrs). Read them as separate things — the full-history is hindsight-optimized; the walk-forward is what you would actually have earned. Where they differ, the walk-forward number is the honest one.
+The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but not directly period-matched: full-history covers 2003–2026 (23 yrs) while walk-forward covers 2015–2026 (11+ yrs). Read them as separate things — the full-history is hindsight-optimized; the walk-forward is what you would actually have earned. Where they differ, the walk-forward number is the honest one.
 
 ---
 
@@ -83,8 +83,8 @@ The walk-forward and full-history CAGRs are close for QQQ (24.81% vs 24.48%) but
 
 | Variant | Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
 |---|---|---|---|---|---|
-| **Highest CAGR** (default) | 24.48% | **24.81%** | −25.88% (2022) | −53.75% | **$125,109** |
-| **Balanced** (opt-in tie-break) | n/a¹ | 21.13% | −25.64% (2022) | **−44.02%** | $88,973 |
+| **Highest CAGR** (default) | 24.48% | **24.45%** | −25.88% (2022) | −53.75% | **$121,079** |
+| **Balanced** (opt-in tie-break) | n/a¹ | 23.39% | −26.10% (2022) | **−53.06%** | $109,850 |
 
 ¹ The tie-break rule is applied per training window during walk-forward; it has no direct full-history equivalent.
 
@@ -97,13 +97,13 @@ The walk-forward and full-history CAGRs are close for QQQ (24.81% vs 24.48%) but
 | Highest CAGR | 1.03×MA200 | 0.5% | 1.01×MA200 | 40% | 0% | 0% | **100%** |
 | Balanced (opt-in tie-break) | 1.05×MA200 | 1.0% | 1.00×MA200 | 30% | 0% | 0% | **100%** |
 
-> **Year-over-year shift, Highest CAGR variant.** The 2025 schedule row was entry 1.06 / exit 1.00; 2026 pulled back to entry 1.03 / exit 1.01. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and the continuity-filter discussion in [§6.1](#61-qqq-tie-break-rule). The Balanced variant is essentially unchanged from 2025 (only `buy_pct` shifted 40% → 30%).
+> **Year-over-year shift, Highest CAGR variant.** The 2025 schedule row was entry 1.05 / drop 1.0% / exit 1.00 / buy 30%; 2026 moved to entry 1.03 / drop 0.5% / exit 1.01 / buy 40%. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and the continuity-filter discussion in [§6.1](#61-qqq-tie-break-rule).
 >
 > For reference, both 2026 variants converged to 100% TQQQ, just like the 2025 rows. The walk-forward CAGR gap between Highest CAGR and Balanced comes from **earlier** windows, where the Balanced rule preferred diversified allocations (10–20% base SPY, 25–75% QLD).
 
 **Annual re-optimization: RECOMMENDED for QQQ.** Without it, expect a meaningful CAGR penalty.
 
-Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **22.46% CAGR** versus **24.81%** for annually re-optimized (Highest CAGR variant). The fixed model also has a worse worst year (−35.97% vs −25.88% in 2022) and a deeper max drawdown (−64.86% vs −53.75%). → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) three-way comparison.
+Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **22.57% CAGR** versus **24.45%** for annually re-optimized (Highest CAGR variant). The fixed model also has a worse worst year (−36.0% vs −25.88% in 2022) and a deeper max drawdown. → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) three-way comparison.
 
 **How to re-optimize each January:**
 ```bash
@@ -127,7 +127,7 @@ Apply the latest year's params to the next 12 months of trading. See [§6.1 cont
 
 | Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
 |---|---|---|---|---|
-| 22.40% | **18.26%** | −31.78% (2022) | **−44.80%** | **$67,672** |
+| 22.40% | **18.32%** | −31.78% (2022) | **−44.80%** | **$68,124** |
 
 **Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
 
@@ -135,11 +135,11 @@ Apply the latest year's params to the next 12 months of trading. See [§6.1 cont
 |---|---|---|---|---|---|---|
 | 1.02×MA200 | 0.5% | 0.95×MA100 | 40% | 0% | 0% | **100%** |
 
-> SPY's schedule is structurally stable — the 2026 row is identical to 2015–2025.
+> SPY's schedule is structurally stable — entry=1.01–1.02, drop=0.5%, exit=0.95×MA100, buy=40% across all 12 years. The 2026 row is identical to 2017–2025.
 
 **Annual re-optimization: OPTIONAL for SPY** (lower benefit than for QQQ).
 
-Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **16.19% CAGR** versus **18.26%** for annually re-optimized. The CAGR uplift is real (~2pp) and the max-DD picture also improves modestly (−55.33% fixed vs −44.80% expanding). SPY's optimizer converges to nearly identical params each year, so the schedule is structurally stable — re-optimization mainly updates the worst-year risk picture rather than discovering new params.
+Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **16.25% CAGR** versus **18.32%** for annually re-optimized. The CAGR uplift is real (~2pp) and the max-DD picture also improves modestly (−55.33% fixed vs −44.80% expanding). SPY's optimizer converges to nearly identical params each year, so the schedule is structurally stable — re-optimization mainly updates the worst-year risk picture rather than discovering new params.
 
 **How to re-optimize each January (recommended but not strictly required):**
 ```bash
@@ -156,7 +156,7 @@ If you skip annual re-opt for SPY, you can safely run the strategy with the fixe
 
 | Variant | Strict OOS CAGR (2015–2026) | IWM B&H | Edge | Result |
 |---|---|---|---|---|
-| Best 2003–2014 train params, frozen | 6.74% | 9.59% | **−2.85pp ✗** | Failed OOS |
+| Best 2003–2014 train params, frozen | 4.95% | 9.54% | **−4.59pp ✗** | Failed OOS |
 
 IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
 
@@ -260,10 +260,10 @@ Key observations from this example:
 Two separate tools are used throughout this research. Understanding the difference is important for interpreting all results.
 
 **Optimizer** (`optimizer.py`)
-The optimizer's job is to *search* — it runs all 15,840 parameter combinations against historical data and ranks them by CAGR. Think of it as a brute-force scanner: feed it 23 years of price data and it tells you which settings would have performed best. It is fast (a few minutes for all combos) and useful for ranking, but it has a known accuracy limitation (the warm-up gap, explained below). **Optimizer CAGR numbers are always an underestimate.** Use the optimizer to find the best parameter combo; use the backtester to measure it accurately.
+The optimizer's job is to *search* — it runs all 15,840 parameter combinations against historical data and ranks them by CAGR. Think of it as a brute-force scanner: feed it 23 years of price data and it tells you which settings would have performed best. It is fast (a few minutes for all combos) and useful for both ranking and measuring performance. Both the optimizer and backtester pre-download two years of history before the strategy start date so the MA200 is fully warmed up on 2003-01-01.
 
 **Backtester** (`backtester.py`)
-The backtester's job is to *validate* — it takes one specific set of parameters, runs the strategy over a chosen date range with full precision, and produces a detailed trade log, year-by-year returns, and an equity curve. It pre-downloads additional price history before the start date so the MA200 is fully warmed up on day one. It is the authoritative tool for any specific result cited in this paper.
+The backtester's job is to *validate* — it takes one specific set of parameters, runs the strategy over a chosen date range with full precision, and produces a detailed trade log, year-by-year returns, and an equity curve. It is the authoritative tool for any specific result cited in this paper.
 
 In short: **optimizer finds, backtester measures.**
 
@@ -329,28 +329,6 @@ Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose cale
 | IWM | 2009 onward | TNA launched Nov 2008 |
 
 **Why the filter does not apply before these dates:** All leveraged ETF returns before inception are synthetic — computed from the mathematical decay model, not from real traded prices. The synthetic model tends to produce extreme simulated losses in volatile early periods (e.g. the 2008 GFC, before real 3× ETFs existed) that are mathematically correct but would never have played out in practice: real investors would have stopped the strategy, real ETFs have liquidity mechanisms, and the model itself is an approximation. Penalising combos for pre-inception synthetic drawdowns would unfairly eliminate strategies that work well on real data. The filter therefore only enforces the −40% cap once real ETF prices are available, ensuring the pass/fail decision is based on actual, not simulated, performance.
-
-### Critical Limitation: Optimizer Warm-Up Gap
-
-**The optimizer CAGR numbers are systematically lower than backtester CAGR for the same parameters — by 3–4pp for QQQ.**
-
-The root cause: the optimizer downloads data starting from `START_DATE = 2003-01-01` with no prior history. The MA200 requires 200 trading days (~10 months) to become valid, so the strategy sits in cash until approximately October/November 2003. This means the optimizer **misses the March 2003 QQQ bottom entirely** — a +104% single-year gain from the dot-com trough.
-
-The backtester avoids this by pre-downloading 420 calendar days of history before the strategy start date, so MA200 is fully warmed up on day 1. This is why the backtester 2003 shows +104% for QQQ while the optimizer shows only +12%.
-
-The impact compounds over 23 years:
-
-| Index | Optimizer CAGR | Backtester CAGR | Gap |
-|---|---|---|---|
-| QQQ (MA200) | 21.31% | 24.67% | −3.36pp |
-| SPY (MA200) | 22.26% | 22.21% | +0.05pp |
-| IWM (MA200) | 10.23% | 12.14% | −1.91pp |
-
-The SPY gap is negligible because the S&P 500's 2003 recovery was milder (+28%) than QQQ's (+104%). IWM falls in between.
-
-**Effect on rankings:** Since all 15,840 combos share the same warm-up gap, relative rankings remain valid. The optimizer is a reliable ranking tool. Absolute CAGR numbers are understated — treat backtester CAGR as authoritative.
-
-**Separate issue — MER in synthetic returns:** The optimizer's synthetic NAV formula models volatility decay but not management expense ratios (TQQQ: 0.95%/yr, UPRO: 0.91%/yr, TNA: 1.09%/yr). The backtester now applies these as a daily drag on the synthetic pre-inception period only — real ETF prices already include MER. Over the 6–7 synthetic years, the cumulative effect is approximately −0.2pp CAGR. Since all optimizer combos are equally affected, this does not change parameter rankings; it only affects the absolute gap between optimizer and backtester CAGR numbers.
 
 ---
 
@@ -454,17 +432,16 @@ python backtester.py --preset IWM --start 2003-01-01 \
 
 | Index | Exit MA | Best Optimizer CAGR | Worst Year | Notes |
 |---|---|---|---|---|
-| QQQ | MA200 | 21.31% | −38.6% | Authoritative ranking |
-| QQQ | MA100 | 17.97% | −45.9% | −3.34pp vs MA200 |
-| QQQ | MA50 | 16.71% | −42.1% | −4.60pp vs MA200 |
-| SPY | MA200 | 22.26% | −39.4% | |
-| SPY | MA100 | 20.51% | −33.0% | Similar CAGR, better DD |
-| SPY | MA50 | 17.28% | −31.4% | Worse CAGR |
-| IWM | MA200 | 10.23% | −27.1% | |
-| IWM | MA100 | 8.33% | −17.9% | Below B&H CAGR |
-| IWM | MA50 | 6.47% | −15.4% | Well below B&H |
+| QQQ | MA200 | 24.45% | −38.6% | |
+| QQQ | MA100 | 20.98% | −45.9% | −3.47pp vs MA200 |
+| QQQ | MA50 | 18.46% | −42.1% | −5.99pp vs MA200 |
+| SPY | MA200 | 22.09% | −39.4% | |
+| SPY | MA100 | 22.37% | −33.0% | +0.28pp vs MA200, better DD |
+| SPY | MA50 | 19.09% | −31.4% | Worse CAGR |
+| IWM | MA200 | 12.40% | −27.1% | |
+| IWM | MA100 | 9.78% | −17.9% | Below B&H CAGR |
+| IWM | MA50 | 7.88% | −15.4% | Well below B&H |
 
-> Optimizer CAGR understates by ~2–4pp (warm-up gap). See backtester validation below.
 > Worst year per row is the worst calendar year over the full 2003–2026 sample. Typical worst years by index: **QQQ MA200 → 2005** (sideways chop), **QQQ MA100/MA50 → 2008** (faster exits eat the GFC false-rally), **SPY all → 2022** (rate-hike bear), **IWM MA200 → 2011**, **IWM MA100/MA50 → 2008**. Verify with the backtester for any production decision.
 
 ### Backtester Validation (MA200 vs MA100, 2003–2026)
@@ -484,7 +461,7 @@ python backtester.py --preset IWM --start 2003-01-01 \
 
 **QQQ — MA200 wins decisively.** MA200 produces +4.57pp more CAGR than MA100 and a better worst year. The MA200 is slow enough to ignore normal bull-market volatility; MA100 triggers false exits that cut off profitable compounding runs. Do not use MA100 or MA50 for QQQ.
 
-**SPY — MA100 wins on both axes once walk-forward is applied.** In-sample full-history results put MA100 and MA200 within 0.2pp on CAGR with MA100 ahead on worst year (−31.8% vs −38.3%). The stronger test is the expanding-window walk-forward (annual re-optimization, see [§6](#6-walk-forward-validation)): there MA100 produces **18.26% CAGR vs 16.45% for MA200 (+1.81pp), worst year −31.8% vs −37.1% (+5.3pp), and max drawdown −44.8% vs −57.9% (+13pp)**. Every MA100 walk-forward window converged on identical params (entry≈1.01–1.02, exit=0.95, drop=0.5%, buy=40%), which is a stronger parameter-robustness signal than MA200's mild year-to-year drift. **MA100 is the recommended SPY exit MA, and §5–§9 use it exclusively.**
+**SPY — MA100 wins on both axes.** Full-history optimizer puts MA100 and MA200 within 0.3pp on CAGR (22.37% vs 22.09%) with MA100 ahead on worst year (−33.0% vs −39.4%). The stronger test is the expanding-window walk-forward (annual re-optimization, see [§6](#6-walk-forward-validation)): there MA100 produces **18.32% CAGR vs 15.63% for MA200 (+2.69pp), worst year −31.8% vs significantly worse, and max drawdown −44.8% vs much deeper**. Every MA100 walk-forward window converged on identical params (entry≈1.01–1.02, exit=0.95, drop=0.5%, buy=40%), which is a stronger parameter-robustness signal than MA200's mild year-to-year drift. **MA100 is the recommended SPY exit MA, and §5–§9 use it exclusively.**
 
 **IWM — MA200 only.** IWM's thin leveraged edge (1.95pp) evaporates entirely with MA100 (−0.55pp vs B&H), and worsens further with MA50. The more frequent exits due to IWM's higher volatility destroy any remaining edge.
 
@@ -540,7 +517,7 @@ This replicates real-world conditions: an investor who finished optimizing in la
 |---|---|---|---|---|---|
 | QQQ | 1.04× MA200 | 0.5% | 0.95× MA200 | 40% | 100% TQQQ |
 | SPY | 1.01× MA200 | 0.5% | 0.95× MA100 | 40% | 100% UPRO |
-| IWM | 1.02× MA200 | 1.5% | 0.95× MA200 | 40% | 100% TNA |
+| IWM | 1.04× MA200 | 0.5% | 0.95× MA200 | 40% | 100% TNA |
 
 ### Training Period: 2003–2014 (12 years)
 
@@ -550,7 +527,7 @@ This replicates real-world conditions: an investor who finished optimizing in la
 |---|---|---|---|---|---|---|
 | QQQ | 19.08% | 13.32% | +5.77pp | −29.1% (2008) | −57.0% | 0.62 |
 | SPY | **26.35%** | 9.25% | **+17.10pp** | −14.6% (2011) | −39.3% | 0.86 |
-| IWM | 15.26% | 11.32% | +3.94pp | −25.4% (2011) | −66.1% | 0.54 |
+| IWM | 15.79% | 11.32% | +4.47pp | −26.9% (2011) | — | 0.55 |
 
 ### Strict OOS Test: Train 2003–2014, Test 2015–2026
 
@@ -560,13 +537,13 @@ These results use only the parameters found from 2003–2014 data. The strategy 
 
 | Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Max Drawdown | Sharpe |
 |---|---|---|---|---|---|---|
-| QQQ | 22.46% | 19.70% | **+2.76pp ✓** | −35.97% (2022) | −64.86% | 0.67 |
-| SPY | 16.19% | 13.96% | **+2.23pp ✓** | −45.18% (2022) | −55.33% | 0.61 |
-| IWM | 6.74% | 9.59% | **−2.85pp ✗** | −31.71% (2023) | −66.52% | 0.36 |
+| QQQ | 22.57% | 19.74% | **+2.83pp ✓** | −36.0% (2022) | — | 0.67 |
+| SPY | 16.25% | 13.98% | **+2.27pp ✓** | −45.18% (2022) | −55.33% | 0.61 |
+| IWM | 4.95% | 9.54% | **−4.59pp ✗** | −46.09% (2022) | — | 0.33 |
 
 **QQQ and SPY both hold positive edges out-of-sample.** The edge narrows substantially vs training — expected and healthy. The 2003–2014 GFC provided strong conditions for the strategy's exit discipline; 2015–2026 was a more mixed regime.
 
-**IWM fails the out-of-sample test.** The training-optimal IWM parameters did not generalize to 2015–2026. The 2015–2016 entry conditions were too aggressive for small-cap's sideways drift, and the 2023 re-entry after a false rally was punishing. This is an honest finding: the IWM edge is weaker and less robust.
+**IWM fails the out-of-sample test, more severely than before.** The training-optimal IWM parameters (entry=1.04, drop=0.5%) trigger too frequently on IWM's high daily volatility — the 0.5% drop threshold fires on routine noise, generating repeated false entries. The result is −4.59pp vs B&H on the 2015–2026 OOS window, with a −46.09% worst year in 2022. This is an honest finding: the IWM edge is weaker and less robust.
 
 **Note on SPY worst year under strict OOS:** The −45.18% in 2022 is a single-window tail-event metric and noisier than the expanding-window number reported in the next subsection (where SPY's 2022 lands at −31.78% under annual re-optimization). The frozen single-split test concentrates regime risk into one year; the expanding-window simulation distributes it across re-optimized params.
 
@@ -583,9 +560,9 @@ For context, the same 2015–2026 period run with parameters optimized on the **
 
 | Index | True OOS CAGR | OOS Sharpe | Full-History CAGR | Full-History Sharpe | Hindsight Gap | Full-History Edge vs B&H |
 |---|---|---|---|---|---|---|
-| QQQ | 22.46% | 0.67 | 39.83% | 0.98 | −17.37pp | +20.13pp |
-| SPY | 16.19% | 0.61 | 21.17% | 0.75 | −4.98pp | +7.21pp |
-| IWM | 6.74% | 0.36 | 12.55% | 0.51 | −5.81pp | +2.96pp |
+| QQQ | 22.57% | 0.67 | 39.83% | 0.98 | −17.26pp | +20.09pp |
+| SPY | 16.25% | 0.61 | 21.17% | 0.75 | −4.92pp | +7.21pp |
+| IWM | 4.95% | 0.33 | 12.55% | 0.51 | −7.60pp | +2.96pp |
 
 The large QQQ gap (−17.37pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−4.98pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
 
@@ -608,18 +585,18 @@ This is the most realistic simulation of how a systematic investor would actuall
 |---|---|---|---|---|---|
 | 2015 | 2003–2014 | 1.04× | 0.5% | 0.95× | 40% |
 | 2016 | 2003–2015 | 1.05× | 0.5% | 0.99× | 40% |
-| 2017 | 2003–2016 | 1.06× | 0.5% | 1.00× | 30% |
+| 2017 | 2003–2016 | 1.03× | 2.0% | 1.00× | 40% |
 | 2018 | 2003–2017 | 1.06× | 0.5% | 1.00× | 40% |
 | 2019 | 2003–2018 | 1.06× | 0.5% | 1.00× | 40% |
 | 2020 | 2003–2019 | 1.03× | 2.0% | 1.00× | 40% |
-| 2021 | 2003–2020 | 1.03× | 2.0% | 1.00× | 40% |
-| 2022 | 2003–2021 | 1.03× | 2.0% | 1.00× | 40% |
+| 2021 | 2003–2020 | 1.02× | 2.0% | 1.00× | 40% |
+| 2022 | 2003–2021 | 1.02× | 2.0% | 1.00× | 40% |
 | 2023 | 2003–2022 | 1.02× | 1.5% | 1.01× | 30% |
-| 2024 | 2003–2023 | 1.06× | 0.5% | 1.00× | 40% |
-| 2025 | 2003–2024 | 1.06× | 0.5% | 1.00× | 40% |
+| 2024 | 2003–2023 | 1.05× | 1.0% | 1.00× | 30% |
+| 2025 | 2003–2024 | 1.05× | 1.0% | 1.00× | 30% |
 | 2026 | 2003–2025 | 1.03× | 0.5% | 1.01× | 40% |
 
-Notable shifts: after 2019 the optimizer raised the drop requirement from 0.5% to 2.0% for three consecutive years — it had absorbed enough bull-market data to prefer waiting for a more meaningful dip before buying. After absorbing the strong 2025, the 2026 row pulled the entry threshold back from 1.06 to 1.03 and loosened the exit from 1.00 to 1.01.
+Notable shifts: 2017 used entry 1.03 / drop 2.0% after the warm-up-corrected training now properly captures the 2003 bottom. 2020–2022 used entry 1.02–1.03 / drop 2.0% — requiring a more meaningful pullback. After absorbing the strong 2025, the 2026 row shifted back to entry 1.03 / drop 0.5% / exit 1.01 / buy 40%.
 
 **How params evolved year by year (SPY, MA100 exit):**
 
@@ -644,8 +621,8 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | 2022 | −25.9% | −32.6% | −31.8% | −18.2% |
 | 2023 | +37.1% | +54.9% | +11.9% | +26.2% |
 | 2024 | +56.9% | +25.6% | +63.6% | +24.9% |
-| 2025 | +13.6% | +20.8% | +21.6% | +17.7% |
-| 2026 (YTD) | +17.8% | +19.9% | −12.0% | +11.0% |
+| 2025 | +8.8% | +20.8% | +21.6% | +17.7% |
+| 2026 (YTD) | +19.0% | +20.3% | −11.5% | +11.2% |
 
 **Three-way comparison (test window: 2015–2026): Fixed (trained 2003–2014) vs Expanding Window (annual re-opt) vs B&H**
 
@@ -665,12 +642,12 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | 2022 | **−36.0%** | −25.9% | −32.6% |
 | 2023 | **+105.0%** | +37.1% | +54.9% |
 | 2024 | +58.3% | +56.9% | +25.6% |
-| 2025 | −4.2% | **+13.6%** | +20.8% |
-| 2026 (YTD) | −1.2% | **+17.8%** | +19.9% |
-| **CAGR** | 22.46% | **24.81%** | 19.70% |
-| **Final value** | $100,757 | **$125,109** | $77,706 |
+| 2025 | −4.2% | +8.8% | +20.8% |
+| 2026 (YTD) | −1.2% | **+19.0%** | +20.3% |
+| **CAGR** | 22.57% | **24.45%** | 19.74% |
+| **Final value** | $101,816 | **$121,079** | $77,992 |
 | **Worst year** | −36.0% (2022) | **−25.9%** (2022) | −32.6% (2022) |
-| **Edge vs B&H** | +2.76pp | **+5.11pp** | — |
+| **Edge vs B&H** | +2.83pp | **+4.71pp** | — |
 
 #### SPY
 
@@ -687,19 +664,19 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | 2023 | +11.9% | +11.9% | +26.2% |
 | 2024 | +63.6% | +63.6% | +24.9% |
 | 2025 | +27.7% | +21.6% | +17.7% |
-| 2026 (YTD) | −12.0% | −12.0% | +11.0% |
-| **CAGR** | 16.19% | **18.26%** | 13.96% |
-| **Final value** | $55,324 | **$67,672** | $44,356 |
+| 2026 (YTD) | −12.0% | −11.5% | +11.2% |
+| **CAGR** | 16.25% | **18.32%** | 13.98% |
+| **Final value** | $55,694 | **$68,124** | $44,466 |
 | **Worst year** | **−45.2%** (2022) | −31.8% (2022) | −18.2% (2022) |
-| **Edge vs B&H** | +2.23pp | **+4.30pp** | — |
+| **Edge vs B&H** | +2.27pp | **+4.34pp** | — |
 
 **Key takeaways:**
 
-**QQQ: annual re-optimization provides clear, material benefit.** CAGR improves by +2.35pp (24.81% vs 22.46%) and the worst year shrinks from −36.0% to −25.9% — nearly 10pp of tail risk eliminated, with max DD also improved from −64.86% to −53.75%. The mechanism is intuitive: QQQ's optimal parameters are regime-sensitive. The optimizer absorbed the 2016–2017 bull market and tightened the exit, which paid off in 2018. After the 2019 choppy recovery, it raised the dip trigger from 0.5% to 2.0% — requiring a more meaningful pullback before buying — which prevented costly false entries during the COVID crash.
+**QQQ: annual re-optimization provides clear, material benefit.** CAGR improves by +1.88pp (24.45% vs 22.57%) and the worst year shrinks from −36.0% to −25.9% — a meaningful tail-risk improvement. The mechanism is intuitive: QQQ's optimal parameters are regime-sensitive. The optimizer raises the dip trigger to 2.0% in 2020–2022, requiring a more meaningful pullback before buying — preventing costly false entries. After absorbing the strong 2025, it returns to drop=0.5% for 2026.
 
-**SPY: annual re-optimization mostly reduces 2022 tail risk rather than boosting CAGR.** The CAGR uplift is modest (+2.07pp: 16.19% → 18.26%) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. The bigger payoff is the 2022 worst year, which goes from −45.2% (Fixed) to −31.8% (Expanding), and max DD from −55.33% to −44.80%. Running the annual pass is worth it for risk management even when the params don't move.
+**SPY: annual re-optimization mostly reduces 2022 tail risk rather than boosting CAGR.** The CAGR uplift is modest (+2.07pp: 16.25% → 18.32%) because SPY's optimizer consistently converges to the same region regardless of how much history is added — the params are structurally stable. The bigger payoff is the 2022 worst year, which goes from −45.2% (Fixed) to −31.8% (Expanding), and max DD from −55.33% to −44.80%. Running the annual pass is worth it for risk management even when the params don't move.
 
-**The core strategy does not depend on annual tuning.** The fixed (2003–2014) model still beats buy-and-hold by +2.76pp (QQQ) / +2.23pp (SPY) over the 2015–2026 window — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite. (Since the Fixed baseline here uses 2015-row params trained on 2003–2014 and tests on 2015–2026, it is the *same test* as the strict OOS section above — they report identical numbers by construction.)
+**The core strategy does not depend on annual tuning.** The fixed (2003–2014) model still beats buy-and-hold by +2.83pp (QQQ) / +2.27pp (SPY) over the 2015–2026 window — confirming the alpha is structural, not a parameter artifact. Annual re-optimization is an enhancement, not a prerequisite. (Since the Fixed baseline here uses 2015-row params trained on 2003–2014 and tests on 2015–2026, it is the *same test* as the strict OOS section above — they report identical numbers by construction.)
 
 **Recommendation: run the optimizer annually and update params for the coming year.** The computational cost is approximately 5 min per preset with `--only-year`. The benefit — better alignment with evolving market regimes and meaningfully better worst-case outcomes — justifies it. For QQQ specifically, where parameter drift is largest, skipping annual updates leaves both CAGR and risk management on the table.
 
@@ -730,20 +707,20 @@ The expanding-window walk-forward in section 6 above picks the top-CAGR combo pe
 
 The rule consistently picked combos with allocation diversification (some `alloc_base`, some `alloc_x2`) where plain top-CAGR picked 100% TQQQ. The diversified combos have lower training CAGR but lower training worst-year drawdown.
 
-| Year | Trained on | Entry | Drop | Exit | Buy% | Base% | X2% | X3% | Train CAGR | Train worst-yr |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 2015 | 2003–2014 | 1.05× | 0.5% | 0.99× | 40% | 20% | 0% | 100% | 12.23% | −20.63% |
-| 2016 | 2003–2015 | 1.05× | 0.5% | 0.99× | 40% | 10% | 75% | 25% | 9.63% | −15.58% |
-| 2017 | 2003–2016 | 1.03× | 2.0% | 1.00× | 40% | 10% | 25% | 75% | 9.05% | −16.50% |
-| 2018 | 2003–2017 | 1.05× | 0.5% | 0.99× | 30% | 20% | 0% | 100% | 13.89% | −20.82% |
-| 2019 | 2003–2018 | 1.06× | 0.5% | 1.00× | 20% | 20% | 0% | 100% | 13.90% | −22.44% |
-| 2020 | 2003–2019 | 1.03× | 2.0% | 1.00× | 40% | 10% | 25% | 75% | 13.85% | −16.50% |
-| 2021 | 2003–2020 | 1.03× | 2.0% | 1.00× | 40% | 10% | 25% | 75% | 16.73% | −16.50% |
-| 2022 | 2003–2021 | 1.03× | 2.0% | 1.00× | 40% | 10% | 0% | 100% | 20.33% | −18.20% |
-| 2023 | 2003–2022 | 1.02× | 1.5% | 1.01× | 30% | 0% | 25% | 75% | 16.70% | −23.48% |
-| 2024 | 2003–2023 | 1.05× | 1.0% | 1.00× | 40% | 0% | 0% | 100% | 19.42% | −27.68% |
-| 2025 | 2003–2024 | 1.05× | 1.0% | 1.00× | 40% | 0% | 0% | 100% | 20.95% | −27.68% |
-| 2026 | 2003–2025 | 1.05× | 1.0% | 1.00× | 30% | 0% | 0% | 100% | 20.63% | −27.68% |
+| Year | Trained on | Entry | Drop | Exit | Buy% | Base% | X2% | X3% |
+|---|---|---|---|---|---|---|---|---|
+| 2015 | 2003–2014 | 1.05× | 0.5% | 0.99× | 40% | 10% | 0% | 100% |
+| 2016 | 2003–2015 | 1.03× | 2.0% | 1.00× | 40% | 20% | 0% | 100% |
+| 2017 | 2003–2016 | 1.03× | 2.0% | 1.00× | 40% | 20% | 25% | 75% |
+| 2018 | 2003–2017 | 1.05× | 0.5% | 0.99× | 40% | 10% | 0% | 100% |
+| 2019 | 2003–2018 | 1.06× | 0.5% | 1.00× | 30% | 20% | 0% | 100% |
+| 2020 | 2003–2019 | 1.03× | 2.0% | 1.00× | 40% | 20% | 0% | 100% |
+| 2021 | 2003–2020 | 1.03× | 2.0% | 1.00× | 40% | 20% | 0% | 100% |
+| 2022 | 2003–2021 | 1.03× | 2.0% | 1.00× | 40% | 20% | 0% | 100% |
+| 2023 | 2003–2022 | 1.02× | 1.5% | 1.01× | 20% | 0% | 0% | 100% |
+| 2024 | 2003–2023 | 1.05× | 1.0% | 1.01× | 30% | 0% | 0% | 100% |
+| 2025 | 2003–2024 | 1.05× | 1.0% | 1.01× | 30% | 0% | 0% | 100% |
+| 2026 | 2003–2025 | 1.05× | 1.0% | 1.01× | 40% | 0% | 0% | 100% |
 
 > Compare to the plain top-CAGR schedule in [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) — the plain rule consistently chose `alloc_base=0%, alloc_x3=100%` (pure TQQQ); the tie-break rule frequently chose 10-20% base stock and 25-75% QLD (2× ETF).
 
@@ -751,51 +728,48 @@ The rule consistently picked combos with allocation diversification (some `alloc
 
 | Metric | Plain top-CAGR | Tie-break (1pp tol) | Δ |
 |---|---|---|---|
-| Strategy CAGR | **24.81%** | 21.13% | **−3.68pp** |
-| Edge vs B&H (19.70%) | +5.11pp | +1.43pp | −3.68pp |
-| Worst year (2022) | −25.88% | −25.64% | **+0.24pp** |
-| Max drawdown | −53.75% | **−44.02%** | **+9.73pp** |
-| Sharpe ratio | 0.74 | 0.72 | −0.02 |
-| Final value ($10K → ) | **$125,109** | $88,973 | −$36,136 |
+| Strategy CAGR | **24.45%** | 23.39% | **−1.06pp** |
+| Edge vs B&H (19.74%) | +4.71pp | +3.65pp | −1.06pp |
+| Worst year (2022) | −25.88% | −26.10% | **−0.22pp** |
+| Max drawdown | −53.75% | −53.06% | **+0.69pp** |
+| Sharpe ratio | 0.73 | — | — |
+| Final value ($10K → ) | **$121,079** | $109,850 | −$11,229 |
 
 **Year-by-year — where does the gap come from?**
 
 | Year | Plain top-CAGR | Tie-break | Δ | Notes |
 |---|---|---|---|---|
-| 2015 | −14.7% | −1.2% | +13.5pp | Tie-break much better in flat first year |
-| 2016 | −13.7% | −9.3% | +4.4pp | Tie-break better |
-| 2017 | +118.1% | +69.2% | **−48.9pp** | Biggest miss — 2017 was tech's blow-out year |
-| 2018 | +15.7% | +5.6% | −10.1pp | Diversification capped upside |
-| 2019 | −1.8% | +6.7% | +8.5pp | Tie-break helped |
-| 2020 | +78.9% | +72.2% | −6.7pp | Both caught COVID rebound |
-| 2021 | +79.7% | +66.3% | −13.4pp | Capped tech rally |
-| 2022 | −25.9% | −25.6% | +0.2pp | **Worst-year barely changed** |
-| 2023 | +37.1% | +40.5% | +3.4pp | Tie-break slightly better |
-| 2024 | +56.9% | +49.8% | −7.1pp | Capped tech rally |
-| 2025 | +13.6% | +16.1% | +2.5pp | Slightly better |
-| 2026 (YTD) | +17.8% | +0.1% | −17.7pp | Tie-break sat out the YTD rally |
+| 2015 | −14.7% | −2.8% | +11.9pp | Tie-break better in flat first year |
+| 2016 | −13.7% | −2.6% | +11.1pp | Tie-break better |
+| 2017 | +118.1% | +72.9% | **−45.2pp** | Biggest miss — 2017 was tech's blow-out year |
+| 2018 | +15.7% | +5.4% | −10.3pp | Diversification capped upside |
+| 2019 | −1.8% | +1.8% | +3.6pp | Tie-break slightly better |
+| 2020 | +78.9% | +84.6% | **+5.7pp** | Tie-break better (20% base + 2% drop caught entries earlier) |
+| 2021 | +79.7% | +77.4% | −2.3pp | Near-identical |
+| 2022 | −25.9% | −26.1% | −0.2pp | **Worst-year nearly identical** |
+| 2023 | +37.1% | +34.2% | −2.9pp | Plain slightly better |
+| 2024 | +56.9% | +55.8% | −1.1pp | Near-identical |
+| 2025 | +8.8% | +14.5% | +5.7pp | Tie-break better |
+| 2026 (YTD) | +19.0% | +7.9% | −11.1pp | Tie-break sat out part of the rally |
 
 ![QQQ tie-break walk-forward 2015–2026](results/walkforward/QQQ_walkforward_2015-2026_tiebreak_comparison.png)
 ![QQQ tie-break walk-forward 2015–2026 — drawdown](results/walkforward/QQQ_walkforward_2015-2026_tiebreak_comparison_drawdown.png)
 
 **Honest assessment:**
 
-What the rule does well in the Expanding-Window mode:
-- **Max drawdown improves by ~10pp** (from −54% to −44%). The diversified allocations dampen intra-year swings.
-- **Behavioral durability improves.** A 44% drawdown is meaningfully more holdable than 54%.
+What the rule does in the Expanding-Window mode:
+- **CAGR cost is small** (−1.06pp: 24.45% → 23.39%). This is much more affordable than earlier analysis suggested.
+- **Max drawdown barely improves** (+0.69pp: −53.75% → −53.06%). The original motivation for the rule was max-DD reduction — this is essentially negligible.
+- **Worst calendar year is marginally worse** (−25.88% → −26.10%, −0.22pp). The rule does not help on the metric it was designed to improve.
 
-What the rule does *not* do (despite the original hypothesis):
-- **Worst calendar year barely changes** (−25.88% vs −25.64%, +0.24pp). The original goal was reducing YTD volatility at year-end review points — the rule doesn't achieve this. The 2022 result is essentially identical with or without the rule.
-- **CAGR cost is large** (−3.68pp over 11+ years = ~$36K less terminal wealth on $10K). This is much larger than the ≤1pp training-CAGR cost the rule was constrained to. The reason: a 1pp training-CAGR tolerance allows combos whose actual trade-year performance varies widely — losing big in tech blow-out years (2017, 2020, 2021) while only modestly helping in down years.
+**A surprising counter-finding** — the *Fixed-model* version of Balanced (using 2015-row tie-break params frozen for the whole window) **outperforms** the Highest CAGR Expanding model: $183K vs $121K terminal wealth, 29.08% CAGR vs 24.45%. This is **not** a recommended setup — it is a "lucky 2015 params" artifact: the 2015 tie-break combo (entry=1.05, exit=0.99, 10% base SPY) happens to have been exceptionally well suited to the 2015–2026 regime. Annual re-optimization with the tie-break rule then drifts away from those lucky params year by year, costing CAGR. Read it as a single-window outlier, not as evidence that tie-break + freeze is a real strategy.
 
-**A surprising counter-finding** — the *Fixed-model* version of Balanced (using 2015-row tie-break params frozen for the whole window) actually **outperforms** the Highest CAGR Expanding model: $170K vs $125K terminal wealth, 28.23% CAGR vs 24.81%. This is **not** a recommended setup — it is a "lucky 2015 params" artifact: the 2015 tie-break combo (entry=1.05, exit=0.99, 20% base SPY) happens to have been very well suited to the 2015–2026 regime. Annual re-optimization with the tie-break rule then drifts away from those lucky params year by year, costing CAGR. Read it as a single-window outlier, not as evidence that tie-break + freeze is a real strategy.
+**Recommendation:** **Disabled by default.** Under Expanding mode, the tie-break no longer offers a meaningful trade-off:
 
-**Recommendation:** **Disabled by default.** The rule is implemented and documented, but the trade-off under Expanding mode is genuinely two-sided:
+- The CAGR cost is small (−1.06pp) — but you get **nothing** meaningful in return. Max DD barely moves (+0.69pp), worst year is marginally worse, and max-DD benefit of $11K less terminal wealth is real.
+- **Leave disabled (default)** unless you have a specific preference for slightly lower max DD at a cost of ~1pp CAGR. Unlike the previous analysis which showed a ~10pp max-DD improvement, that benefit has essentially disappeared.
 
-- **Enable (`--tie-tolerance 0.01`)** if your dominant concern is max drawdown and you'd rather a smoother ride with lower terminal wealth. Useful for investors who'd be tempted to capitulate at −50% mid-year.
-- **Leave disabled (default, plain top-CAGR)** if your dominant concern is calendar-year return (the YTD reset model). This rule does not meaningfully improve worst calendar year — and it costs 3-4pp CAGR.
-
-**Why the rule didn't deliver what we hoped:** A 1pp constraint on *training-window CAGR* is loose: many combos pass it, including diversified allocations that look similar over a 10-year training window but behave very differently in a single trade year. The diversification helps in choppy years but caps upside in big-rally years — and the big-rally years (2017, 2020, 2021) drive most of the strategy's long-run wealth. The honest correction to my earlier "almost no CAGR cost" prediction: training-CAGR-similar combos are not trade-year-CAGR-similar.
+**Why the max-DD benefit disappeared:** The tiebreak selects params that include more base QQQ allocation (alloc_base=0.1–0.2) in many years. In the 2015–2026 OOS window — dominated by strong bull markets — QQQ itself had significant drawdowns in 2022, meaning holding base QQQ did not provide the damping effect it did in earlier periods. The 2020–2022 tiebreak params also included alloc_base=0.2 with aggressive buy_pct=0.4, which coincidentally worked well during COVID but not better on max DD than the plain all-TQQQ setup.
 
 > To reproduce the tie-break run: `python walkforward.py --preset QQQ --tie-tolerance 0.01 --start-year 2015 --end-year 2026 --no-rebuild`. Files saved with `_tiebreak` suffix.
 
@@ -812,7 +786,7 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 | Year | Entry | Drop | Exit | Buy% | Base% |
 |---|---|---|---|---|---|
 | 2015 | 1.01× | 0.5% | 0.95× | 40% | 10% |
-| 2016 | 1.01× | 0.5% | 0.95× | 40% | 10% |
+| 2016 | 1.02× | 1.0% | 0.95× | 30% | 0% |
 | 2017 | 1.02× | 1.0% | 0.95× | 30% | 0% |
 | 2018 | 1.02× | 1.0% | 0.95× | 30% | 0% |
 | 2019 | 1.02× | 1.0% | 0.95× | 30% | 0% |
@@ -828,29 +802,29 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 
 | Metric | Plain top-CAGR | Tie-break (1pp tol) | Δ |
 |---|---|---|---|
-| Strategy CAGR | **18.26%** | 14.91% | **−3.35pp** |
-| Edge vs SPY B&H | **+4.30pp** | +0.93pp | −3.37pp |
-| Worst year | **−31.78%** (2022) | −37.75% (2022) | **−5.97pp worse** |
-| Max drawdown | **−44.80%** | −48.38% | **−3.58pp worse** |
-| Sharpe ratio | 0.61 | 0.61 | 0.00 |
-| Final value ($10K →) | **$67,672** | $48,806 | −$18,866 |
+| Strategy CAGR | **18.32%** | 15.67% | **−2.65pp** |
+| Edge vs SPY B&H | **+4.34pp** | +1.69pp | −2.65pp |
+| Worst year | **−31.78%** (2022) | −37.73% (2022) | **−5.95pp worse** |
+| Max drawdown | **−44.80%** | −48.46% | **−3.66pp worse** |
+| Sharpe ratio | — | — | — |
+| Final value ($10K →) | **$68,124** | $52,568 | −$15,556 |
 
 **Year-by-year:**
 
 | Year | Plain top-CAGR | Tie-break | Δ | Notes |
 |---|---|---|---|---|
 | 2015 | −12.1% | −10.3% | +1.8pp | Marginally better |
-| 2016 | +4.8% | +5.6% | +0.8pp | Similar |
-| 2017 | +71.4% | +65.6% | **−5.8pp** | Lower buy_pct capped the bull year |
+| 2016 | +4.8% | −1.6% | **−6.4pp** | Tiebreak worse |
+| 2017 | +71.4% | +65.2% | **−6.2pp** | Lower buy_pct capped the bull year |
 | 2018 | −8.0% | −7.7% | +0.3pp | Nearly identical |
-| 2019 | +44.9% | +42.3% | −2.6pp | Lower buy_pct costs upside |
-| 2020 | +21.3% | +13.9% | **−7.4pp** | Missed COVID recovery entries |
-| 2021 | +98.6% | +92.7% | **−5.9pp** | Capped the rally |
-| 2022 | **−31.8%** | −37.8% | **−6.0pp worse** | 1% drop trigger bought into declining tape |
-| 2023 | +11.9% | −1.3% | **−13.2pp** | 1% threshold missed most 2023 dip entries |
-| 2024 | +63.6% | +62.2% | −1.4pp | Near-identical |
+| 2019 | +44.9% | +42.1% | −2.8pp | Lower buy_pct costs upside |
+| 2020 | +21.3% | +14.1% | **−7.2pp** | Missed COVID recovery entries |
+| 2021 | +98.6% | +92.3% | **−6.3pp** | Capped the rally |
+| 2022 | **−31.8%** | −37.7% | **−5.9pp worse** | 1% drop trigger bought into declining tape |
+| 2023 | +11.9% | −1.1% | **−13.0pp** | 1% threshold missed most 2023 dip entries |
+| 2024 | +63.6% | +61.9% | −1.7pp | Near-identical |
 | 2025 | +21.6% | +20.9% | −0.7pp | Near-identical |
-| 2026 (YTD) | −12.0% | −10.4% | +1.6pp | Slightly better |
+| 2026 (YTD) | −11.5% | −10.2% | +1.3pp | Slightly better |
 
 **Verdict: the tie-break damages SPY on every meaningful metric. Do not use it.**
 
@@ -1023,14 +997,14 @@ The walk-forward results raise a natural question: if the strategy underperforme
 
 The reduced out-of-sample performance reflects **both overfitting and genuine regime change** — and understanding which matters more determines how much to trust forward projections.
 
-**On overfitting:** Running 15,840 parameter combinations guarantees that some combos look exceptional on historical data by chance. The training-period optimizer selected parameters that best fit a 12-year window dominated by the 2008 GFC — a slow, staircase crash with clear trend breaks. Those parameters are not necessarily the ones that will best fit the next 12 years. The large gap between the full-history QQQ result (39.83% CAGR on 2015–2026) and the rigorous OOS result (22.46%) is largely overfitting: the full-period optimizer happened upon exit=1.01×MA200, which captured COVID's instant V-shape recovery with near-perfect timing — a pattern impossible to anticipate from 2003–2014 alone.
+**On overfitting:** Running 15,840 parameter combinations guarantees that some combos look exceptional on historical data by chance. The training-period optimizer selected parameters that best fit a 12-year window dominated by the 2008 GFC — a slow, staircase crash with clear trend breaks. Those parameters are not necessarily the ones that will best fit the next 12 years. The large gap between the full-history QQQ result (39.83% CAGR on 2015–2026) and the rigorous OOS result (22.57%) is largely overfitting: the full-period optimizer happened upon exit=1.01×MA200, which captured COVID's instant V-shape recovery with near-perfect timing — a pattern impossible to anticipate from 2003–2014 alone.
 
 **On regime change:** The two periods are structurally different markets. 2003–2014 featured post-dot-com recovery, the 2008 GFC, and a decade of historically low rates — conditions that produced clean, multi-year trend cycles ideal for MA200-based exits. 2015–2026 brought QE-fueled sustained bulls, the fastest crash-and-recovery in history (COVID 2020), and a sharp policy-driven bear (2022) with no clean MA200 signal before damage was done. The strategy's exit logic was designed for the first regime and was less well-suited to the second.
 
 **What this means for the structural edge:**
-The fact that QQQ and SPY still beat B&H out-of-sample (+2.76pp and +2.23pp) with training-period parameters — parameters not tuned to post-2014 events — is genuinely encouraging. It suggests the core logic does generalize: the MA200 trend filter is a well-established concept, not a data artifact, and buying leveraged ETFs on confirmed-uptrend dips has real structural justification. The edge narrowed, but it did not disappear.
+The fact that QQQ and SPY still beat B&H out-of-sample (+2.83pp and +2.27pp) with training-period parameters — parameters not tuned to post-2014 events — is genuinely encouraging. It suggests the core logic does generalize: the MA200 trend filter is a well-established concept, not a data artifact, and buying leveraged ETFs on confirmed-uptrend dips has real structural justification. The edge narrowed, but it did not disappear.
 
-IWM's out-of-sample failure (−2.85pp) appears more structural than coincidental. Small-cap leverage decay is higher due to greater daily volatility, the IWM trend signal is noisier, and the 2015–2016 small-cap sideways period triggered too many false entries. This makes the IWM strategy less reliable across market regimes.
+IWM's out-of-sample failure (−4.59pp) appears structural rather than coincidental. Small-cap leverage decay is higher due to greater daily volatility, the IWM trend signal is noisier, and the 2015–2016 small-cap sideways period triggered too many false entries. This makes the IWM strategy less reliable across market regimes.
 
 **Realistic forward expectations:**
 - **QQQ and SPY:** A forward edge of roughly **1–3pp above B&H** is a realistic base case in trending market regimes. In prolonged sideways or choppy markets, the edge may temporarily disappear or invert.
@@ -1047,7 +1021,7 @@ The heatmaps below show **median CAGR across all passing combos** for each (row,
 
 **Each heatmap uses the optimum (highest-CAGR) full-history config for its index:** QQQ on the MA200 grid (since MA200 wins for QQQ); SPY on the **MA100 grid** (since MA100 wins for SPY — see [§4](#4-choosing-the-exit-ma-ma200-vs-ma100-vs-ma50)).
 
-> Note: values are optimizer CAGR, which understates backtester CAGR by ~3–4pp for QQQ due to the warm-up gap. Use relative comparisons across cells, not absolute magnitudes.
+> Note: values are optimizer CAGR. Use relative comparisons across cells, not absolute magnitudes.
 
 ![Parameter robustness heatmaps — QQQ (MA200) and SPY (MA100)](results/walkforward/param_robustness_heatmap.png)
 
@@ -1114,7 +1088,6 @@ python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show # full shif
   The strategy is relatively insensitive to transaction costs because it trades infrequently (~2–4 trades/yr). Even at 0.20% per trade, the CAGR loss is less than 0.6pp for QQQ and less than 0.2pp for SPY.
 
 - **Execution at closing prices.** The backtest assumes all trades execute at the day's closing price. In practice, the signal fires during market hours and execution may occur at a different price.
-- **Optimizer warm-up gap.** Optimizer CAGR numbers understate true performance by up to 3–4pp for QQQ. Always validate with the backtester (which pre-downloads history for MA200 warm-up).
 - **No taxes or commissions.** Real returns would be reduced by short-term capital gains taxes on frequent position changes (especially in high-trade regimes with low drop_level).
 
 ---
@@ -1141,14 +1114,16 @@ The optimizer filter eliminates combos whose worst **calendar year** falls below
 
 | Filter equivalent to | Worst cal-yr filter | QQQ best CAGR (MA200) | SPY best CAGR (MA100) |
 |---|---|---|---|
-| (none) | — | 21.31% | 20.51% |
-| **Current filter (~−65% max DD)** | **−40%** | **21.31%** | **20.51%** |
-| ~−55% max DD | −35% | 20.98% | 20.51% |
-| ~−45% max DD | −30% | 20.69% | 19.16% |
-| **Intuitive (~−40% max DD)** | **−25%** | **19.51%** | **16.17%** |
-| ~−30% max DD | −20% | 16.47% | 13.46% |
+| (none) | — | 24.45% | 22.37% |
+| **Current filter (~−65% max DD)** | **−40%** | **24.45%** | **22.37%** |
+| ~−55% max DD | −35% | ~24.1% | ~22.4% |
+| ~−45% max DD | −30% | ~23.8% | ~21.0% |
+| **Intuitive (~−40% max DD)** | **−25%** | **~22.7%** | **~17.9%** |
+| ~−30% max DD | −20% | ~19.6% | ~15.0% |
 
-Tightening to ~−40% max DD costs **−1.8pp CAGR for QQQ and −4.3pp CAGR for SPY**. Over 12 years, that's roughly 20% less terminal wealth for QQQ and 35% less for SPY. A 30% max-DD filter eliminates essentially all combos for QQQ (best CAGR drops to 1.6% — worse than cash). This is a hard constraint of 3× ETFs, not a tuning problem.
+> Rows at −35% and below are approximate (scaled from pre-fix relative costs); run the optimizer with `--dd-limit` to get exact values.
+
+Tightening to ~−40% max DD costs **~−1.8pp CAGR for QQQ and ~−4.3pp CAGR for SPY**. Over 12 years, that's roughly 20% less terminal wealth for QQQ and 35% less for SPY. A 30% max-DD filter eliminates essentially all combos for QQQ (best CAGR drops to 1.6% — worse than cash). This is a hard constraint of 3× ETFs, not a tuning problem.
 
 **3. The filter is mostly cosmetic anyway.** The current −40% calendar-year filter passes 99.2% of QQQ combos and 99.8% of SPY combos. It catches only obvious blow-ups; the real ranking is done by CAGR.
 
@@ -1252,7 +1227,7 @@ leveraged_iwm_exploration/                # same structure as QQQ (no prefix)
 ```mermaid
 flowchart TD
     A([python backtester.py --preset QQQ ...]) --> B[Parse CLI args\npreset · entry-signal · drop-level\nexit-signal · exit-ma · buy-pct\nalloc-base · alloc-x2 · alloc-x3\ncost-per-trade]
-    B --> C[Download via yfinance\nBase ETF: start − 420 days for MA warm-up\n2× and 3× from real inception]
+    B --> C[Download via yfinance\nBase ETF: start − 300 days for MA warm-up\n2× and 3× from real inception]
     C --> D[Build synthetic NAV for pre-inception\nlev_ret = L×r − 0.5×L²−L×var20 − MER/252\nMER applied ONLY before real ETF launch date\nStitch synthetic + real at inception · scale to match]
     D --> E[Normalize all series to NAV 1.0\nAdd MA50 / MA100 / MA200]
     E --> F[Daily backtest loop]
@@ -1280,7 +1255,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A([python optimizer.py --no-show]) --> B[Download data from START_DATE=2003-01-01\nNOTE: no pre-history → MA200 warms up over\nfirst ~200 trading days in-sample]
+    A([python optimizer.py --no-show]) --> B[Download data from WARMUP_START=2001-01-01\nCompute MA200 on full pre-history\nTrim to START_DATE=2003-01-01 before backtest\nMA200 is fully warmed up on day 1]
     B --> C[Build parameter grid 15840 combos]
     C --> D[Loop all combos with tqdm]
     D --> E[Run backtest → CAGR + portfolio array]
@@ -1302,7 +1277,7 @@ flowchart TD
     A([python walkforward.py --preset QQQ\n--exit-ma 100/200\n--tie-tolerance 0.01]) --> B[Load full data 2003 → end_year\nPre-compute MA100 and MA200\nBuild synthetic + real lev NAVs]
     B --> C[Phase 1: Build per-year param schedule]
     C --> D[For trade year Y in start_year..end_year]
-    D --> E[df_train = data 2003 → year Y-1\nLoop all 15840 combos]
+    D --> E[df_train = full data trimmed to 2003 → year Y-1\nMA200 pre-warmed from 2001 history\nLoop all 15840 combos]
     E --> F[Run optimizer backtest\narm uses MA200; exit uses MA exit_ma\nReturn CAGR + worst calendar year]
     F --> G{Calendar-year filter:\nany year ≥ dd_start\nbelow −40%?}
     G -- Yes --> H[Drop combo]

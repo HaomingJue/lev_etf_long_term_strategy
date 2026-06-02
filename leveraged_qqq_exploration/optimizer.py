@@ -87,8 +87,9 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATE  = "2003-01-01"   # QQQ inception — synthetic lev before real ETF dates
-END         = "2026-05-08"
+START_DATE   = "2003-01-01"   # evaluation start
+WARMUP_START = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
+END          = "2026-05-08"
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40    # year-end drawdown cap
 DD_START_YEAR = 2010    # only apply DD filter from this year onward
@@ -119,13 +120,13 @@ def load_data():
     # Download QQQ from 1999 inception; real lev ETFs from their launch dates.
     # Synthetic NAVs fill the gap before real ETFs existed.
     print("Downloading QQQ, QLD, TQQQ …")
-    qqq = download("QQQ", "2003-01-01", END)
+    qqq = download("QQQ", WARMUP_START, END)
     try:
-        qld  = download("QLD",  "2003-01-01", END)
+        qld  = download("QLD",  WARMUP_START, END)
     except Exception:
         qld  = pd.Series(dtype=float)
     try:
-        tqqq = download("TQQQ", "2003-01-01", END)
+        tqqq = download("TQQQ", WARMUP_START, END)
     except Exception:
         tqqq = pd.Series(dtype=float)
 
@@ -140,9 +141,10 @@ def load_data():
     }).dropna(subset=["QQQ"])
 
     df.columns = ["QQQ", "QLD", "TQQQ"]
-    df = df / df.iloc[0]                        # normalise to 1.0 on day 0
+    df = df / df.iloc[0]
     df["ret"]   = df["QQQ"].pct_change().fillna(0)
     df["MA200"] = df["QQQ"].rolling(200).mean()
+    df = df[df.index >= START_DATE].copy()
     return df
 
 

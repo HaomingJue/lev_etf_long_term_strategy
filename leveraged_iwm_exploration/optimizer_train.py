@@ -67,8 +67,9 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # CONFIGURATION
 # ----------------------------------------------------------
 
-START_DATE  = "2003-01-01"
-END         = "2014-12-31"   # training period only — do not change
+START_DATE   = "2003-01-01"
+WARMUP_START = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
+END          = "2014-12-31"   # training period only — do not change
 CAPITAL     = 10_000
 DD_LIMIT      = 0.40
 DD_START_YEAR = 2009
@@ -96,13 +97,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading IWM, UWM, TNA …")
-    iwm = download("IWM", START_DATE, END)
+    iwm = download("IWM", WARMUP_START, END)
     try:
-        uwm = download("UWM", START_DATE, END)
+        uwm = download("UWM", WARMUP_START, END)
     except Exception:
         uwm = pd.Series(dtype=float)
     try:
-        tna = download("TNA", START_DATE, END)
+        tna = download("TNA", WARMUP_START, END)
     except Exception:
         tna = pd.Series(dtype=float)
 
@@ -119,6 +120,7 @@ def load_data():
     df = df / df.iloc[0]
     df["ret"]   = df["IWM"].pct_change().fillna(0)
     df["MA200"] = df["IWM"].rolling(200).mean()
+    df = df[df.index >= START_DATE].copy()
     return df
 
 

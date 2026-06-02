@@ -72,6 +72,7 @@ def build_lev_nav(qqq: pd.Series, real: pd.Series, L: int) -> pd.Series:
 # ----------------------------------------------------------
 
 START_DATE    = "2003-01-01"
+WARMUP_START  = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
 END           = "2026-05-08"
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
@@ -99,13 +100,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading QQQ, QLD, TQQQ ...")
-    qqq = download("QQQ", START_DATE, END)
+    qqq = download("QQQ", WARMUP_START, END)
     try:
-        qld  = download("QLD",  START_DATE, END)
+        qld  = download("QLD",  WARMUP_START, END)
     except Exception:
         qld  = pd.Series(dtype=float)
     try:
-        tqqq = download("TQQQ", START_DATE, END)
+        tqqq = download("TQQQ", WARMUP_START, END)
     except Exception:
         tqqq = pd.Series(dtype=float)
 
@@ -118,6 +119,7 @@ def load_data():
     df["ret"]   = df["QQQ"].pct_change().fillna(0)
     df["MA200"] = df["QQQ"].rolling(200).mean()   # entry / arm
     df["MA100"] = df["QQQ"].rolling(100).mean()   # exit only
+    df = df[df.index >= START_DATE].copy()
     return df
 
 

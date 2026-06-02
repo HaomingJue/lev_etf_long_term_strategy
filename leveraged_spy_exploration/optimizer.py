@@ -142,9 +142,10 @@ def load_data():
     }).dropna(subset=["QQQ"])
 
     df.columns = ["QQQ", "QLD", "TQQQ"]   # keep same col names so backtest() works unchanged
-    df = df / df.iloc[0]                   # normalise to 1.0 on day 0
+    df = df / df.iloc[0]
     df["ret"]   = df["QQQ"].pct_change().fillna(0)
     df["MA200"] = df["QQQ"].rolling(200).mean()
+    df = df[df.index >= START_DATE].copy()
     return df
 
 

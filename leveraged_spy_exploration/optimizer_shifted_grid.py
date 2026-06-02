@@ -74,6 +74,7 @@ def build_lev_nav(base: pd.Series, real: pd.Series, L: int) -> pd.Series:
 
 
 START_DATE    = "2003-01-01"
+WARMUP_START  = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
 END           = "2026-05-30"  # bumped to current data for the shifted-grid sweep
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
@@ -100,13 +101,13 @@ def download(ticker, start, end):
 
 def load_data():
     print("Downloading SPY, SSO, UPRO ...")
-    spy = download("SPY", START_DATE, END)
+    spy = download("SPY", WARMUP_START, END)
     try:
-        sso  = download("SSO",  START_DATE, END)
+        sso  = download("SSO",  WARMUP_START, END)
     except Exception:
         sso  = pd.Series(dtype=float)
     try:
-        upro = download("UPRO", START_DATE, END)
+        upro = download("UPRO", WARMUP_START, END)
     except Exception:
         upro = pd.Series(dtype=float)
     lev2_nav = build_lev_nav(spy, sso,  2)
@@ -117,6 +118,7 @@ def load_data():
     df["ret"]   = df["SPY"].pct_change().fillna(0)
     df["MA200"] = df["SPY"].rolling(200).mean()
     df["MA100"] = df["SPY"].rolling(100).mean()
+    df = df[df.index >= START_DATE].copy()
     return df
 
 

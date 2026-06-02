@@ -7,7 +7,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 21.96
+    "train_cagr": 25.6,
+    "train_worst_year": -18.47
   },
   "2016": {
     "entry_signal": 1.01,
@@ -17,7 +18,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 18.36
+    "train_cagr": 21.62,
+    "train_worst_year": -18.47
   },
   "2017": {
     "entry_signal": 1.02,
@@ -27,7 +29,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 18.69
+    "train_cagr": 21.73,
+    "train_worst_year": -27.79
   },
   "2018": {
     "entry_signal": 1.02,
@@ -37,7 +40,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 21.64
+    "train_cagr": 24.54,
+    "train_worst_year": -27.79
   },
   "2019": {
     "entry_signal": 1.02,
@@ -47,7 +51,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 19.53
+    "train_cagr": 22.19,
+    "train_worst_year": -27.79
   },
   "2020": {
     "entry_signal": 1.02,
@@ -57,7 +62,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 20.89
+    "train_cagr": 23.43,
+    "train_worst_year": -27.79
   },
   "2021": {
     "entry_signal": 1.02,
@@ -67,7 +73,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 20.91
+    "train_cagr": 23.3,
+    "train_worst_year": -27.79
   },
   "2022": {
     "entry_signal": 1.02,
@@ -77,7 +84,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 24.11
+    "train_cagr": 26.44,
+    "train_worst_year": -27.79
   },
   "2023": {
     "entry_signal": 1.02,
@@ -87,7 +95,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 20.46
+    "train_cagr": 22.6,
+    "train_worst_year": -32.95
   },
   "2024": {
     "entry_signal": 1.02,
@@ -97,7 +106,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 20.04
+    "train_cagr": 22.07,
+    "train_worst_year": -32.95
   },
   "2025": {
     "entry_signal": 1.02,
@@ -107,7 +117,8 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 21.73
+    "train_cagr": 23.7,
+    "train_worst_year": -32.95
   },
   "2026": {
     "entry_signal": 1.02,
@@ -117,7 +128,7 @@
     "alloc_base": 0.0,
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
-    "train_cagr": 21.73,
+    "train_cagr": 23.61,
     "train_worst_year": -32.95
   }
 }

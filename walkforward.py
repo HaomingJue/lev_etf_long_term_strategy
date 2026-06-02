@@ -55,6 +55,7 @@ PRESETS = {
 }
 
 START_DATE    = "2003-01-01"
+WARMUP_START  = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
 CAPITAL       = 10_000
 DD_LIMIT      = 0.40
 
@@ -112,7 +113,7 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
 
     def dl(tk):
         try:
-            s = yf.download(tk, start=START_DATE, end=end,
+            s = yf.download(tk, start=WARMUP_START, end=end,
                             auto_adjust=True, progress=False)["Close"].squeeze().dropna()
             s.name = tk
             return s
@@ -128,6 +129,7 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
     df["ret"]   = df["base"].pct_change().fillna(0)
     df["MA100"] = df["base"].rolling(100).mean()
     df["MA200"] = df["base"].rolling(200).mean()
+    df = df[df.index >= START_DATE].copy()
     return df
 
 
