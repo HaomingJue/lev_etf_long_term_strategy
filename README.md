@@ -814,9 +814,7 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 | 2025 | +21.6% | +20.9% | −0.7pp | Near-identical |
 | 2026 (YTD) | −11.5% | −10.2% | +1.3pp | Slightly better |
 
-**Verdict: the tie-break damages SPY on every meaningful metric. Do not use it.**
-
-Unlike QQQ — where the tie-break at least had a small CAGR cost (1.06pp) — SPY's tie-break offers no trade-off at all: it costs 2.65pp CAGR, makes the worst year 6pp worse, and deepens max drawdown. There is no dimension where it helps.
+**Verdict: not worth it.** The tie-break costs 2.65pp CAGR, makes the worst year 6pp worse, and deepens max drawdown. There is no dimension where it helps.
 
 **Why the tie-break hurts SPY:**
 
