@@ -68,22 +68,25 @@ The strategy's bottom line and how to run it. Everything that follows in Parts 2
 
 ## Recommended Configurations
 
-### What the two CAGR numbers mean
+### What the numbers mean
 
-The performance tables below report two CAGR figures for each variant. They measure different things; both are reported because both are useful:
+The tables below report metrics for two distinct periods. **All metrics are labeled by period** — do not mix them.
 
-- **Full-history CAGR (2003–2026, 23 years).** A single best parameter set was found by running the optimizer on the *entire* historical sample and picking the highest-CAGR combo. The same params were then applied to the same data. This is the **in-sample, hindsight-optimized upper bound** — it answers "what would the best params have produced if we'd known them in advance?" It is not a realistic forward expectation; live trading cannot use future data.
-- **Walk-forward CAGR (2015–2026, 11+ years).** Each January, the optimizer is re-run on all prior data only, and the resulting params are applied to the next year. The first row trains on 2003–2014 and is applied to 2015 trading; the cycle repeats through 2026. This is the **realistic forward expectation** — what an investor running the strategy honestly would have achieved with no look-ahead. The 2026 row is partial (Jan → today). Anchor your expectations here.
+- **Full history (2003–2026, 23 years).** The best parameter set found by running the optimizer on the entire sample, applied to that same data. In-sample, hindsight-optimized upper bound. Not a realistic forward expectation. The full-history max drawdown and worst year reflect the entire 23-year window including the synthetic 2008 GFC period.
+- **Walk-forward (2015–2026, 11+ years).** Each January, optimizer re-runs on all prior data only; resulting params applied to the next year. Realistic forward expectation — no look-ahead. Max drawdown and worst year here reflect only the 2015–2026 window, which starts after the worst historical crashes. **Anchor your expectations here.**
 
-The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but not directly period-matched: full-history covers 2003–2026 (23 yrs) while walk-forward covers 2015–2026 (11+ yrs). Read them as separate things — the full-history is hindsight-optimized; the walk-forward is what you would actually have earned. Where they differ, the walk-forward number is the honest one.
+The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but not period-matched. Where they differ, walk-forward is the honest number.
 
 ---
 
 ### QQQ
 
-| Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
-|---|---|---|---|---|
-| 24.48% | **24.45%** | −25.88% (2022) | −53.75% | **$121,079** |
+| Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
+|---|---|---|
+| CAGR | 24.48% | **24.45%** |
+| Final value ($10K →) | $1,667,000 | **$121,079** |
+| Worst calendar year | −40.8% (2005) | −25.88% (2022) |
+| Max drawdown | −69.1% | −53.75% |
 
 > **Schedule year convention.** In every table and JSON file in this repo, a row labeled **year N** was trained on data from 2003-01-02 through **Dec 31 of year N−1** and is intended for trading during **calendar year N**. The 2026 row below was produced in 2026-01 from data ending 2025-12-31; the previous 2025 row was produced in 2025-01 from data ending 2024-12-31. Always use the latest row (or re-run the January re-opt if the current calendar year does not have a row yet).
 
@@ -114,9 +117,12 @@ Apply the latest year's params to the next 12 months of trading. See [§6.1 cont
 
 ### SPY
 
-| Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
-|---|---|---|---|---|
-| 22.40% | **18.32%** | −31.78% (2022) | **−44.80%** | **$68,124** |
+| Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
+|---|---|---|
+| CAGR | 22.40% | **18.32%** |
+| Final value ($10K →) | $1,132,235 | **$68,124** |
+| Worst calendar year | −31.78% (2022) | −31.78% (2022) |
+| Max drawdown | −52.61% | −44.80% |
 
 **Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
 
