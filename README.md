@@ -816,7 +816,7 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 
 **Verdict: the tie-break damages SPY on every meaningful metric. Do not use it.**
 
-Unlike QQQ — where the tie-break bought ~10pp better max drawdown at a ~4pp CAGR cost — SPY's tie-break offers no trade-off worth taking. It costs 3.35pp CAGR, makes the worst year 6pp worse, and deepens max drawdown. There is no dimension where it helps.
+Unlike QQQ — where the tie-break at least had a small CAGR cost (1.06pp) — SPY's tie-break offers no trade-off at all: it costs 2.65pp CAGR, makes the worst year 6pp worse, and deepens max drawdown. There is no dimension where it helps.
 
 **Why the tie-break hurts SPY:**
 
@@ -1131,7 +1131,7 @@ All scripts are runnable with `python <script>.py [args]`. Most accept `--no-sho
 
 | Script | Purpose | Key args | Outputs |
 |---|---|---|---|
-| [`walkforward.py`](walkforward.py) | Annual walk-forward re-optimizer. Phase 1 builds the per-year param schedule; Phase 2 runs the continuous backtest with annual param swap; also runs a fixed-model baseline. | `--preset {QQQ,SPY,IWM}` · `--exit-ma {100,200}` · `--start-year` · `--end-year` · `--only-year YYYY` (append one year, skip Phase 2) · `--tie-tolerance 0.01` (Balanced variant) · `--no-rebuild` (Phase 2 only) · `--no-show` | `results/walkforward/{preset}_param_schedule[*].json` · `_yearly.csv` · `_commands.txt` · `_comparison.png` |
+| [`walkforward.py`](walkforward.py) | Annual walk-forward re-optimizer. Phase 1 builds the per-year param schedule; Phase 2 runs the continuous backtest with annual param swap; also runs a fixed-model baseline. | `--preset {QQQ,SPY,IWM}` · `--exit-ma {100,200}` · `--start-year` · `--end-year` · `--only-year YYYY` (append one year, skip Phase 2) · `--no-rebuild` (Phase 2 only) · `--no-show` | `results/walkforward/{preset}_param_schedule[*].json` · `_yearly.csv` · `_commands.txt` · `_comparison.png` |
 | [`backtester.py`](backtester.py) | Run a single config on a single date range. Used to verify walk-forward picks, spot-check crisis periods, and generate per-config plots referenced in §3, §4, §6, §7. | `--preset` · `--start` · `--end` · `--entry-signal` · `--drop-level` · `--exit-signal` · `--buy-pct` · `--alloc-base / --alloc-x2 / --alloc-x3` · `--exit-ma {50,100,200}` · `--cost-per-trade` · `--no-show` | `results/backtester/{PRESET}/{...}.png` · `_summary.txt` · `_yearly.csv` |
 
 **Tier 2 — Robustness diagnostics**
@@ -1183,12 +1183,12 @@ results/backtester/                       # auto-saved results (one folder per p
 results/walkforward/                              # auto-saved walk-forward outputs
   QQQ_walkforward_2015-2026_comparison.png        # plain top-CAGR (default)
   QQQ_walkforward_2015-2026_yearly.csv
-  QQQ_walkforward_2015-2026_tiebreak_comparison.png   # tie-break opt-in (§6.1)
+  QQQ_walkforward_2015-2026_tiebreak_comparison.png   # tie-break analysis (§6.1)
   QQQ_walkforward_2015-2026_tiebreak_yearly.csv
   SPY_walkforward_2015-2026_ma100_comparison.png  # MA100 exit (SPY)
   SPY_walkforward_2015-2026_ma100_yearly.csv
   QQQ_param_schedule.json                 # plain top-CAGR per-year params (default)
-  QQQ_param_schedule_tiebreak.json        # tie-break opt-in per-year params
+  QQQ_param_schedule_tiebreak.json        # tie-break analysis params (§6.1)
   SPY_param_schedule_ma100.json           # MA100 schedule
   param_robustness_heatmap.png
 leveraged_qqq_exploration/
@@ -1239,7 +1239,7 @@ flowchart TD
 
 #### Optimizer (standalone, full-history grid search)
 
-> This is the legacy per-preset optimizer (`leveraged_{preset}_exploration/optimizer.py`). It produces the in-sample, hindsight-optimized full-history results reported in [§3](#3-full-history-grid-search-20032026). For the live operating tool (walk-forward with annual re-opt + optional tie-break), see the next flowchart.
+> This is the legacy per-preset optimizer (`leveraged_{preset}_exploration/optimizer.py`). It produces the in-sample, hindsight-optimized full-history results reported in [§3](#3-full-history-grid-search-20032026). For the live operating tool (walk-forward with annual re-opt), see the next flowchart.
 
 ```mermaid
 flowchart TD
