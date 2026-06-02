@@ -23,7 +23,7 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 5. **Does the edge survive out-of-sample?** Yes for QQQ and SPY (strict single-split OOS: **+2.83pp / +2.27pp** over B&H, 2015–2026). IWM failed OOS (−4.59pp) and is **not recommended**. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
 6. **Does annual re-optimization add more edge?** Yes. Expanding-window walk-forward 2015–2026: **QQQ +4.71pp, SPY +4.34pp** over B&H — the re-opt itself contributes ~+1.88pp for QQQ on top of the OOS baseline. **This is the recommended operating mode.** → [§6 expanding window](#expanding-window-walk-forward-annual-re-optimization-20152026)
 7. **Is the optimum on a robust plateau or a fragile spike?** QQQ sits on a broad plateau on the entry × exit grid — moving 1–2 grid steps barely changes performance. SPY is more narrowly load-bearing on the exit axis (working band ~0.93–0.95×MA100). A separate **shifted-grid sweep** confirmed `(entry=1.02, exit=0.95)` is still #1, and no sub-MA200 entry survives — strong evidence the "confirmed-uptrend" premise is structural for SPY too. → [§8 robustness](#parameter-robustness-analysis)
-8. **Could we trade some CAGR for less max DD?** Tested via tie-break rules on both QQQ and SPY. QQQ: costs ~4pp CAGR, barely changes worst calendar year (smooths intra-year drawdown only). SPY: makes every metric worse — costs 3.35pp CAGR *and* deepens worst year by 6pp. Disabled for both by default. → [§6.1](#61-qqq-tie-break-rule), [§6.2](#62-spy-tie-break-analysis)
+8. **Could we trade some CAGR for less max DD?** Tested via tie-break rules on both QQQ and SPY. QQQ: costs ~1pp CAGR with negligible max DD improvement (+0.69pp) — not a meaningful trade-off. SPY: makes every metric worse — costs 2.65pp CAGR *and* deepens worst year by 6pp. Not recommended for either. → [§6.1](#61-qqq-tie-break-rule), [§6.2](#62-spy-tie-break-analysis)
 9. **How would each chosen config have handled real historical crises?** Tested in GFC (2007–2010), COVID (2019–2021), 2022 rate-hike, and dot-com bubble (2000–2003, the weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
 
 **Honest design choices and their cost** (read before deploying): the drawdown filter is calendar-year-based, not max-DD-based — a deliberate choice that costs ~1.8pp CAGR (QQQ) / ~4.3pp (SPY) if tightened to a ~25% YTD cap. The walk-forward number is the honest forward expectation; full-history numbers are hindsight-optimized — don't anchor on them. → [§9](#9-risk-considerations--design-honesty)
@@ -79,47 +79,36 @@ The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but
 
 ---
 
-### QQQ — pick one of two variants
+### QQQ
 
-| Variant | Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
-|---|---|---|---|---|---|
-| **Highest CAGR** (default) | 24.48% | **24.45%** | −25.88% (2022) | −53.75% | **$121,079** |
-| **Balanced** (opt-in tie-break) | n/a¹ | 23.39% | −26.10% (2022) | **−53.06%** | $109,850 |
-
-¹ The tie-break rule is applied per training window during walk-forward; it has no direct full-history equivalent.
+| Full-history CAGR (2003–2026) | Walk-forward CAGR (2015–2026) | Worst year | Max DD | Walk-forward final ($10K → ) |
+|---|---|---|---|---|
+| 24.48% | **24.45%** | −25.88% (2022) | −53.75% | **$121,079** |
 
 > **Schedule year convention.** In every table and JSON file in this repo, a row labeled **year N** was trained on data from 2003-01-02 through **Dec 31 of year N−1** and is intended for trading during **calendar year N**. The 2026 row below was produced in 2026-01 from data ending 2025-12-31; the previous 2025 row was produced in 2025-01 from data ending 2024-12-31. Always use the latest row (or re-run the January re-opt if the current calendar year does not have a row yet).
 
 **Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
 
-| Variant | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) |
-|---|---|---|---|---|---|---|---|
-| Highest CAGR | 1.03×MA200 | 0.5% | 1.01×MA200 | 40% | 0% | 0% | **100%** |
-| Balanced (opt-in tie-break) | 1.05×MA200 | 1.0% | 1.00×MA200 | 30% | 0% | 0% | **100%** |
+| Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) |
+|---|---|---|---|---|---|---|
+| 1.03×MA200 | 0.5% | 1.01×MA200 | 40% | 0% | 0% | **100%** |
 
-> **Year-over-year shift, Highest CAGR variant.** The 2025 schedule row was entry 1.05 / drop 1.0% / exit 1.00 / buy 30%; 2026 moved to entry 1.03 / drop 0.5% / exit 1.01 / buy 40%. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and the continuity-filter discussion in [§6.1](#61-qqq-tie-break-rule).
->
-> For reference, both 2026 variants converged to 100% TQQQ, just like the 2025 rows. The walk-forward CAGR gap between Highest CAGR and Balanced comes from **earlier** windows, where the Balanced rule preferred diversified allocations (10–20% base SPY, 25–75% QLD).
+> **Year-over-year shift.** The 2025 schedule row was entry 1.05 / drop 1.0% / exit 1.00 / buy 30%; 2026 moved to entry 1.03 / drop 0.5% / exit 1.01 / buy 40%. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and continuity-filter discussion in [§6.1](#61-qqq-tie-break-rule).
 
 **Annual re-optimization: RECOMMENDED for QQQ.** Without it, expect a meaningful CAGR penalty.
 
-Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **22.57% CAGR** versus **24.45%** for annually re-optimized (Highest CAGR variant). The fixed model also has a worse worst year (−36.0% vs −25.88% in 2022) and a deeper max drawdown. → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) three-way comparison.
+Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **22.57% CAGR** versus **24.45%** for annually re-optimized. The fixed model also has a worse worst year (−36.0% vs −25.88% in 2022) and a deeper max drawdown. → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) three-way comparison.
 
 **How to re-optimize each January:**
 ```bash
-# Highest CAGR — appends the new row to QQQ_param_schedule.json
+# Appends the new row to QQQ_param_schedule.json
 python walkforward.py --preset QQQ --only-year <upcoming-year>
-
-# Balanced — appends to QQQ_param_schedule_tiebreak.json (separate file)
-python walkforward.py --preset QQQ --only-year <upcoming-year> --tie-tolerance 0.01
 ```
-Computational cost: ~5 min per run. `--only-year` runs the optimizer for that single training window (2003 → Dec 31 of year-1), merges the result into the existing schedule JSON, and skips Phase 2. The Balanced variant writes to a separate `_tiebreak.json` file so the two variants never collide.
+Computational cost: ~5 min. `--only-year` runs the optimizer for that single training window (2003 → Dec 31 of year-1), merges the result into the existing schedule JSON, and skips Phase 2.
 
-If you want to rebuild the full 2015→current-year walk-forward simulation (Phase 2 backtest, comparison plot, yearly CSV), use `--start-year 2015 --end-year <year>` instead of `--only-year` — but expect ~30 min per run and a partial-year row if the current year isn't complete.
+If you want to rebuild the full 2015→current-year walk-forward simulation (Phase 2 backtest, comparison plot, yearly CSV), use `--start-year 2015 --end-year <year>` instead — but expect ~30 min and a partial-year row if the current year isn't complete.
 
-Apply the latest year's params to the next 12 months of trading. See [§6.1 continuity-filter note](#61-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift on QQQ.
-
-**Honest take on the variant choice:** under annual re-optimization, the Balanced variant trades **~4pp CAGR for ~10pp better max DD — but the worst calendar year is essentially unchanged**. Only enable if max-DD smoothing matters to you more than terminal wealth. For most investors using annual review at year-end, the Highest CAGR variant is correct. See [§6.1](#61-qqq-tie-break-rule) for a deeper analysis including a counter-intuitive finding that the Balanced *Fixed* model outperforms Highest CAGR Expanding over 2015–2026 (a lucky-2015-params artifact, not a recommended setup).
+Apply the latest year's params to the next 12 months of trading. See [§6.1 continuity-filter note](#61-qqq-tie-break-rule) for a sanity check before accepting a discontinuous param shift.
 
 ---
 
@@ -143,7 +132,6 @@ Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces 
 
 **How to re-optimize each January (recommended but not strictly required):**
 ```bash
-# Appends to SPY_param_schedule_ma100.json
 python walkforward.py --preset SPY --exit-ma 100 --only-year <upcoming-year>
 ```
 Computational cost: ~5 min with `--only-year` (single window, merged into existing JSON; Phase 2 skipped). Use `--end-year <year>` instead if you want to rebuild the full walk-forward simulation (~30 min).
@@ -1129,7 +1117,7 @@ Tightening to ~−40% max DD costs **~−1.8pp CAGR for QQQ and ~−4.3pp CAGR f
 
 **4. The risk is documented separately.** Investors must look at the *max drawdown* numbers in each headline table (Section 3) and the crisis stress tests (Section 7) to understand the true peak-to-trough exposure. The filter does not protect against that — it informs combo selection, not investor expectations.
 
-For QQQ specifically, a **tie-break rule** is documented in [§6.1](#61-qqq-tie-break-rule) — it picks the lowest-worst-year combo from those within 1pp training CAGR of the leader. We tested it; it improves max drawdown by ~10pp but costs ~4pp CAGR and barely improves worst calendar year. Disabled by default for that reason; opt-in if you weight max DD heavily.
+A **tie-break rule** is documented in [§6.1](#61-qqq-tie-break-rule) and [§6.2](#62-spy-tie-break-analysis). Analysis showed it provides no meaningful benefit for either index — QQQ: costs ~1pp CAGR with negligible max DD improvement; SPY: makes every metric worse. Not recommended.
 
 ---
 
@@ -1337,12 +1325,10 @@ python backtester.py --preset QQQ --start 2015-01-01 \
 ```bash
 # Annual re-opt for the upcoming trade year (Jan workflow, ~5 min)
 python walkforward.py --preset QQQ --only-year 2027
-python walkforward.py --preset QQQ --only-year 2027 --tie-tolerance 0.01
 python walkforward.py --preset SPY --exit-ma 100 --only-year 2027
 
 # Full rebuild of the 2015→current walk-forward simulation (~30 min per variant)
-python walkforward.py --preset QQQ                          # MA200, plain top-CAGR
-python walkforward.py --preset QQQ --tie-tolerance 0.01      # MA200, tie-break (Balanced)
+python walkforward.py --preset QQQ                          # MA200
 python walkforward.py --preset SPY --exit-ma 100             # MA100
 
 # Re-run Phase 2 only (uses cached schedule)
