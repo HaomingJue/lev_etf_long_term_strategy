@@ -354,6 +354,8 @@ Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose cale
 | Max drawdown | −69.1% |
 | Sharpe ratio | 0.74 |
 | Total trades | 100 (~4/yr) |
+| Green years | 18/24 (75%) |
+| Beat QQQ years | 13/24 (54%) |
 
 ```bash
 python backtester.py --preset QQQ --start 2003-01-01 \
@@ -381,6 +383,8 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 | Max drawdown | −52.61% |
 | Sharpe ratio | 0.78 |
 | Total trades | 52 (~2/yr) |
+| Green years | 17/24 (71%) |
+| Beat SPY years | 16/24 (67%) |
 
 ```bash
 python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
@@ -408,6 +412,8 @@ python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
 | Max drawdown | −59.3% |
 | Sharpe ratio | 0.49 |
 | Total trades | 43 (~2/yr) |
+| Green years | 15/24 (63%) |
+| Beat IWM years | 14/24 (58%) |
 
 ```bash
 python backtester.py --preset IWM --start 2003-01-01 \
@@ -644,6 +650,8 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | **Final value** | $101,816 | **$121,079** | $77,992 |
 | **Worst year** | −36.0% (2022) | **−25.9%** (2022) | −32.6% (2022) |
 | **Edge vs B&H** | +2.83pp | **+4.71pp** | — |
+| **Green years** | 6/12 (50%) | **8/12 (67%)** | 10/12 (83%) |
+| **Beat QQQ years** | 5/12 (42%) | **6/12 (50%)** | — |
 
 #### SPY
 
@@ -665,6 +673,8 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | **Final value** | $55,694 | **$68,124** | $44,466 |
 | **Worst year** | **−45.2%** (2022) | −31.8% (2022) | −18.2% (2022) |
 | **Edge vs B&H** | +2.27pp | **+4.34pp** | — |
+| **Green years** | 8/12 (67%) | **8/12 (67%)** | 10/12 (83%) |
+| **Beat SPY years** | 6/12 (50%) | **6/12 (50%)** | — |
 
 **Key takeaways:**
 

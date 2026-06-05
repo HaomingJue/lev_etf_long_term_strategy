@@ -653,7 +653,12 @@ def print_results(hist, year_df, trans_df, base_tk, args):
     print(f"  Strategy edge         : {(scagr-bcagr)*100:+7.2f}pp")
     print(f"  Worst year            : {worst_yr:7.2f}%")
     print(f"  Max drawdown          : {max_dd:7.2f}%")
+    green_yrs   = (year_df["Strategy Ret %"] > 0).sum()
+    total_yrs   = len(year_df)
+    outperf_yrs = (year_df["Strategy Ret %"] > year_df[f"{base_tk} Ret %"]).sum()
     print(f"  Sharpe ratio          : {sharpe:7.2f}")
+    print(f"  Green years           : {green_yrs}/{total_yrs}  ({green_yrs/total_yrs*100:.0f}%)")
+    print(f"  Beat {base_tk:<3} years       : {outperf_yrs}/{total_yrs}  ({outperf_yrs/total_yrs*100:.0f}%)")
     if args.cost_per_trade > 0:
         print(f"  Cost per trade        : {args.cost_per_trade*100:.3f}%")
     print()

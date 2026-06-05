@@ -502,10 +502,24 @@ def _print_comparison_table(year_exp, year_fix, hist_exp, hist_fix,
           f"{worst_f:>9.1f}% ({worst_yr_f})  "
           f"{worst_e:>9.1f}% ({worst_yr_e})  "
           f"{worst_b:>7.1f}% ({worst_yr_b})")
+    green_e = (merged["Strategy Ret % Exp"] > 0).sum()
+    green_f = (merged["Strategy Ret % Fix"] > 0).sum()
+    green_b = (merged[f"{base_tk} Ret %"] > 0).sum()
+    total   = len(merged)
+    out_e   = (merged["Strategy Ret % Exp"] > merged[f"{base_tk} Ret %"]).sum()
+    out_f   = (merged["Strategy Ret % Fix"] > merged[f"{base_tk} Ret %"]).sum()
     print(f"  {'Edge vs B&H':>18}  "
           f"{(cagr_f-cagr_b)*100:>+9.2f}pp  "
           f"{(cagr_e-cagr_b)*100:>+10.2f}pp  "
           f"{'—':>9}")
+    print(f"  {'Green years':>18}  "
+          f"{green_f}/{total} ({green_f/total*100:.0f}%)   "
+          f"{green_e}/{total} ({green_e/total*100:.0f}%)   "
+          f"{green_b}/{total} ({green_b/total*100:.0f}%)")
+    print(f"  {'Beat B&H years':>18}  "
+          f"{out_f}/{total} ({out_f/total*100:.0f}%)   "
+          f"{out_e}/{total} ({out_e/total*100:.0f}%)   "
+          f"{'—':>12}")
 
 
 def _plot_comparison(hist_exp, hist_fix, base_tk, preset,
