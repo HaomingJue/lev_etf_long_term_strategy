@@ -13,5 +13,5 @@ Strategy edge   : +38.07pp
 Final value     : $23,792.79
 Worst year      : 21.28%
 Max drawdown    : -43.93%
-Sharpe ratio    : 1.41
+Sharpe ratio    : 1.40
 Total trades    : 7

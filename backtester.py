@@ -568,6 +568,24 @@ def _auto_out_dir(args) -> Path:
     return out
 
 
+_tbill_cache: pd.Series | None = None
+
+def _tbill_daily(index: pd.DatetimeIndex) -> pd.Series:
+    """Return daily risk-free rate aligned to index, sourced from ^IRX (13-week T-bill)."""
+    global _tbill_cache
+    start = index[0].strftime("%Y-%m-%d")
+    end   = (index[-1] + pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+    try:
+        raw = yf.download("^IRX", start=start, end=end,
+                          auto_adjust=True, progress=False)["Close"].squeeze().dropna()
+        # ^IRX is annualised % (e.g. 5.0 = 5%). Convert to daily rate.
+        daily = (raw / 100) / 252
+        daily = daily.reindex(index, method="ffill").fillna(0.0)
+    except Exception:
+        daily = pd.Series(0.0, index=index)
+    return daily
+
+
 def _compute_metrics(hist, year_df, capital):
     """Return (bcagr, scagr, worst_yr, max_dd_pct, sharpe) for a hist DataFrame."""
     days     = (hist.index[-1] - hist.index[0]).days
@@ -579,10 +597,12 @@ def _compute_metrics(hist, year_df, capital):
     roll_max = hist["Strategy"].cummax()
     max_dd   = ((hist["Strategy"] - roll_max) / roll_max).min() * 100
 
-    # Annualised Sharpe (rf = 0%)
+    # Annualised Sharpe using historical T-bill rate (^IRX) as risk-free rate
     daily_ret = hist["Strategy"].pct_change().dropna()
-    sharpe    = (daily_ret.mean() / daily_ret.std() * np.sqrt(252)
-                 if daily_ret.std() > 0 else 0.0)
+    rf        = _tbill_daily(daily_ret.index)
+    excess    = daily_ret - rf
+    sharpe    = (excess.mean() / excess.std() * np.sqrt(252)
+                 if excess.std() > 0 else 0.0)
 
     return bcagr, scagr, worst_yr, max_dd, sharpe
 

@@ -41,7 +41,7 @@ import matplotlib.ticker as mticker
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, str(Path(__file__).parent))
-from backtester import run_backtest, print_results, cagr as compute_cagr
+from backtester import run_backtest, print_results, cagr as compute_cagr, _tbill_daily
 
 
 # ──────────────────────────────────────────────────────────────
@@ -508,10 +508,24 @@ def _print_comparison_table(year_exp, year_fix, hist_exp, hist_fix,
     total   = len(merged)
     out_e   = (merged["Strategy Ret % Exp"] > merged[f"{base_tk} Ret %"]).sum()
     out_f   = (merged["Strategy Ret % Fix"] > merged[f"{base_tk} Ret %"]).sum()
+    def _sharpe(hist_col):
+        r  = hist_col.pct_change().dropna()
+        rf = _tbill_daily(r.index)
+        ex = r - rf
+        return ex.mean() / ex.std() * np.sqrt(252) if ex.std() > 0 else 0.0
+
+    sharpe_e = _sharpe(hist_exp["Strategy"])
+    sharpe_f = _sharpe(hist_fix["Strategy"])
+    sharpe_b = _sharpe(hist_exp["BuyHold"])
+
     print(f"  {'Edge vs B&H':>18}  "
           f"{(cagr_f-cagr_b)*100:>+9.2f}pp  "
           f"{(cagr_e-cagr_b)*100:>+10.2f}pp  "
           f"{'—':>9}")
+    print(f"  {'Sharpe ratio':>18}  "
+          f"{sharpe_f:>12.2f}  "
+          f"{sharpe_e:>12.2f}  "
+          f"{sharpe_b:>9.2f}")
     print(f"  {'Green years':>18}  "
           f"{green_f}/{total} ({green_f/total*100:.0f}%)   "
           f"{green_e}/{total} ({green_e/total*100:.0f}%)   "

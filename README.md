@@ -301,6 +301,19 @@ The synthetic series is stitched to the real series at inception, scaled so the 
 
 All prices are dividend-adjusted (`auto_adjust=True`). This prevents quarterly dividend drops from falsely triggering dip-buy signals.
 
+### Sharpe Ratio Calculation
+
+All Sharpe ratios in this document use the **historical 13-week T-bill rate (^IRX)** as the risk-free rate, fetched from Yahoo Finance for the exact backtest period:
+
+```
+Sharpe = mean(daily_excess_return) / std(daily_excess_return) × √252
+daily_excess_return = strategy_daily_return − (^IRX_annual% / 100 / 252)
+```
+
+The T-bill rate is forward-filled on non-trading days and aligned daily to the strategy's equity curve. This means the risk-free rate varies day by day — rising from near 0% in 2010–2021 to ~5% in 2023–2024 — so the Sharpe properly penalizes strategies that failed to earn above the prevailing cash rate in each period. Sharpe values cannot be compared directly across tools that use a fixed risk-free rate (e.g. a tool that hardcodes rf=0% will produce higher Sharpe numbers for the same strategy).
+
+---
+
 ### Optimizer Grid Search
 
 Each optimizer runs a grid search over **15,840 parameter combinations**:
@@ -352,7 +365,7 @@ Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose cale
 | Final value | $1,666,954 |
 | Worst year | −40.8% (2005) |
 | Max drawdown | −69.1% |
-| Sharpe ratio | 0.74 |
+| Sharpe ratio | 0.71 |
 | Total trades | 100 (~4/yr) |
 | Green years | 18/24 (75%) |
 | Beat QQQ years | 13/24 (54%) |
@@ -381,7 +394,7 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 | Final value | $1,132,235 |
 | Worst year | −31.78% (2022) |
 | Max drawdown | −52.61% |
-| Sharpe ratio | 0.78 |
+| Sharpe ratio | 0.73 |
 | Total trades | 52 (~2/yr) |
 | Green years | 17/24 (71%) |
 | Beat SPY years | 16/24 (67%) |
@@ -410,7 +423,7 @@ python backtester.py --preset SPY --exit-ma 100 --start 2003-01-01 \
 | Final value | $139,958 |
 | Worst year | −23.7% (2011) |
 | Max drawdown | −59.3% |
-| Sharpe ratio | 0.49 |
+| Sharpe ratio | 0.45 |
 | Total trades | 43 (~2/yr) |
 | Green years | 15/24 (63%) |
 | Beat IWM years | 14/24 (58%) |
@@ -527,9 +540,9 @@ This replicates real-world conditions: an investor who finished optimizing in la
 
 | Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Max Drawdown | Sharpe |
 |---|---|---|---|---|---|---|
-| QQQ | 19.08% | 13.32% | +5.77pp | −29.1% (2008) | −57.0% | 0.62 |
-| SPY | **26.35%** | 9.25% | **+17.10pp** | −14.6% (2011) | −39.3% | 0.86 |
-| IWM | 15.79% | 11.32% | +4.47pp | −26.9% (2011) | — | 0.55 |
+| QQQ | 19.08% | 13.32% | +5.77pp | −29.1% (2008) | −57.0% | 0.59 |
+| SPY | **26.35%** | 9.25% | **+17.10pp** | −14.6% (2011) | −39.3% | 0.82 |
+| IWM | 15.79% | 11.32% | +4.47pp | −26.9% (2011) | — | 0.52 |
 
 ### Strict OOS Test: Train 2003–2014, Test 2015–2026
 
@@ -539,9 +552,9 @@ These results use only the parameters found from 2003–2014 data. The strategy 
 
 | Index | Strategy CAGR | B&H CAGR | Edge | Worst Year | Max Drawdown | Sharpe |
 |---|---|---|---|---|---|---|
-| QQQ | 22.57% | 19.74% | **+2.83pp ✓** | −36.0% (2022) | — | 0.67 |
-| SPY | 16.25% | 13.98% | **+2.27pp ✓** | −45.18% (2022) | −55.33% | 0.61 |
-| IWM | 4.95% | 9.54% | **−4.59pp ✗** | −46.09% (2022) | — | 0.33 |
+| QQQ | 22.57% | 19.74% | **+2.83pp ✓** | −36.0% (2022) | — | 0.63 |
+| SPY | 16.25% | 13.98% | **+2.27pp ✓** | −45.18% (2022) | −55.33% | 0.55 |
+| IWM | 4.95% | 9.54% | **−4.59pp ✗** | −46.09% (2022) | — | 0.30 |
 
 **QQQ and SPY both hold positive edges out-of-sample.** The edge narrows substantially vs training — expected and healthy. The 2003–2014 GFC provided strong conditions for the strategy's exit discipline; 2015–2026 was a more mixed regime.
 
@@ -562,9 +575,9 @@ For context, the same 2015–2026 period run with parameters optimized on the **
 
 | Index | True OOS CAGR | OOS Sharpe | Full-History CAGR | Full-History Sharpe | Hindsight Gap | Full-History Edge vs B&H |
 |---|---|---|---|---|---|---|
-| QQQ | 22.57% | 0.67 | 39.83% | 0.98 | −17.26pp | +20.09pp |
-| SPY | 16.25% | 0.61 | 21.17% | 0.75 | −4.92pp | +7.21pp |
-| IWM | 4.95% | 0.33 | 12.55% | 0.51 | −7.60pp | +2.96pp |
+| QQQ | 22.57% | 0.63 | 39.83% | 0.94 | −17.26pp | +20.09pp |
+| SPY | 16.25% | 0.55 | 21.17% | 0.69 | −4.92pp | +7.21pp |
+| IWM | 4.95% | 0.30 | 12.55% | 0.44 | −7.60pp | +2.96pp |
 
 The large QQQ gap (−17.37pp) reflects meaningful overfitting: the full-period optimizer found an exit signal (1.01×MA200) that exploited the 2020 COVID crash pattern with high precision — a feature not foreseeable from 2003–2014 data alone. SPY's smaller gap (−4.98pp) suggests its full-period parameters are more generalizable. The full-history numbers remain useful as an upper-bound benchmark; the rigorous out-of-sample numbers are the honest estimate of what a real investor would have achieved.
 
@@ -650,6 +663,7 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | **Final value** | $101,816 | **$121,079** | $77,992 |
 | **Worst year** | −36.0% (2022) | **−25.9%** (2022) | −32.6% (2022) |
 | **Edge vs B&H** | +2.83pp | **+4.71pp** | — |
+| **Sharpe ratio** | 0.63 | **0.69** | 0.85 |
 | **Green years** | 6/12 (50%) | **8/12 (67%)** | 10/12 (83%) |
 | **Beat QQQ years** | 5/12 (42%) | **6/12 (50%)** | — |
 
@@ -673,6 +687,7 @@ SPY params were remarkably stable across all 12 windows — every year converged
 | **Final value** | $55,694 | **$68,124** | $44,466 |
 | **Worst year** | **−45.2%** (2022) | −31.8% (2022) | −18.2% (2022) |
 | **Edge vs B&H** | +2.27pp | **+4.34pp** | — |
+| **Sharpe ratio** | 0.55 | **0.61** | 0.71 |
 | **Green years** | 8/12 (67%) | **8/12 (67%)** | 10/12 (83%) |
 | **Beat SPY years** | 6/12 (50%) | **6/12 (50%)** | — |
 
@@ -738,7 +753,7 @@ The rule consistently picked combos with allocation diversification (some `alloc
 | Edge vs B&H (19.74%) | +4.71pp | +3.65pp | −1.06pp |
 | Worst year (2022) | −25.88% | −26.10% | **−0.22pp** |
 | Max drawdown | −53.75% | −53.06% | **+0.69pp** |
-| Sharpe ratio | 0.73 | — | — |
+| Sharpe ratio | 0.69 | — | — |
 | Final value ($10K → ) | **$121,079** | $109,850 | −$11,229 |
 
 **Year-by-year — where does the gap come from?**
@@ -812,7 +827,7 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 | Edge vs SPY B&H | **+4.34pp** | +1.69pp | −2.65pp |
 | Worst year | **−31.78%** (2022) | −37.73% (2022) | **−5.95pp worse** |
 | Max drawdown | **−44.80%** | −48.46% | **−3.66pp worse** |
-| Sharpe ratio | — | — | — |
+| Sharpe ratio | 0.61 | — | — |
 | Final value ($10K →) | **$68,124** | $52,568 | −$15,556 |
 
 **Year-by-year:**
@@ -865,7 +880,7 @@ We ran the strategy against four major market dislocations for both QQQ and SPY,
 | Edge | +11.58pp | — | +8.33pp | — |
 | Worst year | −19.4% (2008) | −41.7% (2008) | −28.42% (2008) | −36.8% (2008) |
 | Max drawdown | −44.1% | — | −52.61% | — |
-| Sharpe ratio | 0.62 | — | 0.39 | — |
+| Sharpe ratio | 0.59 | — | 0.34 | — |
 | Final value | $19,481 (from $10K) | ~$12,914 | $13,350 (from $10K) | $9,676 |
 
 Both strategies outperformed through the worst financial crisis in 80 years. QQQ's tight exit (1.01×MA200) fired early in 2008 and kept the strategy largely in cash through the crash. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2008 too. SPY's worst calendar year of −28.42% is the deepest single-year loss in this period — the GFC is the one crisis where SPY MA100's faster exit also takes a sharper single-year hit before recovering. Both finished with positive CAGR vs flat-to-negative B&H; QQQ's edge (+11.58pp) was larger than SPY's (+8.33pp) because tech recovered more explosively in 2009.
@@ -884,7 +899,7 @@ Both strategies outperformed through the worst financial crisis in 80 years. QQQ
 | Edge | +72.56pp | — | +38.07pp | — |
 | Worst year | +35.4% (no down year) | — | +21.28% (no down year) | — |
 | Max drawdown | −51.9% | — | −43.93% | — |
-| Sharpe ratio | 1.53 | — | 1.41 | — |
+| Sharpe ratio | 1.53 | — | 1.40 | — |
 | Final value | $38,839 (from $10K) | ~$19,152 | $23,793 (from $10K) | $15,029 |
 
 COVID was the ideal scenario for both strategies. QQQ's tight exit fired immediately in the crash and re-armed early in the V-shaped recovery, capturing the tech explosion with full 3× leverage — nearly 3× the buy-and-hold return over 20 months. SPY MA100 captured the rebound cleanly, re-arming in time for the April–May explosive leg and finishing +64.38% with no down year.
@@ -903,7 +918,7 @@ COVID was the ideal scenario for both strategies. QQQ's tight exit fired immedia
 | Edge | +22.83pp | — | +3.10pp | — |
 | Worst year | −22.6% (2022) | −32.5% (2022) | −31.78% (2022) | −18.18% (2022) |
 | Max drawdown | −37.3% | — | −44.40% | — |
-| Sharpe ratio | 0.91 | — | 0.38 | — |
+| Sharpe ratio | 0.85 | — | 0.30 | — |
 | Final value | $16,666 (from $10K) | ~$10,965 | $11,476 (from $10K) | $10,796 |
 
 QQQ's tight exit (1.01×MA200) fired relatively early in 2022 before the full decline, limiting strategy losses to −22.6% and finishing with a strong +27.91% CAGR. SPY's MA100 exit (0.95×MA100 — 5% below the 100-day MA) fired in early 2022 too, before the deepest leg of the bear, limiting SPY losses to −31.78% and finishing positive at +6.86% with a small +3.10pp edge over buy-and-hold. The 2022 rate-hike bear is one of the strongest validators of MA100 as SPY's exit MA — the faster exit fired before the steepest leg of the decline, where a slower MA would have ridden it down.
@@ -1249,7 +1264,7 @@ flowchart TD
     H & N & O --> P[Record portfolio value]
     P --> Q{More days?}
     Q -- Yes --> F
-    Q -- No --> R[Compute CAGR · yearly returns · vs B&H\nMax peak-to-trough drawdown\nAnnualised Sharpe ratio rf=0%]
+    Q -- No --> R[Compute CAGR · yearly returns · vs B&H\nMax peak-to-trough drawdown\nAnnualised Sharpe ratio vs ^IRX T-bill]
     R --> S([Auto-save PNG + summary TXT + yearly CSV\nto results/backtester/&#123;PRESET&#125;/])
 ```
 
