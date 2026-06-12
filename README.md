@@ -509,6 +509,8 @@ python backtester.py --preset IWM --start 2003-01-01 \
 
 ### Conclusions on Exit MA
 
+> **Re-validated under the v2 grid (2026-06).** The exit-MA choice above was originally established with the v1 grid, so after adopting v2 ([§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)) the cross-check was rerun as full expanding-window walk-forwards (2015–2026 OOS, v2 grid): QQQ with MA100 exit = 32.16% CAGR / worst −25.6% / Sharpe 0.79 versus **37.50% / −22.6% / 0.89 with MA200** — MA200 still wins on every metric. SPY with MA200 exit = 10.65% / worst −39.9% / Sharpe 0.41 versus **18.49% / −34.8% / 0.62 with MA100** — MA100 still wins by a wide margin. The per-index choice (QQQ→MA200, SPY→MA100) is unchanged by the grid revision. Files: `results/walkforward/*_gridv2*` (`QQQ_..._ma100_gridv2`, `SPY_..._gridv2`).
+
 **QQQ — MA200 wins decisively.** MA200 produces +4.57pp more CAGR than MA100 and a better worst year. The MA200 is slow enough to ignore normal bull-market volatility; MA100 triggers false exits that cut off profitable compounding runs. Do not use MA100 or MA50 for QQQ.
 
 **SPY — MA100 wins on both axes.** Full-history optimizer puts MA100 and MA200 within 0.3pp on CAGR (22.37% vs 22.09%) with MA100 ahead on worst year (−33.0% vs −39.4%). The stronger test is the expanding-window walk-forward (annual re-optimization, see [§6](#6-walk-forward-validation)): there MA100 produces **18.32% CAGR vs 15.63% for MA200 (+2.69pp), worst year −31.8% vs significantly worse, and max drawdown −44.8% vs much deeper**. Every MA100 walk-forward window converged on identical params (entry≈1.01–1.02, exit=0.95, drop=0.5%, buy=40%), which is a stronger parameter-robustness signal than MA200's mild year-to-year drift. **MA100 is the recommended SPY exit MA, and §5–§9 use it exclusively.**
@@ -967,7 +969,7 @@ Independent backtester verification of the locked QQQ v2 params over the full hi
 - **QQQ: adopt v2 unambiguously.** The dip-wait was a grid artifact. Removing it (drop = 0.0: buy on any non-up day while above 1.04×MA200) plus faster sizing (buy 0.6) improves CAGR by **+14pp OOS** while *improving* the worst year, the max drawdown, and the Sharpe ratio. There is no risk-for-return trade here to agonize over — v1 was simply leaving the optimizer handcuffed.
 - **SPY: adopt v2, with eyes open.** The gain is +1.1pp OOS CAGR (from buy 0.6 — the dip-wait survives at 0.005 for SPY), paid for with a ~3pp worse 2022. The optimizer picks it consistently in every window, so we follow the system rather than override it, but SPY's improvement is incremental where QQQ's is structural.
 - **Why the asymmetry:** QQQ trends persistently — every day not deployed above trend is expected return forfeited, so any delay (dip-waits, small buys) is pure drag. SPY mean-reverts more at daily scale, so a small dip entry still pays there. This mirrors §4's exit-MA asymmetry (QQQ MA200 / SPY MA100).
-- The v2 grid is now the **default** everywhere: `walkforward.py` (`--grid v1` reproduces the original study), all exploration optimizers, and the production `reopt.py` in daily_signal. Caveat inherited by all of Part 1: these numbers share the §9 limitations — and a faster-deploying config concentrates more exposure sooner after re-entries, which is exactly what made 2022-style chop the worst year. The −40% calendar-year DD filter still gates every pick.
+- The v2 grid is now the **default** everywhere: `walkforward.py` (`--grid v1` reproduces the original study), all exploration optimizers, and the production `reopt.py` in daily_signal. Caveat inherited by all of Part 1: these numbers share the §9 limitations — and a faster-deploying config concentrates more exposure sooner after re-entries, which is exactly what made 2022-style chop the worst year. The crisis reruns in [§7.0](#70-v2-config-results-current-recommendation-2026-06) confirm v2 improves three of the four named crises but slightly *worsens* the dot-com kill-scenario ($3.2K vs $4.0K final from $10K) — the strategy's known fatal regime under either grid. The −40% calendar-year DD filter still gates every pick.
 
 ---
 
@@ -977,7 +979,22 @@ Configs locked in Part 2. One final question before publication: **how would eac
 
 ## 7. Crisis Period Stress Tests
 
-We ran the strategy against four major market dislocations for both QQQ and SPY, each using its own **optimum (highest-CAGR) config**: QQQ entry=1.03/exit=1.01×MA200/buy=40%/100% TQQQ, SPY entry=1.02/exit=0.95×**MA100**/buy=40%/100% UPRO.
+### 7.0 v2-config results (current recommendation, 2026-06)
+
+The detailed subsections below (§7.1–7.4) were run with the original **v1** configs and are kept as that study's record. After adopting the v2 grid ([§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)), all four crises were rerun with the **current live configs** — QQQ entry 1.04 / drop 0.0 / exit 1.01×MA200 / buy 60%; SPY entry 1.02 / drop 0.5% / exit 0.95×MA100 / buy 60%:
+
+| Crisis | QQQ v2 CAGR | QQQ v2 max DD | QQQ v2 final ($10K) | SPY v2 CAGR | SPY v2 max DD |
+|---|---|---|---|---|---|
+| GFC 2007–2010 | **+21.66%** | −42.1% | $21,859 | +8.87% | −52.5% |
+| COVID 2019-10 → 2021-06 | **+117.39%** | −52.6% | $38,738 | +65.85% | −45.4% |
+| Rate-hike 2021-06 → 2023-06 | **+30.10%** | −37.4% | $17,263 | +5.90% | −46.2% |
+| **Dot-com 2000–2003** | **−24.67%** | **−91.7%** | **$3,230** | +7.98% | −38.7% |
+
+Three of four crises improve or hold versus v1. The exception matters: **the dot-com scenario gets somewhat worse under v2** (−24.7% CAGR / $3,230 final vs v1's −20.4% / $4,035; max DD −91.7% vs −90.3%). Faster deployment means buying more of the failed bear-market rallies of 2000–2002. This was already the strategy's documented kill-scenario under v1 — v2 amplifies it slightly rather than creating it. The operating implication is unchanged from §8/§9: a multi-year secular bear with repeated failed rallies is the regime where this strategy loses catastrophically, with either grid. (Synthetic TQQQ data; the −40% DD filter deliberately starts in 2010 — see §2.)
+
+---
+
+We ran the strategy against four major market dislocations for both QQQ and SPY, each using its own **v1-era optimum config**: QQQ entry=1.03/exit=1.01×MA200/buy=40%/100% TQQQ, SPY entry=1.02/exit=0.95×**MA100**/buy=40%/100% UPRO.
 
 ### 7.1 Global Financial Crisis: 2007–2010
 
@@ -1188,6 +1205,8 @@ Reasoning:
 3. **Shifted grid's wider exits carry tail risk.** Exit values 0.91 and 0.93 produce nearly the same CAGR as 0.95 but with ~7pp worse worst calendar year. If a future window's training data temporarily made one of those top-rank, walk-forward would pick it — degrading the worst-year metric the paper has been optimizing for from day one.
 4. **All existing walk-forward results use the production grid.** Switching invalidates the 11+ years of headline numbers in §6, §6.1, §6.2, §7 — substantial churn for no improvement.
 5. **Diagnostic discipline:** run `python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show` once a year. If the optimum migrates to a new entry/exit pair, *that's* the signal to revisit the grid choice. Until then, no action.
+
+> **2026-06 diagnostic (v2 axes).** Rerun with the v2 drop/buy values: the shifted-grid #1 is `entry 1.02 / drop 0.005 / exit 0.95 / buy 0.6` — *identical* to the production v2 pick. No sub-1.0 entry and no sub-0.95 exit overtakes it. The entry/exit optimum has not migrated; the v2 adoption (§6.3) changed deployment speed, not the trend thresholds.
 
 (This is analogous to the §5 decision to lock in 3× leverage rather than re-test it every year — once a sweep shows the optimum is structurally stable, there's no upside to repeatedly second-guessing it. Only a clear migration warrants revisiting.)
 
