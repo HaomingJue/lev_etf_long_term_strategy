@@ -1,0 +1,19 @@
+Preset          : SPY
+Period          : 2003-01-01 -> 2026-06-12
+Entry signal    : 1.02x MA200
+Exit signal     : 0.95x MA100
+Drop level      : 0.50%
+Buy pct         : 60% per signal
+Alloc base      : 0%  lev2 0%  lev3 100%
+Cost per trade  : 0.000%
+Cash yield      : off
+Ontario tax     : off
+
+Strategy CAGR   : 22.68%
+B&H CAGR (SPY)  : 11.34%
+Strategy edge   : +11.34pp
+Final value     : $1,204,748.04
+Worst year      : -34.83%
+Max drawdown    : -52.54%
+Sharpe ratio    : 0.73
+Total trades    : 40

@@ -28,10 +28,11 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 PRESETS = {
     "QQQ": {
         "csv":       os.path.join(BASE, "leveraged_qqq_exploration", "ma200", "optimizer_results.csv"),
-        "opt_entry": 1.03,
+        # v2-grid optimum (README §6.3): drop 0.0 = buy any non-up day
+        "opt_entry": 1.04,
         "opt_exit":  1.01,
-        "opt_drop":  0.005,
-        "bnh_cagr":  16.16,
+        "opt_drop":  0.0,
+        "bnh_cagr":  16.00,
         "label":     "QQQ (NASDAQ-100 / TQQQ)",
     },
     "SPY": {
@@ -41,7 +42,7 @@ PRESETS = {
         "opt_entry": 1.02,
         "opt_exit":  0.95,
         "opt_drop":  0.005,
-        "bnh_cagr":  11.39,
+        "bnh_cagr":  11.26,
         "label":     "SPY (S&P 500 / UPRO, MA100 exit)",
     },
 }

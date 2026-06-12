@@ -22,8 +22,10 @@ Usage:
 import argparse
 import itertools
 import json
+import os
 import sys
 import warnings
+from multiprocessing import Pool
 from pathlib import Path
 
 import numpy as np
@@ -65,6 +67,14 @@ EXIT_SIGNALS  = [0.95, 0.97, 0.99, 1.00, 1.01, 1.02]
 BUY_PCTS      = [0.10, 0.20, 0.30, 0.40]
 ALLOC_BASES   = [0.0, 0.10, 0.20, 0.30]
 ALLOC_X2S     = [0.0, 0.25, 0.50, 0.75, 1.0]
+
+# Extended grid (--grid v2). Diagnosis 2026-06: the v1 winners sit at grid
+# edges — drop_level at the 0.005 minimum, buy_pct at the 0.40 maximum —
+# for both QQQ and SPY in nearly every training window. v2 extends past
+# both edges (drop 0.0 = buy on any non-up day while armed).
+# v2 schedules/outputs get a _gridv2 suffix; v1 files are never touched.
+DROP_LEVELS_V2 = [0.0, 0.0025] + DROP_LEVELS
+BUY_PCTS_V2    = BUY_PCTS + [0.50, 0.60]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -137,11 +147,13 @@ def load_full_data(preset: str, end: str) -> pd.DataFrame:
 # OPTIMIZER  (self-contained, works for any preset)
 # ──────────────────────────────────────────────────────────────
 
-def _build_grid():
+def _build_grid(grid_version: str = "v1"):
+    drops = DROP_LEVELS_V2 if grid_version == "v2" else DROP_LEVELS
+    buys  = BUY_PCTS_V2    if grid_version == "v2" else BUY_PCTS
     return [(e, d, x, b, ab, ax2)
             for e, d, x, b, ab, ax2 in itertools.product(
-                ENTRY_SIGNALS, DROP_LEVELS, EXIT_SIGNALS,
-                BUY_PCTS, ALLOC_BASES, ALLOC_X2S)
+                ENTRY_SIGNALS, drops, EXIT_SIGNALS,
+                buys, ALLOC_BASES, ALLOC_X2S)
             if x < e]
 
 
@@ -204,6 +216,28 @@ def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
     return c, port
 
 
+# ── Phase 1 parallel worker state ─────────────────────────────
+# The grid search is embarrassingly parallel; each worker gets the
+# training DataFrame once via the Pool initializer. pool.imap (ordered)
+# keeps results in grid order so ties resolve identically to the
+# sequential path.
+
+_W_DF = _W_EXIT_MA = _W_DD_START = None
+
+
+def _init_worker(df, exit_ma, dd_start):
+    global _W_DF, _W_EXIT_MA, _W_DD_START
+    _W_DF, _W_EXIT_MA, _W_DD_START = df, exit_ma, dd_start
+
+
+def _eval_combo(combo):
+    entry, drop, exit_, buy, ab, ax2 = combo
+    c, port   = _opt_backtest(_W_DF, entry, drop, exit_, buy, ab, ax2,
+                              exit_ma=_W_EXIT_MA)
+    ok, worst = _check_dd(_W_DF, port, _W_DD_START)
+    return ok, c, worst, combo
+
+
 def _check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
     idx   = df.index
     worst = 0.0
@@ -229,7 +263,9 @@ _DEFAULT_TIE_TOLERANCE = {"QQQ": 0.0, "SPY": 0.0, "IWM": 0.0}
 
 def build_param_schedule(preset: str, start_year: int, end_year: int,
                          df_full: pd.DataFrame, exit_ma: int = 200,
-                         tie_tolerance: float | None = None) -> dict:
+                         tie_tolerance: float | None = None,
+                         grid_version: str = "v1",
+                         workers: int = 1) -> dict:
     """
     Build the per-year param schedule.
 
@@ -244,13 +280,14 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
         tie_tolerance = _DEFAULT_TIE_TOLERANCE.get(preset, 0.0)
 
     dd_start = PRESETS[preset]["dd_start"]
-    grid     = _build_grid()
+    grid     = _build_grid(grid_version)
     schedule = {}
 
     rule_note = (f"plain top-CAGR" if tie_tolerance <= 0
                  else f"secondary-sort within {tie_tolerance*100:.1f}pp CAGR")
     print(f"\nPhase 1 — building param schedule ({preset}, "
-          f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, {rule_note})")
+          f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, grid {grid_version}, "
+          f"{workers} worker(s), {rule_note})")
     print(f"  {len(grid):,} combos × {end_year - start_year + 1} training windows\n")
 
     for trade_yr in range(start_year, end_year + 1):
@@ -262,13 +299,22 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
 
         # Collect ALL passing combos for this year so we can apply secondary sort
         passing = []  # list of (cagr, worst_year, params_tuple)
-        for entry, drop, exit_, buy, ab, ax2 in tqdm(
-                grid, desc=f"  2003–{train_end}", leave=False):
-            c, port  = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
-                                     exit_ma=exit_ma)
-            ok, worst = _check_dd(df_train, port, dd_start)
-            if ok:
-                passing.append((c, worst, (entry, drop, exit_, buy, ab, ax2)))
+        if workers > 1:
+            with Pool(workers, initializer=_init_worker,
+                      initargs=(df_train, exit_ma, dd_start)) as pool:
+                for ok, c, worst, combo in tqdm(
+                        pool.imap(_eval_combo, grid, chunksize=64),
+                        total=len(grid), desc=f"  2003–{train_end}", leave=False):
+                    if ok:
+                        passing.append((c, worst, combo))
+        else:
+            for entry, drop, exit_, buy, ab, ax2 in tqdm(
+                    grid, desc=f"  2003–{train_end}", leave=False):
+                c, port  = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
+                                         exit_ma=exit_ma)
+                ok, worst = _check_dd(df_train, port, dd_start)
+                if ok:
+                    passing.append((c, worst, (entry, drop, exit_, buy, ab, ax2)))
 
         if not passing:
             print(f"  {trade_yr}: no passing combo found")
@@ -318,7 +364,8 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
 def run_walkforward(preset: str, schedule: dict,
                     start_year: int, end_year: int,
                     capital: float, no_show: bool,
-                    exit_ma: int = 200, tie_tolerance: float = 0.0):
+                    exit_ma: int = 200, tie_tolerance: float = 0.0,
+                    cash_yield: bool = False, grid_version: str = "v1"):
 
     int_sched = {int(k): v for k, v in schedule.items()}
     # Fixed-model baseline = the params for the START year (trained on data
@@ -340,12 +387,14 @@ def run_walkforward(preset: str, schedule: dict,
         alloc_x3=p0["alloc_x3"],
         exit_ma=exit_ma,
         cost_per_trade=0.0,
+        cash_yield=cash_yield,
         no_show=no_show,
         save_plot=None,
     )
 
     print(f"\nPhase 2 — walk-forward backtest ({preset}, {start_year}–{end_year}, "
-          f"exit_ma=MA{exit_ma})\n")
+          f"exit_ma=MA{exit_ma}"
+          f"{', cash yield ON' if cash_yield else ''})\n")
     hist, year_df, trans_df, base_tk = run_backtest(args, param_schedule=int_sched)
     print_results(hist, year_df, trans_df, base_tk, args)
 
@@ -373,9 +422,11 @@ def run_walkforward(preset: str, schedule: dict,
     # MA200 keeps original filenames for back-compat; non-200 gets a suffix.
     # Tie-break runs add _tiebreak so Highest CAGR and Balanced variants
     # never collide on the same output files.
-    ma_tag  = "" if exit_ma == 200 else f"_ma{exit_ma}"
-    tie_tag = "_tiebreak" if tie_tolerance > 0 else ""
-    slug    = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}"
+    ma_tag   = "" if exit_ma == 200 else f"_ma{exit_ma}"
+    tie_tag  = "_tiebreak" if tie_tolerance > 0 else ""
+    grid_tag = "" if grid_version == "v1" else f"_grid{grid_version}"
+    cy_tag   = "_cy" if cash_yield else ""
+    slug     = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}{grid_tag}{cy_tag}"
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
     print(f"\n  Saved: results/walkforward/{slug}_yearly.csv")
 
@@ -385,7 +436,8 @@ def run_walkforward(preset: str, schedule: dict,
     # Fixed model: 2003-(start_year-1) params frozen for the full period
     print(f"\nRunning fixed model (2003-{start_year-1} params, frozen) for comparison …")
     hist_fixed, year_df_fixed = _run_fixed_model(
-        preset, p0, start_year, end_year, capital, exit_ma=exit_ma)
+        preset, p0, start_year, end_year, capital, exit_ma=exit_ma,
+        cash_yield=cash_yield)
 
     _print_comparison_table(year_df, year_df_fixed, hist, hist_fixed, base_tk,
                             start_year, end_year)
@@ -428,7 +480,7 @@ def _save_command_log(int_sched: dict, preset: str, start_year: int,
 
 def _run_fixed_model(preset: str, first_params: dict,
                      start_year: int, end_year: int, capital: float,
-                     exit_ma: int = 200):
+                     exit_ma: int = 200, cash_yield: bool = False):
     """Run backtester with 2003-(start_year-1) params frozen for the full period."""
     p = first_params
     args = argparse.Namespace(
@@ -445,6 +497,7 @@ def _run_fixed_model(preset: str, first_params: dict,
         alloc_x3=p["alloc_x3"],
         exit_ma=exit_ma,
         cost_per_trade=0.0,
+        cash_yield=cash_yield,
         no_show=True,
         save_plot=None,
     )
@@ -631,6 +684,20 @@ def _parse_args():
                         "From combos within this CAGR of the leader, pick the one "
                         "with the best worst calendar year. "
                         "Defaults: QQQ=0.01, SPY/IWM=0.0. Pass 0.0 to force plain top-CAGR.")
+    p.add_argument("--workers", type=int,
+                   default=max(1, (os.cpu_count() or 4) - 2),
+                   help="Parallel worker processes for the Phase 1 grid search. "
+                        "Results are identical to a single-worker run.")
+    p.add_argument("--grid", default="v2", choices=["v1", "v2"],
+                   help="Optimizer grid version. v2 (default, OOS-validated in "
+                        "README §6.3) extends the edges the v1 winners sat on: "
+                        "drop_level down to 0.0 and buy_pct up to 0.60. "
+                        "v2 schedules/outputs get a _gridv2 suffix; pass v1 to "
+                        "reproduce the original study.")
+    p.add_argument("--cash-yield", action="store_true",
+                   help="Accrue daily T-bill interest (^IRX) on idle cash in the "
+                        "Phase 2 backtest (models SGOV/BIL). Phase 1 optimizer "
+                        "rankings are unaffected.")
     p.add_argument("--no-rebuild", action="store_true",
                    help="Skip Phase 1 if the param schedule JSON already exists")
     p.add_argument("--only-year",  type=int, default=None,
@@ -665,6 +732,8 @@ if __name__ == "__main__":
     sched_suffix  = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
     if _tie_tol_resolved > 0:
         sched_suffix += "_tiebreak"
+    if args.grid != "v1":
+        sched_suffix += f"_grid{args.grid}"
     schedule_path = out_dir / f"{args.preset}_param_schedule{sched_suffix}.json"
 
     if args.no_rebuild and schedule_path.exists():
@@ -678,7 +747,8 @@ if __name__ == "__main__":
         df_full  = load_full_data(args.preset, end_buffer)
         schedule = build_param_schedule(
             args.preset, args.start_year, args.end_year, df_full,
-            exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance)
+            exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance,
+            grid_version=args.grid, workers=args.workers)
 
         if args.only_year is not None:
             # Merge into existing schedule — preserve all other years.
@@ -707,4 +777,6 @@ if __name__ == "__main__":
         args.capital, args.no_show,
         exit_ma=args.exit_ma,
         tie_tolerance=_tie_tol_resolved,
+        cash_yield=args.cash_yield,
+        grid_version=args.grid,
     )

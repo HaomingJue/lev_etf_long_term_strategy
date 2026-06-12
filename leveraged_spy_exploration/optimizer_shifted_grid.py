@@ -84,9 +84,9 @@ DD_START_YEAR = 2009
 # in the 0.91-0.95 band where the heatmap hinted at a possible plateau or
 # unsampled optimum. Other axes unchanged for direct comparability.
 ENTRY_SIGNALS = [0.98, 0.99, 1.00, 1.01, 1.02, 1.03]
-DROP_LEVELS   = [0.005, 0.010, 0.015, 0.020, 0.025, 0.030]
+DROP_LEVELS   = [0.0, 0.0025, 0.005, 0.010, 0.015, 0.020, 0.025, 0.030]  # v2 grid: extended past the binding 0.005 edge (README s8)
 EXIT_SIGNALS  = [0.91, 0.93, 0.94, 0.95, 0.97, 0.99]
-BUY_PCTS      = [0.10, 0.20, 0.30, 0.40]
+BUY_PCTS      = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60]  # v2 grid: extended past the binding 0.40 edge
 ALLOC_BASES   = [0.0, 0.10, 0.20, 0.30]
 ALLOC_X2S     = [0.0, 0.25, 0.50, 0.75, 1.0]
 

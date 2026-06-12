@@ -67,6 +67,70 @@ PRESET_INCEPTION = {
 
 
 # ----------------------------------------------------------
+# ONTARIO TAX MODEL (--tax-ontario)
+#
+# Combined federal + Ontario personal income tax for a taxable
+# (non-registered) account. 2025 brackets, held constant across
+# the whole backtest (simplification — brackets are inflation-
+# indexed annually).
+#
+# - Capital gains: 50% inclusion, taxed at the marginal rate
+#   stacked on top of --salary. Canada has no short/long-term
+#   distinction. Net capital losses carry forward.
+# - T-bill interest (--cash-yield): 100% taxable as income.
+# - Tax on year Y's realized gains is paid from cash on the
+#   first trading day of year Y+1 (sells holdings if cash is
+#   short, which itself realizes gains).
+# - Ignores CPP/EI, Ontario Health Premium, and credits beyond
+#   the basic personal amounts. Assumes capital-gains treatment
+#   (not business income — fine at this strategy's 2-4 round
+#   trips/yr).
+# - In a TFSA or RRSP none of this applies — do NOT use this
+#   flag when modeling a registered account.
+# ----------------------------------------------------------
+
+FED_BRACKETS = [(57_375, 0.15), (114_750, 0.205), (177_882, 0.26),
+                (253_414, 0.29), (float("inf"), 0.33)]
+ON_BRACKETS  = [(52_886, 0.0505), (105_775, 0.0915), (150_000, 0.1116),
+                (220_000, 0.1216), (float("inf"), 0.1316)]
+FED_BPA = 16_129    # federal basic personal amount (credit @ 15%)
+ON_BPA  = 12_747    # Ontario basic personal amount (credit @ 5.05%)
+ON_SURTAX_T1, ON_SURTAX_T2 = 5_710, 7_307   # Ontario surtax thresholds
+CG_INCLUSION = 0.50
+
+
+def _bracket_tax(income: float, brackets) -> float:
+    tax, lower = 0.0, 0.0
+    for upper, rate in brackets:
+        if income <= lower:
+            break
+        tax += (min(income, upper) - lower) * rate
+        lower = upper
+    return tax
+
+
+def _ontario_total_tax(taxable: float) -> float:
+    if taxable <= 0:
+        return 0.0
+    fed = max(_bracket_tax(taxable, FED_BRACKETS)
+              - 0.15 * min(FED_BPA, taxable), 0.0)
+    on  = max(_bracket_tax(taxable, ON_BRACKETS)
+              - 0.0505 * min(ON_BPA, taxable), 0.0)
+    surtax = (0.20 * max(on - ON_SURTAX_T1, 0.0)
+              + 0.36 * max(on - ON_SURTAX_T2, 0.0))
+    return fed + on + surtax
+
+
+def _ontario_tax_on_investment(salary: float, taxable_gains: float,
+                               interest: float) -> float:
+    """Incremental tax from investment income stacked on top of salary."""
+    extra = max(taxable_gains, 0.0) + max(interest, 0.0)
+    if extra <= 0:
+        return 0.0
+    return _ontario_total_tax(salary + extra) - _ontario_total_tax(salary)
+
+
+# ----------------------------------------------------------
 # CLI
 # ----------------------------------------------------------
 
@@ -103,6 +167,19 @@ def parse_args():
     p.add_argument("--cost-per-trade", type=float, default=0.0,
                    help="One-way transaction cost as a fraction of trade value "
                         "(e.g. 0.001 = 0.1%%). Applied to every buy and sell execution.")
+    p.add_argument("--cash-yield",  action="store_true",
+                   help="Accrue daily T-bill interest (^IRX, 13-week rate) on idle "
+                        "cash. Models parking uninvested cash in SGOV/BIL/money "
+                        "market instead of earning 0%%.")
+    p.add_argument("--tax-ontario", action="store_true",
+                   help="Model Ontario (Canada) personal income tax in a taxable "
+                        "account: capital gains at 50%% inclusion stacked on top "
+                        "of --salary, interest 100%% taxable, losses carried "
+                        "forward, tax paid each January. Do not use for "
+                        "TFSA/RRSP accounts (those are untaxed).")
+    p.add_argument("--salary",      type=float, default=100_000,
+                   help="Employment income the strategy's gains stack on top of "
+                        "(sets the marginal tax rate). Used only with --tax-ontario.")
     p.add_argument("--no-show",     action="store_true",
                    help="Suppress interactive plot window (images still saved if --save-plot is set)")
 
@@ -237,7 +314,7 @@ def normalise(df: pd.DataFrame, cols: list) -> pd.DataFrame:
 # BACKTEST ENGINE
 # ----------------------------------------------------------
 
-def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str]:
     cfg = PRESETS[args.preset]
     base_tk = cfg["base"]
     lev2_tk = cfg["lev2"]
@@ -245,10 +322,11 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
 
     # ── Download base from 1999; real lev ETFs from their inception ──
     print(f"  Downloading {base_tk}, {lev2_tk}, {lev3_tk} …")
-    # Use 300-day warmup before args.start for accurate MA200,
+    # Use 420-day warmup before args.start for accurate MA200
+    # (300 calendar days is only ~205 trading days — too tight),
     # but never go earlier than the base ETF's inception date.
     warmup_start = max(
-        (pd.Timestamp(args.start) - pd.DateOffset(days=300)).strftime("%Y-%m-%d"),
+        (pd.Timestamp(args.start) - pd.DateOffset(days=420)).strftime("%Y-%m-%d"),
         PRESET_INCEPTION[args.preset],
     )
     s_base = download(base_tk, warmup_start, args.end)
@@ -303,6 +381,15 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
     lev_price_wsum  = 0.0
     lev_dollar_sum  = 0.0
 
+    # ── Ontario tax state (--tax-ontario) ─────────────────
+    tax_on   = bool(getattr(args, "tax_ontario", False))
+    salary   = float(getattr(args, "salary", 100_000.0))
+    acb_b = acb_2 = acb_3 = 0.0   # adjusted cost base (CAD average-cost rule)
+    realized_y  = 0.0   # net capital gains realized this calendar year
+    interest_y  = 0.0   # taxable interest earned this calendar year
+    loss_cf     = 0.0   # net capital loss carryforward
+    total_tax   = 0.0
+
     history      = []
     transactions = []
 
@@ -330,6 +417,12 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
 
     # Actual (un-normalised) base price for display
     base_price_series = s_base.reindex(df.index)
+
+    # Daily T-bill rate for idle-cash interest (zeros when --cash-yield is off)
+    if getattr(args, "cash_yield", False):
+        rf_arr = _tbill_daily(df.index).values
+    else:
+        rf_arr = None
 
     # Record day 0 — strategy starts fully in cash at args.capital
     history.append({
@@ -362,7 +455,74 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
         ma_exit = raw_ma_exit[i]
         ret     = raw_ret[i]
 
+        # Idle cash earns the T-bill rate (if --cash-yield)
+        if rf_arr is not None and cash > 0:
+            interest    = cash * rf_arr[i]
+            cash       += interest
+            interest_y += interest
+
+        # ── Year boundary: settle last year's Ontario tax ──
+        if tax_on and idx[i].year != idx[i - 1].year:
+            net = realized_y
+            if net < 0:
+                loss_cf     += -net
+                taxable_gain = 0.0
+            else:
+                offset       = min(loss_cf, net)
+                loss_cf     -= offset
+                taxable_gain = (net - offset) * CG_INCLUSION
+            tax_due = _ontario_tax_on_investment(salary, taxable_gain, interest_y)
+            realized_y = interest_y = 0.0
+            if tax_due > 0.01:
+                total_tax += tax_due
+                if cash >= tax_due:
+                    cash -= tax_due
+                else:
+                    # Sell holdings (3x -> 2x -> base) to cover the shortfall.
+                    # These sales realize gains that count toward the new year.
+                    shortfall = tax_due - cash
+                    cash      = 0.0
+                    if shortfall > 0 and s_3 > 0:
+                        val  = s_3 * n3
+                        sell = min(val, shortfall)
+                        frac = sell / val
+                        realized_y += sell - acb_3 * frac
+                        acb_3 *= 1 - frac
+                        s_3   *= 1 - frac
+                        shortfall -= sell
+                    if shortfall > 0 and s_2 > 0:
+                        val  = s_2 * n2
+                        sell = min(val, shortfall)
+                        frac = sell / val
+                        realized_y += sell - acb_2 * frac
+                        acb_2 *= 1 - frac
+                        s_2   *= 1 - frac
+                        shortfall -= sell
+                    if shortfall > 0 and s_b > 0:
+                        val  = s_b * nb
+                        sell = min(val, shortfall)
+                        frac = sell / val
+                        realized_y += sell - acb_b * frac
+                        acb_b *= 1 - frac
+                        s_b   *= 1 - frac
+                        shortfall -= sell
+                transactions.append({
+                    "Year":       idx[i].year,
+                    "Date":       str(idx[i].date()),
+                    "Type":       "TAX",
+                    "Base Price": round(base_price_series.iloc[i], 2),
+                    "Portfolio":  round(cash + s_b * nb + s_2 * n2 + s_3 * n3, 2),
+                    "Note":       f"Ontario tax ${tax_due:,.2f} on prior-year gains",
+                })
+
         if np.isnan(ma200) or ma200 == 0 or np.isnan(ma_exit) or ma_exit == 0:
+            # No tradable signal yet — still record the daily snapshot
+            history.append({
+                "Date":     idx[i],
+                "Price":    base_price_series.iloc[i],
+                "Strategy": cash + s_b * nb + s_2 * n2 + s_3 * n3,
+                "BuyHold":  df["BuyHold"].iloc[i],
+            })
             continue
 
         # actual base price (for display & signal calc)
@@ -390,6 +550,8 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                 gain_pct = ((price / avg_px) - 1) * 100 if avg_px > 0 else 0.0
                 cash    += lev_val
                 cash    -= lev_val * args.cost_per_trade   # transaction cost on exit
+                realized_y += lev_val - acb_2 - acb_3      # capital gain/loss (ACB)
+                acb_2 = acb_3 = 0.0
                 s_2 = s_3 = 0.0
                 lev_price_wsum = lev_dollar_sum = 0.0
                 notes.append(f"lev gain {gain_pct:+.2f}%")
@@ -402,8 +564,12 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                 if val_b > target + 0.01:
                     excess        = val_b - target
                     shares_trim   = excess / nb
+                    frac          = excess / val_b
+                    realized_y   += excess - acb_b * frac   # capital gain/loss (ACB)
+                    acb_b        *= 1 - frac
                     s_b          -= shares_trim
                     cash         += excess
+                    cash         -= excess * args.cost_per_trade  # transaction cost
                     total         = cash + s_b * nb
                     notes.append(f"base trimmed ${excess:,.2f}")
                 base_trimmed = True   # never trim again regardless
@@ -451,9 +617,10 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                     base_spend  = min(base_needed, cash)
 
                     if base_spend > 0.01:
-                        s_b  += base_spend / nb
-                        cash -= base_spend
-                        cash -= base_spend * args.cost_per_trade  # transaction cost
+                        s_b   += base_spend / nb
+                        acb_b += base_spend
+                        cash  -= base_spend
+                        cash  -= base_spend * args.cost_per_trade  # transaction cost
                         buy_notes.append(f"base filled ${base_spend:,.2f}")
 
                     base_filled = True
@@ -470,10 +637,12 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
 
                     if a2 > 0:
                         s_2            += a2 / n2
+                        acb_2          += a2
                         lev_price_wsum += price * a2
                         lev_dollar_sum += a2
                     if a3 > 0:
                         s_3            += a3 / n3
+                        acb_3          += a3
                         lev_price_wsum += price * a3
                         lev_dollar_sum += a3
 
@@ -505,7 +674,21 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
             "BuyHold":  df["BuyHold"].iloc[i],
         })
 
+    # Settle the final (possibly partial) year's tax against the last day,
+    # so the after-tax final value is honest. Unrealized gains stay deferred.
+    if tax_on:
+        net    = realized_y
+        offset = min(loss_cf, max(net, 0.0))
+        taxable_gain = max(net - offset, 0.0) * CG_INCLUSION
+        final_tax = _ontario_tax_on_investment(salary, taxable_gain, interest_y)
+        if final_tax > 0.01:
+            total_tax += final_tax
+            history[-1]["Strategy"] -= final_tax
+
     hist = pd.DataFrame(history).set_index("Date")
+    hist.attrs["total_tax"] = total_tax
+    hist.attrs["tax_on"]    = tax_on
+    hist.attrs["salary"]    = salary
 
     # ── Yearly summary ────────────────────────────────────
     yearly = hist.resample("YE").last()
@@ -551,6 +734,9 @@ def _run_slug(args) -> str:
     end_yr   = args.end[:4]
     b  = int(round(args.alloc_base * 100))
     x2 = int(round(args.alloc_x2   * 100))
+    cy = "_cy" if getattr(args, "cash_yield", False) else ""
+    if getattr(args, "tax_ontario", False):
+        cy += f"_taxON{int(getattr(args, 'salary', 100_000) / 1000)}k"
     return (
         f"{args.preset}_{start_yr}-{end_yr}"
         f"_entry{args.entry_signal}"
@@ -558,7 +744,7 @@ def _run_slug(args) -> str:
         f"_drop{args.drop_level}"
         f"_buy{args.buy_pct}"
         f"_b{b}_x2{x2}"
-        f"_ma{args.exit_ma}"
+        f"_ma{args.exit_ma}{cy}"
     )
 
 
@@ -573,17 +759,24 @@ _tbill_cache: pd.Series | None = None
 def _tbill_daily(index: pd.DatetimeIndex) -> pd.Series:
     """Return daily risk-free rate aligned to index, sourced from ^IRX (13-week T-bill)."""
     global _tbill_cache
-    start = index[0].strftime("%Y-%m-%d")
-    end   = (index[-1] + pd.Timedelta(days=5)).strftime("%Y-%m-%d")
-    try:
-        raw = yf.download("^IRX", start=start, end=end,
-                          auto_adjust=True, progress=False)["Close"].squeeze().dropna()
-        # ^IRX is annualised % (e.g. 5.0 = 5%). Convert to daily rate.
-        daily = (raw / 100) / 252
-        daily = daily.reindex(index, method="ffill").fillna(0.0)
-    except Exception:
-        daily = pd.Series(0.0, index=index)
-    return daily
+    covered = (_tbill_cache is not None and not _tbill_cache.empty
+               and _tbill_cache.index[0] <= index[0]
+               # ^IRX quotes can lag a few days — tolerate a short tail gap
+               and _tbill_cache.index[-1] >= index[-1] - pd.Timedelta(days=7))
+    if not covered:
+        start = index[0].strftime("%Y-%m-%d")
+        end   = (index[-1] + pd.Timedelta(days=5)).strftime("%Y-%m-%d")
+        try:
+            _tbill_cache = yf.download("^IRX", start=start, end=end,
+                                       auto_adjust=True, progress=False
+                                       )["Close"].squeeze().dropna()
+        except Exception:
+            _tbill_cache = None
+    if _tbill_cache is None or _tbill_cache.empty:
+        return pd.Series(0.0, index=index)
+    # ^IRX is annualised % (e.g. 5.0 = 5%). Convert to daily rate.
+    daily = (_tbill_cache / 100) / 252
+    return daily.reindex(index, method="ffill").fillna(0.0)
 
 
 def _compute_metrics(hist, year_df, capital):
@@ -625,6 +818,10 @@ def save_results_files(hist, year_df, trans_df, base_tk, args):
         f"Buy pct         : {args.buy_pct*100:.0f}% per signal",
         f"Alloc base      : {args.alloc_base*100:.0f}%  lev2 {args.alloc_x2*100:.0f}%  lev3 {args.alloc_x3*100:.0f}%",
         f"Cost per trade  : {args.cost_per_trade*100:.3f}%",
+        f"Cash yield      : {'ON (^IRX T-bill rate on idle cash)' if getattr(args, 'cash_yield', False) else 'off'}",
+        f"Ontario tax     : "
+        + (f"ON (salary ${args.salary:,.0f}, total tax ${hist.attrs['total_tax']:,.2f})"
+           if hist.attrs.get("tax_on") else "off"),
         f"",
         f"Strategy CAGR   : {scagr*100:.2f}%",
         f"B&H CAGR ({base_tk:3s})  : {bcagr*100:.2f}%",
@@ -681,6 +878,12 @@ def print_results(hist, year_df, trans_df, base_tk, args):
     print(f"  Beat {base_tk:<3} years       : {outperf_yrs}/{total_yrs}  ({outperf_yrs/total_yrs*100:.0f}%)")
     if args.cost_per_trade > 0:
         print(f"  Cost per trade        : {args.cost_per_trade*100:.3f}%")
+    if getattr(args, "cash_yield", False):
+        print(f"  Cash yield            : ON (^IRX T-bill rate on idle cash)")
+    if hist.attrs.get("tax_on"):
+        print(f"  Ontario tax paid      : ${hist.attrs['total_tax']:,.2f}  "
+              f"(salary ${hist.attrs['salary']:,.0f}; final value above is after-tax; "
+              f"unrealized gains still deferred)")
     print()
 
 
@@ -784,6 +987,8 @@ if __name__ == "__main__":
     print(f"  Alloc    : base {args.alloc_base*100:.0f}%  |  "
           f"2x {args.alloc_x2*100:.0f}%  |  3x {args.alloc_x3*100:.0f}%")
     print(f"  Lev buy  : min({args.buy_pct*100:.0f}% of portfolio, cash) per signal")
+    if args.cash_yield:
+        print(f"  Cash     : earns ^IRX T-bill rate while idle")
     print(f"{'='*60}")
 
     hist, year_df, trans_df, base_tk = run_backtest(args)

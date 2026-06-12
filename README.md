@@ -3,12 +3,12 @@
 A systematic investigation into whether a disciplined dip-buying approach applied to leveraged ETFs can deliver durable alpha over simple buy-and-hold across the NASDAQ-100, S&P 500, and Russell 2000 — with full walk-forward validation, crisis stress testing, and exit MA comparison.
 
 > [!TIP]
-> **Walk-forward validated edge (annual re-optimization, 2015–2026, no look-ahead bias):**
-> QQQ: 24.45% CAGR vs 19.74% B&H — **+4.71pp over 11+ years** (MA200 exit)
-> SPY: 18.32% CAGR vs 13.98% B&H — **+4.34pp over 11+ years** (MA100 exit, see [§6](#6-walk-forward-validation))
+> **Walk-forward validated edge (annual re-optimization, v2 grid, 2015–2026, no look-ahead bias):**
+> QQQ: 37.50% CAGR vs 19.37% B&H — **+18.1pp over 11+ years** (MA200 exit, [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact))
+> SPY: 18.49% CAGR vs 13.68% B&H — **+4.8pp over 11+ years** (MA100 exit, see [§6](#6-walk-forward-validation))
 >
-> Full-history optimized (2003–2026, includes hindsight): $10,000 → **$1,667,000 QQQ** / **$1,132,000 SPY (MA100)** vs $331K / $126K buy-and-hold.
-> These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation.
+> Full-history optimized (2003–2026, includes hindsight): $10,000 → **$3,767,000 QQQ** / **$1,205,000 SPY (MA100)** vs $324K / $122K buy-and-hold.
+> These upper-bound numbers assume optimal parameters known in advance; use the walk-forward edge above as your realistic forward expectation. In an Ontario **taxable** account, subtract ~3–4pp for taxes ([§9 after-tax](#after-tax-reality-ontario-taxable-account)); in a TFSA/RRSP the numbers apply as-is.
 
 ---
 
@@ -25,6 +25,7 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 7. **Is the optimum on a robust plateau or a fragile spike?** QQQ sits on a broad plateau on the entry × exit grid — moving 1–2 grid steps barely changes performance. SPY is more narrowly load-bearing on the exit axis (working band ~0.93–0.95×MA100). A separate **shifted-grid sweep** confirmed `(entry=1.02, exit=0.95)` is still #1, and no sub-MA200 entry survives — strong evidence the "confirmed-uptrend" premise is structural for SPY too. → [§8 robustness](#parameter-robustness-analysis)
 8. **Could we trade some CAGR for less max DD?** Tested via tie-break rules on both QQQ and SPY. QQQ: costs ~1pp CAGR with negligible max DD improvement (+0.69pp) — not a meaningful trade-off. SPY: makes every metric worse — costs 2.65pp CAGR *and* deepens worst year by 6pp. Not recommended for either. → [§6.1](#61-qqq-tie-break-rule), [§6.2](#62-spy-tie-break-analysis)
 9. **How would each chosen config have handled real historical crises?** Tested in GFC (2007–2010), COVID (2019–2021), 2022 rate-hike, and dot-com bubble (2000–2003, the weakest case). All survived; the strategy excelled in the first three. → [§7](#7-crisis-period-stress-tests)
+10. **Was the dip-wait real, or a grid artifact?** *(2026-06)* The optimizer's winners were pinned at the grid's `drop_level` minimum and `buy_pct` maximum in every window — it wanted to deploy faster than the grid allowed. Backtester probes past the edges, then a full walk-forward re-validation with the extended **v2 grid**: QQQ jumps to **37.50% OOS CAGR (+14pp vs v1) with better worst-year, drawdown, and Sharpe** — for QQQ the dip-wait was pure drag; SPY keeps its dip-wait and gains +1.1pp from larger buys. v2 is now the default grid everywhere. → [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)
 
 **Honest design choices and their cost** (read before deploying): the drawdown filter is calendar-year-based, not max-DD-based — a deliberate choice that costs ~1.8pp CAGR (QQQ) / ~4.3pp (SPY) if tightened to a ~25% YTD cap. The walk-forward number is the honest forward expectation; full-history numbers are hindsight-optimized — don't anchor on them. → [§9](#9-risk-considerations--design-honesty)
 
@@ -34,7 +35,7 @@ The recommendation in Part 1 came from working through a chain of questions, eac
 
 ## Abstract
 
-We tested a rules-based dip-buy strategy on leveraged ETFs (TQQQ/UPRO/TNA) across QQQ, SPY, and IWM. Under annual re-optimization (the recommended operating mode), the strategy produced walk-forward CAGRs of **24.45% for QQQ and 18.32% for SPY** over 2015–2026 — edges of **+4.71pp and +4.34pp** over buy-and-hold — and survived every major crisis since 2003. **IWM failed out-of-sample and is not recommended;** the full result is disclosed in [§6](#6-walk-forward-validation). The strategy requires periodically trending bull markets to work; it amplifies returns in clean trends and protects capital in clear bears, but struggles in sustained sideways chop and multi-year secular bears (worst observed case: synthetic QQQ during the dot-com bubble).
+We tested a rules-based trend-and-dip strategy on leveraged ETFs (TQQQ/UPRO/TNA) across QQQ, SPY, and IWM. Under annual re-optimization with the v2 grid (the recommended operating mode), the strategy produced walk-forward CAGRs of **37.50% for QQQ and 18.49% for SPY** over 2015–2026 — edges of **+18.1pp and +4.8pp** over buy-and-hold — and survived every major crisis since 2003. A 2026 grid-edge audit ([§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)) found QQQ's dip-wait was an artifact of the original parameter grid: above its trend threshold, QQQ is best bought on *any* non-up day. **IWM failed out-of-sample and is not recommended;** the full result is disclosed in [§6](#6-walk-forward-validation). The strategy requires periodically trending bull markets to work; it amplifies returns in clean trends and protects capital in clear bears, but struggles in sustained sideways chop and multi-year secular bears (worst observed case: synthetic QQQ during the dot-com bubble).
 
 ---
 
@@ -53,6 +54,7 @@ We tested a rules-based dip-buy strategy on leveraged ETFs (TQQQ/UPRO/TNA) acros
   - [6. Walk-Forward Validation](#6-walk-forward-validation)
     - [6.1 QQQ Tie-Break Exploration](#61-qqq-tie-break-rule)
     - [6.2 SPY Tie-Break Analysis](#62-spy-tie-break-analysis)
+    - [6.3 Grid v2: Was the Dip-Wait a Grid Artifact?](#63-grid-v2-was-the-dip-wait-a-grid-artifact)
 - **Part 3 — Validation with Chosen Parameters**
   - [7. Crisis Period Stress Tests](#7-crisis-period-stress-tests)
   - [8. Discussion & Parameter Robustness](#8-discussion)
@@ -81,27 +83,31 @@ The walk-forward and full-history CAGRs are close for QQQ (24.45% vs 24.48%) but
 
 ### QQQ
 
+> **Grid v2 (2026-06).** These numbers use the v2 grid, adopted after the walk-forward validation in [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact) showed the original grid was binding (+14pp OOS CAGR with *better* drawdowns). The original v1 numbers (24.45% walk-forward) remain reproducible via `--grid v1`.
+
 | Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
 |---|---|---|
-| CAGR | 24.48% | **24.45%** |
-| Final value ($10K invested Jan 2003 →) | $1,667,000 | — |
-| Final value ($10K invested Jan 2015 →) | — | **$121,079** |
-| Worst calendar year | −40.8% (2005) | −25.88% (2022) |
-| Max drawdown | −69.1% | −53.75% |
+| CAGR | 28.80% | **37.50%** |
+| Final value ($10K invested Jan 2003 →) | $3,767,000 | — |
+| Final value ($10K invested Jan 2015 →) | — | **$382,075** |
+| Worst calendar year | −34.4% | −22.6% (2022) |
+| Max drawdown | −56.5% | −52.6% |
+| With T-bill cash sleeve (full hist) | 29.43% / $4.22M | — |
+| After Ontario tax, $100K salary (full hist) | 24.73% / $1.78M after-tax | — |
 
 > **Schedule year convention.** In every table and JSON file in this repo, a row labeled **year N** was trained on data from 2003-01-02 through **Dec 31 of year N−1** and is intended for trading during **calendar year N**. The 2026 row below was produced in 2026-01 from data ending 2025-12-31; the previous 2025 row was produced in 2025-01 from data ending 2024-12-31. Always use the latest row (or re-run the January re-opt if the current calendar year does not have a row yet).
 
-**Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
+**Live trading params for calendar year 2026 (v2 grid, trained on 2003-01-02 → 2025-12-31):**
 
 | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (TQQQ) |
 |---|---|---|---|---|---|---|
-| 1.03×MA200 | 0.5% | 1.01×MA200 | 40% | 0% | 0% | **100%** |
+| 1.04×MA200 | **0.0% (any non-up day)** | 1.01×MA200 | **60%** | 0% | 0% | **100%** |
 
-> **Year-over-year shift.** The 2025 schedule row was entry 1.05 / drop 1.0% / exit 1.00 / buy 30%; 2026 moved to entry 1.03 / drop 0.5% / exit 1.01 / buy 40%. This is within the historical 2014–2026 pattern (the 2020–2022 rows used entry 1.03 / exit 1.00 with drop 2.0%; the 2023 row used entry 1.02 / exit 1.01). It is not a discontinuous break — see the year-by-year schedule and continuity-filter discussion in [§6.1](#61-qqq-tie-break-rule).
+> **Reading the drop rule.** `drop = 0.0` means: once price is above 1.04×MA200, buy on the close of **any day that doesn't finish up** — no dip-wait. §6.3 shows the dip-wait was an artifact of the original grid's 0.5% floor; for QQQ it cost ~3pp/yr. The v2 schedule has used this exact row, unchanged, every year since 2017 — far more stable than the v1 schedule it replaces.
 
-**Annual re-optimization: RECOMMENDED for QQQ.** Without it, expect a meaningful CAGR penalty.
+**Annual re-optimization: RECOMMENDED for QQQ.**
 
-Evidence: a *fixed model* using 2003–2014 params frozen through 2026 produces **22.57% CAGR** versus **24.45%** for annually re-optimized. The fixed model also has a worse worst year (−36.0% vs −25.88% in 2022) and a deeper max drawdown. → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) three-way comparison.
+Evidence: a *fixed model* using 2003–2014 v2 params frozen through 2026 produces **32.67% CAGR** versus **37.50%** for annually re-optimized — and the stability of the schedule means re-opt is cheap insurance rather than churn. → see [§6](#expanding-window-walk-forward-annual-re-optimization-20152026) and [§6.3.4](#634-walk-forward-validation-v1-vs-v2-out-of-sample-20152026).
 
 **How to re-optimize each January:**
 ```bash
@@ -118,21 +124,23 @@ Apply the latest year's params to the next 12 months of trading. See [§6.1 cont
 
 ### SPY
 
+> **Grid v2 (2026-06).** v2 numbers per [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact): a milder gain than QQQ's (+1.1pp OOS from buy 60%), paid for with a ~3pp worse 2022. SPY *keeps* its dip-wait — drop = 0.5% survived the grid extension.
+
 | Metric | Full history (2003–2026) | Walk-forward (2015–2026) |
 |---|---|---|
-| CAGR | 22.40% | **18.32%** |
-| Final value ($10K invested Jan 2003 →) | $1,132,235 | — |
-| Final value ($10K invested Jan 2015 →) | — | **$68,124** |
-| Worst calendar year | −31.78% (2022) | −31.78% (2022) |
-| Max drawdown | −52.61% | −44.80% |
+| CAGR | 22.68% | **18.49%** |
+| Final value ($10K invested Jan 2003 →) | $1,204,748 | — |
+| Final value ($10K invested Jan 2015 →) | — | **$69,637** |
+| Worst calendar year | −34.8% (2022) | −34.8% (2022) |
+| Max drawdown | −52.5% | — |
 
-**Live trading params for calendar year 2026 (trained on 2003-01-02 → 2025-12-31):**
+**Live trading params for calendar year 2026 (v2 grid, trained on 2003-01-02 → 2025-12-31):**
 
 | Entry | Drop | Exit | Buy% | Base% | 2× % | 3× % (UPRO) |
 |---|---|---|---|---|---|---|
-| 1.02×MA200 | 0.5% | 0.95×MA100 | 40% | 0% | 0% | **100%** |
+| 1.02×MA200 | 0.5% | 0.95×MA100 | **60%** | 0% | 0% | **100%** |
 
-> SPY's schedule is structurally stable — entry=1.01–1.02, drop=0.5%, exit=0.95×MA100, buy=40% across all 12 years. The 2026 row is identical to 2017–2025.
+> SPY's schedule remains structurally stable — entry=1.02, drop=0.5%, exit=0.95×MA100 in every window; only buy% moved (40→60) with the v2 grid.
 
 **Annual re-optimization: OPTIONAL for SPY** (lower benefit than for QQQ).
 
@@ -155,6 +163,29 @@ If you skip annual re-opt for SPY, you can safely run the strategy with the fixe
 | Best 2003–2014 train params, frozen | 4.95% | 9.54% | **−4.59pp ✗** | Failed OOS |
 
 IWM's small-cap volatility creates higher LETF decay, and the strategy's training-period params did not generalize to 2015–2026. Treated as speculative; not part of any live recommendation. → [§6 strict OOS](#strict-oos-test-train-20032014-test-20152026)
+
+---
+
+### Park idle cash in T-bills (all configs)
+
+The strategy spends long stretches partially or fully in cash — 100% cash after every exit (sometimes for a year, e.g. May 2008 → May 2009), and cash deploys only gradually during buy cycles. Holding that cash in a T-bill ETF (SGOV, BIL) or a money-market fund instead of earning 0% is a **risk-free improvement** that requires no parameter change.
+
+Measured with `--cash-yield` (accrues the daily ^IRX 13-week T-bill rate on idle cash):
+
+| Run | CAGR without | CAGR with T-bills | Δ CAGR | Worst year | Max DD |
+|---|---|---|---|---|---|
+| QQQ full history 2003–2026 | 23.95% | **24.60%** | +0.65pp | −40.8% → −39.8% | −69.1% → −67.2% |
+| QQQ walk-forward 2015–2026 | 23.24% | **24.01%** | +0.77pp | −25.9% → −24.5% | — |
+| SPY full history 2003–2026 (MA100) | 21.79% | **22.20%** | +0.41pp | −31.8% → −30.4% | −52.6% → −51.5% |
+| SPY walk-forward 2015–2026 (MA100) | 17.41% | **17.95%** | +0.54pp | −31.8% → −30.4% | — |
+
+*(Full-history rows measured 2026-06; they differ slightly from the headline tables above, which were captured earlier in the year.)*
+
+Every metric improves: higher CAGR, smaller worst year, shallower max drawdown — because interest accrues exactly when the strategy is de-risked. Over 23 years the QQQ uplift compounds to ~13% more terminal wealth. The uplift is larger in high-rate regimes (2023–2026: ^IRX ≈ 4–5%) and near zero in ZIRP years (2009–2015).
+
+**Live trading implication:** keep the strategy's cash sleeve in SGOV/BIL and sell it to fund buy signals. The `daily_signal` runner needs no change — this is a brokerage-side habit, not a signal change.
+
+Backtest reproduction: add `--cash-yield` to any `backtester.py` or `walkforward.py` command. Output files get a `_cy` suffix so they never overwrite the 0%-cash results.
 
 ---
 
@@ -256,7 +287,7 @@ Key observations from this example:
 Two separate tools are used throughout this research. Understanding the difference is important for interpreting all results.
 
 **Optimizer** (`optimizer.py`)
-The optimizer's job is to *search* — it runs all 15,840 parameter combinations against historical data and ranks them by CAGR. Think of it as a brute-force scanner: feed it 23 years of price data and it tells you which settings would have performed best. It is fast (a few minutes for all combos) and useful for both ranking and measuring performance. Both the optimizer and backtester pre-download two years of history before the strategy start date so the MA200 is fully warmed up on 2003-01-01.
+The optimizer's job is to *search* — it runs every parameter combination in the grid (15,840 in the original v1 grid; 31,680 in the current v2 grid — see [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)) against historical data and ranks them by CAGR. Think of it as a brute-force scanner: feed it 23 years of price data and it tells you which settings would have performed best. It is fast (a few minutes for all combos) and useful for both ranking and measuring performance. Both the optimizer and backtester pre-download two years of history before the strategy start date so the MA200 is fully warmed up on 2003-01-01.
 
 **Backtester** (`backtester.py`)
 The backtester's job is to *validate* — it takes one specific set of parameters, runs the strategy over a chosen date range with full precision, and produces a detailed trade log, year-by-year returns, and an equity curve. It is the authoritative tool for any specific result cited in this paper.
@@ -316,7 +347,7 @@ The T-bill rate is forward-filled on non-trading days and aligned daily to the s
 
 ### Optimizer Grid Search
 
-Each optimizer runs a grid search over **15,840 parameter combinations**:
+Each optimizer runs a grid search over the parameter space. The original (v1) grid — **15,840 valid combinations** — was:
 
 | Parameter | Values |
 |---|---|
@@ -328,6 +359,8 @@ Each optimizer runs a grid search over **15,840 parameter combinations**:
 | `alloc_x2` | 0%, 25%, 50%, 75%, 100% |
 
 The naive total would be 6×6×6×4×4×5 = 17,280 combinations, but one logical constraint removes 1,440 of them: the exit signal must be strictly less than the entry signal (you cannot set the exit threshold above the point where you armed — that would mean selling into strength before you even bought). After removing those invalid pairs, exactly **15,840 valid combinations** remain. Each is run as a full historical simulation; CAGR and worst annual return are recorded for every one.
+
+> **Grid v2 (2026-06 revision).** The grid above is the original (v1). Walk-forward results later showed the v1 winners pinned against two grid boundaries — `drop_level` at its 0.005 minimum and `buy_pct` at its 0.40 maximum — in nearly every training window, which means the optimizer wanted values *outside* the grid. The grid was therefore extended (`drop_level` += {0.0, 0.0025}, `buy_pct` += {0.50, 0.60} → **31,680 valid combos**) and the change validated out-of-sample before adoption. The full investigation, including why `drop_level = 0.0` changes the strategy's character, is in [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact). All optimizer scripts and the production re-opt now use the v2 grid.
 
 Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose calendar-year return fell worse than −40% in any year from a cutoff year onward:
 
@@ -342,6 +375,8 @@ Combos are ranked by CAGR. A **drawdown filter** eliminates any combo whose cale
 ---
 
 ## 3. Full-History Grid Search (2003–2026)
+
+> **Superseded numbers.** The tables in this section are the original **v1-grid** study, kept intact because they are the link in the exploration chain that eventually exposed the grid's binding edges. The current optimum configs come from the extended v2 grid — see [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact) and the Part 1 tables (QQQ: 28.80% full-history with entry 1.04 / drop 0.0 / buy 60%; SPY: 22.68% with buy 60%).
 
 > **Note on allocation:** The optimizer explored all combinations of base ETF allocation (0–30%), 2× ETF allocation (0–100% of leveraged spend), and 3× ETF allocation (remainder). The original intent was to find the optimal *mix* — perhaps holding some unleveraged base stock for stability and splitting leverage between 2× and 3×. In practice, **100% allocation to the 3× ETF with no base position consistently produced the highest CAGR across all three indices.** The base stock and 2× ETF allocations improve drawdown slightly but cost meaningful CAGR. All headline results below use the top-ranked combo from the optimizer, which in every case was 100% 3×. Section 5 examines the 2× vs 3× trade-off in detail.
 
@@ -864,6 +899,78 @@ The rule shifted most years from `drop_level=0.5% / buy_pct=40%` (plain top-CAGR
 
 ---
 
+### 6.3 Grid v2: was the dip-wait a grid artifact?
+
+*(Added 2026-06. This section follows the same exploration discipline as the rest of Part 2: a suspicious pattern in existing results → quick backtester probes to size the effect → a controlled grid change → full walk-forward re-validation before anything touches the live recommendation.)*
+
+#### 6.3.1 The observation
+
+Look back at the per-year param schedules in §6: the optimizer picked `drop_level = 0.005` — the **smallest value the grid offers** — and `buy_pct = 0.40` — the **largest value the grid offers** — in nearly every training window, for both QQQ and SPY, year after year. §8's shifted-grid analysis had already checked `entry_signal`/`exit_signal` for exactly this kind of edge-of-grid artifact, but `drop_level` and `buy_pct` were never given the same treatment.
+
+A winner pinned against a grid boundary is the optimizer saying *"I want to go further but you won't let me."* Twelve consecutive windows of that, on two boundaries at once, on two independent indices, is not noise. The consistent direction of both pins is **deploy faster**: smaller dips to trigger, bigger buys per trigger.
+
+#### 6.3.2 Backtester probes past the edges
+
+Before rebuilding anything, the cheap question first: what happens to the recommended configs if we manually push past each boundary? (Full-history runs, June 2026 data; QQQ baseline 23.95%, SPY baseline 21.79%.)
+
+| Probe | QQQ CAGR | QQQ worst yr | QQQ max DD | SPY CAGR |
+|---|---|---|---|---|
+| drop 0.005 (v1 edge) | 23.95% | −40.8% | −69.1% | 21.79% |
+| drop 0.0025 | 26.24% | −40.1% | −67.5% | **22.18%** |
+| **drop 0.0** (buy any non-up day) | **26.92%** | **−39.0%** | **−65.7%** | 21.04% |
+| drop −1 (buy any day) | 26.09% | −33.8% | −62.5% | 19.77% |
+| buy 0.5 (past v1 edge) | 24.39% | −41.7% | −70.3% | 22.27% |
+| buy 0.6 | 24.39% | −41.9% | −70.3% | **22.43%** |
+| buy 1.0 | 24.25% | −42.7% | −70.1% | — |
+
+Three things stand out:
+
+1. **For QQQ, removing the dip-wait entirely is a ~3pp CAGR improvement that also improves the worst year and the max drawdown.** That is not a risk-for-return trade — it dominates. The interpretation: QQQ's edge comes from the MA200 trend filter, and waiting for a red day merely delays deployment in an index that trends hard. `drop = 0.0` keeps a minimal trigger (any non-up day) purely as a pacing mechanism.
+2. **For SPY, the dip-buy earns its keep.** Removing the condition entirely *hurts* (21.04% at drop 0); SPY's optimum sits near 0.0025–0.005. Same machinery, different index character — consistent with §8's finding that SPY is more exit-sensitive than QQQ.
+3. **buy_pct wants ~0.5–0.6**, worth ~+0.4–0.6pp, with diminishing and then negative returns beyond.
+
+These probes are in-sample. They prove the grid is binding — they do **not** prove the new values work live. So: extend the grid, rerun the whole walk-forward machinery, and let out-of-sample data decide.
+
+#### 6.3.3 The v2 grid
+
+`walkforward.py --grid v2` (and all exploration optimizers, and the production `reopt.py`) extend exactly the two binding axes and nothing else:
+
+| Parameter | v1 | v2 |
+|---|---|---|
+| `drop_level` | 0.005 … 0.030 (6 values) | **0.0, 0.0025,** 0.005 … 0.030 (8 values) |
+| `buy_pct` | 0.10 … 0.40 (4 values) | 0.10 … 0.40, **0.50, 0.60** (6 values) |
+| valid combos | 15,840 | **31,680** |
+
+v2 schedules and outputs carry a `_gridv2` suffix; every v1 file is preserved, so this entire section is reproducible against the original study. Entry/exit/alloc axes are untouched — the shifted-grid sweep already cleared those.
+
+The per-year v2 schedule confirms the probes weren't a full-history fluke — every expanding training window picks past the old edges (QQQ: `drop=0.0, buy=0.5–0.6` from the very first 2003–2014 window).
+
+#### 6.3.4 Walk-forward validation: v1 vs v2, out-of-sample 2015–2026
+
+Same machinery as §6 — expanding-window annual re-optimization, params for year N trained only on data through N−1 — run once with each grid. Both columns measured 2026-06 so they are directly comparable.
+
+| 2015–2026 OOS | QQQ v1 | **QQQ v2** | SPY v1 (MA100) | **SPY v2 (MA100)** |
+|---|---|---|---|---|
+| CAGR | 23.24% | **37.50%** | 17.41% | **18.49%** |
+| Final value ($10K) | $109,173 | **$382,075** | $62,695 | **$69,637** |
+| Edge vs B&H | +3.87pp | **+18.14pp** | +3.73pp | **+4.81pp** |
+| Worst year | −25.9% (2022) | **−22.6% (2022)** | −31.8% (2022) | −34.8% (2022) |
+| Max drawdown | — | −52.6% | — | — |
+| Sharpe | 0.67 | **0.89** | ~0.6 | 0.62 |
+
+The per-year v2 schedules are *more* stable than v1's, not less — QQQ locks onto `entry 1.04 / drop 0.0 / exit 1.01 / buy 0.6` from 2017 onward and never moves; SPY converges to `entry 1.02 / drop 0.005 / exit 0.95 / buy 0.6`. Stability under an expanding window is the signature of a structural optimum rather than noise-chasing.
+
+Independent backtester verification of the locked QQQ v2 params over the full history (2003–2026): **28.80% CAGR, $10K → $3.77M, worst year −34.4%, max DD −56.5%** — versus 23.95% / $1.53M / −40.8% / −69.1% for the v1 recommendation. Every metric improves. SPY v2 full-history: 22.68% vs 21.79%, at the cost of a ~3pp worse worst year (−34.8% vs −31.8%).
+
+#### 6.3.5 Verdict
+
+- **QQQ: adopt v2 unambiguously.** The dip-wait was a grid artifact. Removing it (drop = 0.0: buy on any non-up day while above 1.04×MA200) plus faster sizing (buy 0.6) improves CAGR by **+14pp OOS** while *improving* the worst year, the max drawdown, and the Sharpe ratio. There is no risk-for-return trade here to agonize over — v1 was simply leaving the optimizer handcuffed.
+- **SPY: adopt v2, with eyes open.** The gain is +1.1pp OOS CAGR (from buy 0.6 — the dip-wait survives at 0.005 for SPY), paid for with a ~3pp worse 2022. The optimizer picks it consistently in every window, so we follow the system rather than override it, but SPY's improvement is incremental where QQQ's is structural.
+- **Why the asymmetry:** QQQ trends persistently — every day not deployed above trend is expected return forfeited, so any delay (dip-waits, small buys) is pure drag. SPY mean-reverts more at daily scale, so a small dip entry still pays there. This mirrors §4's exit-MA asymmetry (QQQ MA200 / SPY MA100).
+- The v2 grid is now the **default** everywhere: `walkforward.py` (`--grid v1` reproduces the original study), all exploration optimizers, and the production `reopt.py` in daily_signal. Caveat inherited by all of Part 1: these numbers share the §9 limitations — and a faster-deploying config concentrates more exposure sooner after re-entries, which is exactly what made 2022-style chop the worst year. The −40% calendar-year DD filter still gates every pick.
+
+---
+
 # Part 3 — Validation with Chosen Parameters
 
 Configs locked in Part 2. One final question before publication: **how would each chosen config have handled the actual bear markets in our sample?** Aggregate CAGR is the right top-line metric, but it can hide what happens during the specific weeks each crisis was the most painful to be invested. §7 plays the recommended configs forward through four named crises and reports period CAGR, worst calendar year inside the period, and max drawdown for each. §8 then does a separate robustness check: is the optimum a sharp spike or a broad plateau in parameter space?
@@ -1091,6 +1198,12 @@ python leveraged_spy_exploration/heatmap_shifted.py --no-show        # shifted-g
 python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show # full shifted sweep (~5 min)
 ```
 
+### Grid-edge diagnosis: drop_level and buy_pct
+
+The shifted-grid analysis above checked entry/exit for edge-of-grid artifacts but never checked **drop_level** and **buy_pct**. Both turned out to be binding — the optimizer's winners were pinned at `drop_level = 0.005` (grid minimum) and `buy_pct = 0.40` (grid maximum) in nearly every training window. The full investigation — backtester probes past the edges, the extended v2 grid, and the walk-forward out-of-sample validation that decides adoption — is in [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact).
+
+---
+
 ### Limitations and Caveats
 
 - **Backtested on a mostly bullish 23-year window.** The US equity market 2003–2026 included three major crashes but also three major multi-year bull markets. A prolonged bear or sideways decade would test the strategy more severely.
@@ -1106,6 +1219,7 @@ python leveraged_spy_exploration/optimizer_shifted_grid.py --no-show # full shif
 
   The strategy is relatively insensitive to transaction costs because it trades infrequently (~2–4 trades/yr). Even at 0.20% per trade, the CAGR loss is less than 0.6pp for QQQ and less than 0.2pp for SPY.
 
+- **Idle cash earns 0% by default.** All headline numbers assume uninvested cash earns nothing. This *understates* realistic returns: parking cash in T-bills (SGOV/BIL) adds +0.4 to +0.8pp CAGR with slightly better drawdowns (see the Part 1 recommendation). Reproduce with `--cash-yield`.
 - **Execution at closing prices.** The backtest assumes all trades execute at the day's closing price. In practice, the signal fires during market hours and execution may occur at a different price.
 - **No taxes or commissions.** Real returns would be reduced by short-term capital gains taxes on frequent position changes (especially in high-trade regimes with low drop_level).
 
@@ -1122,6 +1236,29 @@ The downside the strategy actually carries, the design choices that shape that r
 - **Leveraged ETF daily reset.** 3× ETFs reset leverage daily. In volatile sideways markets, decay compounds against you even with flat overall returns. The strategy mitigates this by exiting during downtrends, but decay occurs in all held positions.
 - **3× ETF worst-year drawdown of −30% to −40%, max drawdown −50% to −69%.** The recommended live configurations have produced calendar-year losses around −30% to −40% — **QQQ −40.8% in 2005** (the recommended MA200 config), **SPY −31.78% in 2022** (the recommended MA100 config — see [§7.3](#73-rate-hike-bear-market-2021-06-01--2023-06-30)) — and intra-period max drawdowns of **−69.1% for QQQ MA200** (full-history peak-to-trough during the 2008 GFC synthetic period) and **−52.61% for SPY MA100**. Investors must be able to hold through these without abandoning the strategy mid-crisis.
 - **This is not a complete financial plan.** The research shows a statistical edge in backtested conditions. It does not constitute financial advice. Any real deployment should be sized appropriately within a broader portfolio.
+
+### After-tax reality (Ontario taxable account)
+
+The backtester models Ontario personal income tax with `--tax-ontario --salary <amount>`: capital gains at 50% inclusion stacked on top of salary (federal + Ontario 2025 brackets incl. surtax, held constant), average-cost (ACB) basis, loss carryforward, interest from `--cash-yield` 100% taxable, tax paid from the portfolio each January. Canada has no short/long-term distinction, so the strategy's short holding periods are not penalized the way they would be under US rules — but annual realization still kills most of the deferral benefit that buy-and-hold enjoys.
+
+Measured at a $100,000 salary (2003–2026, June 2026 data):
+
+| Run | Pre-tax CAGR | After-tax CAGR | Tax drag | Total tax paid | Final value |
+|---|---|---|---|---|---|
+| QQQ strategy | 23.95% | **20.60%** | −3.35pp | $202,973 | $1.53M → $806K |
+| QQQ strategy + T-bill cash | 24.60% | **21.00%** | −3.60pp | $228,732 | $1.73M → $872K |
+| QQQ buy & hold (taxed at final sale) | 16.00% | 14.76% | −1.24pp | ~$72K | $324K → $252K |
+| SPY strategy (MA100) | 21.79% | **18.60%** | −3.19pp | $140,832 | $1.01M → $545K |
+| SPY buy & hold (taxed at final sale) | 11.26% | 10.27% | −0.99pp | ~$23K | $122K → $99K |
+
+**Conclusions:**
+
+1. **Taxes are the single largest cost ever measured on this strategy** — ~3.3pp CAGR, versus ~0.25pp for transaction costs. Roughly half of terminal wealth in a taxable account.
+2. **The edge survives.** After-tax strategy still beats after-tax buy-and-hold by +5.8pp (QQQ) and +8.3pp (SPY). The strategy realizes gains every cycle while B&H defers 23 years, yet the gross edge is large enough to absorb the difference.
+3. **Use registered accounts first.** In a TFSA every figure in this repo is tax-free; in an RRSP tax is deferred to withdrawal. Priority order for this strategy: TFSA → RRSP → taxable. If running taxable, the `--tax-ontario` numbers above — not the headline tables — are your expectation.
+4. Caveats: brackets held at 2025 levels (no inflation indexing), assumes capital-gains treatment (CRA could deem very frequent trading business income — at 2–4 round trips/yr this is normally safe), ignores CPP/EI/OHIP and other credits, end-of-backtest unrealized gains stay deferred.
+
+---
 
 ### Drawdown filter design choice (calendar year, not max DD)
 
@@ -1162,8 +1299,8 @@ All scripts are runnable with `python <script>.py [args]`. Most accept `--no-sho
 
 | Script | Purpose | Key args | Outputs |
 |---|---|---|---|
-| [`walkforward.py`](walkforward.py) | Annual walk-forward re-optimizer. Phase 1 builds the per-year param schedule; Phase 2 runs the continuous backtest with annual param swap; also runs a fixed-model baseline. | `--preset {QQQ,SPY,IWM}` · `--exit-ma {100,200}` · `--start-year` · `--end-year` · `--only-year YYYY` (append one year, skip Phase 2) · `--no-rebuild` (Phase 2 only) · `--no-show` | `results/walkforward/{preset}_param_schedule[*].json` · `_yearly.csv` · `_commands.txt` · `_comparison.png` |
-| [`backtester.py`](backtester.py) | Run a single config on a single date range. Used to verify walk-forward picks, spot-check crisis periods, and generate per-config plots referenced in §3, §4, §6, §7. | `--preset` · `--start` · `--end` · `--entry-signal` · `--drop-level` · `--exit-signal` · `--buy-pct` · `--alloc-base / --alloc-x2 / --alloc-x3` · `--exit-ma {50,100,200}` · `--cost-per-trade` · `--no-show` | `results/backtester/{PRESET}/{...}.png` · `_summary.txt` · `_yearly.csv` |
+| [`walkforward.py`](walkforward.py) | Annual walk-forward re-optimizer. Phase 1 builds the per-year param schedule; Phase 2 runs the continuous backtest with annual param swap; also runs a fixed-model baseline. | `--preset {QQQ,SPY,IWM}` · `--exit-ma {100,200}` · `--start-year` · `--end-year` · `--only-year YYYY` (append one year, skip Phase 2) · `--no-rebuild` (Phase 2 only) · `--grid {v1,v2}` (optimizer grid version, see [§6.3](#63-grid-v2-was-the-dip-wait-a-grid-artifact)) · `--workers N` (parallel grid search, default = cores−2) · `--cash-yield` (T-bill interest on idle cash) · `--no-show` | `results/walkforward/{preset}_param_schedule[*].json` · `_yearly.csv` · `_commands.txt` · `_comparison.png` |
+| [`backtester.py`](backtester.py) | Run a single config on a single date range. Used to verify walk-forward picks, spot-check crisis periods, and generate per-config plots referenced in §3, §4, §6, §7. | `--preset` · `--start` · `--end` · `--entry-signal` · `--drop-level` · `--exit-signal` · `--buy-pct` · `--alloc-base / --alloc-x2 / --alloc-x3` · `--exit-ma {50,100,200}` · `--cost-per-trade` · `--cash-yield` (T-bill interest on idle cash) · `--no-show` | `results/backtester/{PRESET}/{...}.png` · `_summary.txt` · `_yearly.csv` |
 
 **Tier 2 — Robustness diagnostics**
 
@@ -1275,7 +1412,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A([python optimizer.py --no-show]) --> B[Download data from WARMUP_START=2001-01-01\nCompute MA200 on full pre-history\nTrim to START_DATE=2003-01-01 before backtest\nMA200 is fully warmed up on day 1]
-    B --> C[Build parameter grid 15840 combos]
+    B --> C[Build parameter grid 31680 combos v2]
     C --> D[Loop all combos with tqdm]
     D --> E[Run backtest → CAGR + portfolio array]
     E --> F{Any year after cutoff\nreturn below −40%?}
@@ -1296,7 +1433,7 @@ flowchart TD
     A([python walkforward.py --preset QQQ\n--exit-ma 100/200\n--tie-tolerance 0.01]) --> B[Load full data 2003 → end_year\nPre-compute MA100 and MA200\nBuild synthetic + real lev NAVs]
     B --> C[Phase 1: Build per-year param schedule]
     C --> D[For trade year Y in start_year..end_year]
-    D --> E[df_train = full data trimmed to 2003 → year Y-1\nMA200 pre-warmed from 2001 history\nLoop all 15840 combos]
+    D --> E[df_train = full data trimmed to 2003 → year Y-1\nMA200 pre-warmed from 2001 history\nLoop all 31680 combos v2 in parallel workers]
     E --> F[Run optimizer backtest\narm uses MA200; exit uses MA exit_ma\nReturn CAGR + worst calendar year]
     F --> G{Calendar-year filter:\nany year ≥ dd_start\nbelow −40%?}
     G -- Yes --> H[Drop combo]
@@ -1349,21 +1486,32 @@ python backtester.py --preset QQQ --start 2015-01-01 \
   --entry-signal 1.03 --drop-level 0.005 --exit-signal 1.01 \
   --buy-pct 0.4 --alloc-base 0.0 --alloc-x2 0.0 --alloc-x3 1.0
 
+# T-bill interest on idle cash (models SGOV/BIL — see Part 1 recommendation)
+# Output files get a _cy suffix so 0%-cash results are preserved.
+python backtester.py --preset QQQ ... --cash-yield --no-show
 ```
 
 ### Running the Walk-Forward
 
 ```bash
-# Annual re-opt for the upcoming trade year (Jan workflow, ~5 min)
-python walkforward.py --preset QQQ --only-year 2027
-python walkforward.py --preset SPY --exit-ma 100 --only-year 2027
+# Annual re-opt for the upcoming trade year (Jan workflow, ~1-2 min on a
+# multi-core machine — Phase 1 is parallelized across CPU cores by default)
+python walkforward.py --preset QQQ --grid v2 --only-year 2027
+python walkforward.py --preset SPY --exit-ma 100 --grid v2 --only-year 2027
 
-# Full rebuild of the 2015→current walk-forward simulation (~30 min per variant)
-python walkforward.py --preset QQQ                          # MA200
-python walkforward.py --preset SPY --exit-ma 100             # MA100
+# Full rebuild of the 2015→current walk-forward simulation
+# (~15 min per variant with default --workers; was ~30-60 min single-core)
+python walkforward.py --preset QQQ --grid v2                  # MA200
+python walkforward.py --preset SPY --exit-ma 100 --grid v2    # MA100
+
+# Reproduce the original v1-grid study (v1 schedules/outputs are kept separate)
+python walkforward.py --preset QQQ --grid v1
 
 # Re-run Phase 2 only (uses cached schedule)
-python walkforward.py --preset SPY --exit-ma 100 --no-rebuild --no-show
+python walkforward.py --preset SPY --exit-ma 100 --grid v2 --no-rebuild --no-show
+
+# Phase 2 with T-bill interest on idle cash (Phase 1 rankings unaffected)
+python walkforward.py --preset QQQ --grid v2 --no-rebuild --no-show --cash-yield
 ```
 
 ### Running the Optimizers
