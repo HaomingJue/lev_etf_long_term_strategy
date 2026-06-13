@@ -20,18 +20,14 @@ Usage:
 """
 
 import argparse
-import itertools
 import json
 import os
 import sys
 import warnings
-from multiprocessing import Pool
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
-from tqdm import tqdm
 
 _no_show = "--no-show" in sys.argv
 import matplotlib
@@ -45,209 +41,11 @@ warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).parent))
 from backtester import run_backtest, print_results, cagr as compute_cagr, _tbill_daily
 
-
-# ──────────────────────────────────────────────────────────────
-# CONFIG
-# ──────────────────────────────────────────────────────────────
-
-PRESETS = {
-    "QQQ": {"base": "QQQ", "lev2": "QLD",  "lev3": "TQQQ", "dd_start": 2010},
-    "SPY": {"base": "SPY", "lev2": "SSO",  "lev3": "UPRO", "dd_start": 2009},
-    "IWM": {"base": "IWM", "lev2": "UWM",  "lev3": "TNA",  "dd_start": 2009},
-}
-
-START_DATE    = "2003-01-01"
-WARMUP_START  = "2001-01-01"   # download start — ensures MA200 is warm by START_DATE
-CAPITAL       = 10_000
-DD_LIMIT      = 0.40
-
-ENTRY_SIGNALS = [1.01, 1.02, 1.03, 1.04, 1.05, 1.06]
-DROP_LEVELS   = [0.005, 0.010, 0.015, 0.020, 0.025, 0.030]
-EXIT_SIGNALS  = [0.95, 0.97, 0.99, 1.00, 1.01, 1.02]
-BUY_PCTS      = [0.10, 0.20, 0.30, 0.40]
-ALLOC_BASES   = [0.0, 0.10, 0.20, 0.30]
-ALLOC_X2S     = [0.0, 0.25, 0.50, 0.75, 1.0]
-
-# Extended grid (--grid v2). Diagnosis 2026-06: the v1 winners sit at grid
-# edges — drop_level at the 0.005 minimum, buy_pct at the 0.40 maximum —
-# for both QQQ and SPY in nearly every training window. v2 extends past
-# both edges (drop 0.0 = buy on any non-up day while armed).
-# v2 schedules/outputs get a _gridv2 suffix; v1 files are never touched.
-DROP_LEVELS_V2 = [0.0, 0.0025] + DROP_LEVELS
-BUY_PCTS_V2    = BUY_PCTS + [0.50, 0.60]
-
-
-# ──────────────────────────────────────────────────────────────
-# DATA
-# ──────────────────────────────────────────────────────────────
-
-# Annual MERs — applied to synthetic pre-inception period only (real prices include MER)
-_MER_3X = {"QQQ": 0.0095, "SPY": 0.0091, "IWM": 0.0109}
-_MER_2X = {"QQQ": 0.0095, "SPY": 0.0089, "IWM": 0.0095}
-
-
-def _build_lev_nav(base: pd.Series, real: pd.Series, L: int,
-                   annual_mer: float = 0.0) -> pd.Series:
-    ret       = base.pct_change().fillna(0)
-    var20     = ret.rolling(20).var().fillna(0)
-    daily_mer = annual_mer / 252.0
-
-    # Determine stitch point before building synthetic
-    first_real_pos = None
-    if real is not None and not real.dropna().empty:
-        common = base.index.intersection(real.dropna().index)
-        if not common.empty:
-            first_real_pos = base.index.get_loc(common[0])
-
-    nav = np.ones(len(base))
-    for i in range(1, len(base)):
-        lev_r = L * ret.values[i] - 0.5 * (L**2 - L) * var20.values[i]
-        if first_real_pos is None or i < first_real_pos:
-            lev_r -= daily_mer   # MER only during synthetic period
-        nav[i] = nav[i-1] * (1.0 + lev_r)
-
-    synth = pd.Series(nav, index=base.index)
-    if first_real_pos is None:
-        return synth
-    first    = base.index[first_real_pos]
-    stitched = synth.copy()
-    stitched.loc[first:] = (real.reindex(base.index).loc[first:]
-                            * (synth.loc[first] / real.loc[first]))
-    return stitched
-
-
-def load_full_data(preset: str, end: str) -> pd.DataFrame:
-    cfg = PRESETS[preset]
-    base_tk, lev2_tk, lev3_tk = cfg["base"], cfg["lev2"], cfg["lev3"]
-    print(f"Downloading {base_tk}, {lev2_tk}, {lev3_tk} …")
-
-    def dl(tk):
-        try:
-            s = yf.download(tk, start=WARMUP_START, end=end,
-                            auto_adjust=True, progress=False)["Close"].squeeze().dropna()
-            s.name = tk
-            return s
-        except Exception:
-            return pd.Series(dtype=float)
-
-    base = dl(base_tk)
-    df   = pd.DataFrame({
-        "base": base,
-        "lev2": _build_lev_nav(base, dl(lev2_tk), 2, annual_mer=_MER_2X[preset]),
-        "lev3": _build_lev_nav(base, dl(lev3_tk), 3, annual_mer=_MER_3X[preset]),
-    }).dropna(subset=["base"])
-    df["ret"]   = df["base"].pct_change().fillna(0)
-    df["MA100"] = df["base"].rolling(100).mean()
-    df["MA200"] = df["base"].rolling(200).mean()
-    df = df[df.index >= START_DATE].copy()
-    return df
-
-
-# ──────────────────────────────────────────────────────────────
-# OPTIMIZER  (self-contained, works for any preset)
-# ──────────────────────────────────────────────────────────────
-
-def _build_grid(grid_version: str = "v1"):
-    drops = DROP_LEVELS_V2 if grid_version == "v2" else DROP_LEVELS
-    buys  = BUY_PCTS_V2    if grid_version == "v2" else BUY_PCTS
-    return [(e, d, x, b, ab, ax2)
-            for e, d, x, b, ab, ax2 in itertools.product(
-                ENTRY_SIGNALS, drops, EXIT_SIGNALS,
-                buys, ALLOC_BASES, ALLOC_X2S)
-            if x < e]
-
-
-def _opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
-                  exit_ma: int = 200):
-    ax3  = 1.0 - ax2
-    f    = df.iloc[0]
-    nb   = df["base"].values / f["base"]
-    n2   = df["lev2"].values / f["lev2"]
-    n3   = df["lev3"].values / f["lev3"]
-    ma_arm  = df["MA200"].values / f["base"]              # arm always uses MA200
-    ma_exit = df[f"MA{exit_ma}"].values / f["base"]       # exit uses selected MA
-
-    cash = CAPITAL
-    s_b = s_2 = s_3 = 0.0
-    armed = bf = bt = False
-    port  = np.empty(len(df))
-    port[0] = CAPITAL
-
-    for i in range(1, len(df)):
-        if (np.isnan(ma_arm[i]) or ma_arm[i] == 0
-                or np.isnan(ma_exit[i]) or ma_exit[i] == 0):
-            port[i] = port[i-1]
-            continue
-
-        vb = s_b * nb[i]; v2 = s_2 * n2[i]; v3 = s_3 * n3[i]
-        tot = cash + vb + v2 + v3
-
-        if nb[i] < ma_exit[i] * exit_ and (s_2 > 0 or s_3 > 0):
-            cash += v2 + v3
-            s_2 = s_3 = 0.0
-            if not bt and ab > 0:
-                vb  = s_b * nb[i]; tot = cash + vb; tgt = tot * ab
-                if vb > tgt + 0.01:
-                    s_b -= (vb - tgt) / nb[i]; cash += vb - tgt
-                bt = True
-            armed = False
-        else:
-            if not armed and nb[i] > ma_arm[i] * entry:
-                armed = True
-            d = (nb[i-1] - nb[i]) / nb[i-1] if nb[i-1] > 0 else 0.0
-            if armed and nb[i] > ma_arm[i] * entry and d >= drop and cash > 0.01:
-                tot = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
-                if not bf and ab > 0:
-                    sp = min(max(tot * ab - s_b * nb[i], 0), cash)
-                    if sp > 0.01:
-                        s_b += sp / nb[i]; cash -= sp
-                    bf = True
-                    tot = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
-                lev = min(buy * tot, cash)
-                if lev > 0.01:
-                    if ax2 > 0: s_2 += lev * ax2 / n2[i]
-                    if ax3 > 0: s_3 += lev * ax3 / n3[i]
-                    cash -= lev
-
-        port[i] = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
-
-    days = (df.index[-1] - df.index[0]).days
-    c = (port[-1] / CAPITAL) ** (365.25 / days) - 1 if days > 0 else 0.0
-    return c, port
-
-
-# ── Phase 1 parallel worker state ─────────────────────────────
-# The grid search is embarrassingly parallel; each worker gets the
-# training DataFrame once via the Pool initializer. pool.imap (ordered)
-# keeps results in grid order so ties resolve identically to the
-# sequential path.
-
-_W_DF = _W_EXIT_MA = _W_DD_START = None
-
-
-def _init_worker(df, exit_ma, dd_start):
-    global _W_DF, _W_EXIT_MA, _W_DD_START
-    _W_DF, _W_EXIT_MA, _W_DD_START = df, exit_ma, dd_start
-
-
-def _eval_combo(combo):
-    entry, drop, exit_, buy, ab, ax2 = combo
-    c, port   = _opt_backtest(_W_DF, entry, drop, exit_, buy, ab, ax2,
-                              exit_ma=_W_EXIT_MA)
-    ok, worst = _check_dd(_W_DF, port, _W_DD_START)
-    return ok, c, worst, combo
-
-
-def _check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
-    idx   = df.index
-    worst = 0.0
-    for yr in np.unique(idx.year):
-        mask = np.where(idx.year == yr)[0]
-        ann  = (port[mask[-1]] - port[mask[0]]) / port[mask[0]]
-        worst = min(worst, ann)
-        if yr >= dd_start and ann < -DD_LIMIT:
-            return False, ann
-    return True, worst
+# Shared engine — the same data pipeline, backtest loop, DD filter and grid
+# as the standalone optimizer.py, so Phase 1 here IS the optimizer run on a
+# truncated training window.
+from optimizer_core import (DEFAULT_GRID, GRID_AXES, PRESETS,
+                            build_grid, load_full_data, run_grid_search)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -264,23 +62,24 @@ _DEFAULT_TIE_TOLERANCE = {"QQQ": 0.0, "SPY": 0.0, "IWM": 0.0}
 def build_param_schedule(preset: str, start_year: int, end_year: int,
                          df_full: pd.DataFrame, exit_ma: int = 200,
                          tie_tolerance: float | None = None,
-                         grid_version: str = "v1",
+                         grid_version: str = DEFAULT_GRID,
                          workers: int = 1) -> dict:
     """
-    Build the per-year param schedule.
+    Build the per-year param schedule. Each trade year's window is one call
+    to the shared optimizer_core.run_grid_search on data through Dec 31 of
+    the prior year — identical engine and grid as `python optimizer.py`.
 
     tie_tolerance : float | None
         If > 0, applies a secondary-sort rule: from combos within
         `tie_tolerance` CAGR (fraction, e.g. 0.01 = 1pp) of the top combo,
         pick the one with the best (least negative) worst calendar year.
-        If None, uses the preset default (QQQ=0.01, SPY/IWM=0.0).
-        If 0.0, plain top-CAGR ranking (legacy behavior).
+        If None, uses the preset default. If 0.0, plain top-CAGR ranking.
     """
     if tie_tolerance is None:
         tie_tolerance = _DEFAULT_TIE_TOLERANCE.get(preset, 0.0)
 
     dd_start = PRESETS[preset]["dd_start"]
-    grid     = _build_grid(grid_version)
+    grid     = build_grid(grid_version)
     schedule = {}
 
     rule_note = (f"plain top-CAGR" if tie_tolerance <= 0
@@ -297,57 +96,40 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
             print(f"  {trade_yr}: insufficient training data — skipped")
             continue
 
-        # Collect ALL passing combos for this year so we can apply secondary sort
-        passing = []  # list of (cagr, worst_year, params_tuple)
-        if workers > 1:
-            with Pool(workers, initializer=_init_worker,
-                      initargs=(df_train, exit_ma, dd_start)) as pool:
-                for ok, c, worst, combo in tqdm(
-                        pool.imap(_eval_combo, grid, chunksize=64),
-                        total=len(grid), desc=f"  2003–{train_end}", leave=False):
-                    if ok:
-                        passing.append((c, worst, combo))
-        else:
-            for entry, drop, exit_, buy, ab, ax2 in tqdm(
-                    grid, desc=f"  2003–{train_end}", leave=False):
-                c, port  = _opt_backtest(df_train, entry, drop, exit_, buy, ab, ax2,
-                                         exit_ma=exit_ma)
-                ok, worst = _check_dd(df_train, port, dd_start)
-                if ok:
-                    passing.append((c, worst, (entry, drop, exit_, buy, ab, ax2)))
-
-        if not passing:
+        res = run_grid_search(df_train, grid, exit_ma, dd_start,
+                              workers=workers, desc=f"  2003–{train_end}")
+        passing = res[res["passed"]]
+        if passing.empty:
             print(f"  {trade_yr}: no passing combo found")
             continue
 
-        # Plain top-CAGR pick
-        leader = max(passing, key=lambda r: r[0])
-        leader_cagr = leader[0]
+        # Plain top-CAGR pick (idxmax keeps grid order on exact ties)
+        leader = passing.loc[passing["cagr"].idxmax()]
 
         # Secondary-sort: within tolerance, pick best worst-year
         if tie_tolerance > 0:
-            within = [r for r in passing if leader_cagr - r[0] <= tie_tolerance]
-            chosen = max(within, key=lambda r: r[1])  # max worst-year = least negative
+            within = passing[leader["cagr"] - passing["cagr"]
+                             <= tie_tolerance * 100]
+            chosen = within.loc[within["worst_ann_ret"].idxmax()]
         else:
             chosen = leader
 
-        c, worst, (entry, drop, exit_, buy, ab, ax2) = chosen
         best = dict(
-            entry_signal=entry, drop_level=drop,
-            exit_signal=exit_,  buy_pct=buy,
-            alloc_base=ab,      alloc_x2=ax2,
-            alloc_x3=round(1 - ax2, 4),
-            train_cagr=round(c * 100, 2),
-            train_worst_year=round(worst * 100, 2),
+            entry_signal=chosen["entry_signal"], drop_level=chosen["drop_level"],
+            exit_signal=chosen["exit_signal"],   buy_pct=chosen["buy_pct"],
+            alloc_base=chosen["alloc_base"],     alloc_x2=chosen["alloc_x2"],
+            alloc_x3=round(1 - chosen["alloc_x2"], 4),
+            train_cagr=round(chosen["cagr"], 2),
+            train_worst_year=round(chosen["worst_ann_ret"], 2),
         )
         schedule[trade_yr] = best
 
         # Annotate if secondary-sort changed the pick
-        changed = tie_tolerance > 0 and chosen[2] != leader[2]
-        tag = "  [tie-break]" if changed else ""
+        changed = tie_tolerance > 0 and chosen.name != leader.name
+        tag = ""
         if changed:
-            cagr_cost = (leader_cagr - c) * 100
-            ulcer_gain = (worst - leader[1]) * 100
+            cagr_cost  = leader["cagr"] - chosen["cagr"]
+            ulcer_gain = chosen["worst_ann_ret"] - leader["worst_ann_ret"]
             tag = f"  [tie-break: -{cagr_cost:.2f}pp CAGR, +{ulcer_gain:.1f}pp worst-yr]"
         print(f"  {trade_yr}  train=2003–{train_end}  "
               f"entry={best['entry_signal']}  drop={best['drop_level']}  "
@@ -676,7 +458,7 @@ def _parse_args():
     p.add_argument("--start-year", type=int, default=2015)
     p.add_argument("--end-year",   type=int, default=2026)
     p.add_argument("--capital",    type=float, default=10_000)
-    p.add_argument("--exit-ma",    type=int, default=200, choices=[100, 200],
+    p.add_argument("--exit-ma",    type=int, default=200, choices=[50, 100, 200],
                    help="MA period used for exit signal "
                         "(arm/entry always uses MA200)")
     p.add_argument("--tie-tolerance", type=float, default=None,
@@ -688,12 +470,12 @@ def _parse_args():
                    default=max(1, (os.cpu_count() or 4) - 2),
                    help="Parallel worker processes for the Phase 1 grid search. "
                         "Results are identical to a single-worker run.")
-    p.add_argument("--grid", default="v2", choices=["v1", "v2"],
-                   help="Optimizer grid version. v2 (default, OOS-validated in "
-                        "README §6.3) extends the edges the v1 winners sat on: "
-                        "drop_level down to 0.0 and buy_pct up to 0.60. "
-                        "v2 schedules/outputs get a _gridv2 suffix; pass v1 to "
-                        "reproduce the original study.")
+    p.add_argument("--grid", default=DEFAULT_GRID, choices=list(GRID_AXES),
+                   help="Optimizer grid version (defined in optimizer_core). "
+                        "v3 (default) extends buy_pct to 1.00, exits down to "
+                        "0.93 and probes negative drop levels. Non-v1 "
+                        "schedules/outputs get a _grid{N} suffix; pass v1/v2 "
+                        "to reproduce earlier studies.")
     p.add_argument("--cash-yield", action="store_true",
                    help="Accrue daily T-bill interest (^IRX) on idle cash in the "
                         "Phase 2 backtest (models SGOV/BIL). Phase 1 optimizer "

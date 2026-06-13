@@ -1,0 +1,19 @@
+Preset          : IWM
+Period          : 2003-01-01 -> 2026-06-12
+Entry signal    : 1.04x MA200
+Exit signal     : 0.95x MA200
+Drop level      : 1.50%
+Buy pct         : 100% per signal
+Alloc base      : 0%  lev2 0%  lev3 100%
+Cost per trade  : 0.000%
+Cash yield      : off
+Ontario tax     : off
+
+Strategy CAGR   : 13.75%
+B&H CAGR (IWM)  : 10.37%
+Strategy edge   : +3.38pp
+Final value     : $205,009.70
+Worst year      : -27.93%
+Max drawdown    : -64.27%
+Sharpe ratio    : 0.48
+Total trades    : 21
