@@ -8,19 +8,14 @@ never drift apart again:
   - presets (tickers, DD-filter start year)
   - data loading with synthetic leveraged NAV + MER correction
   - the strategy backtest engine used for grid scanning
-  - the calendar-year drawdown filter
-  - the parameter grids (v1 / v2 / v3) and grid builder
+  - the calendar-year drawdown filter + real-period max-drawdown
+  - the parameter grid and grid builder
   - a parallel grid-search runner that returns one row per combo
 
-History of the grids (see README):
-  v1 — original study grid (15,840 combos).
-  v2 — 2026-06 extension after v1 winners pinned at drop_level=0.005 min and
-       buy_pct=0.40 max (31,680 combos).
-  v3 — 2026-06 full refresh. v2 winners pinned again at buy_pct=0.60, and
-       SPY pinned at the exit_signal=0.95 floor (the shifted-grid sweep showed
-       the working band extends to 0.93). v3 extends buy_pct to 1.00, exits
-       down to 0.93, probes negative drop levels (buy even on mildly up days),
-       and prunes the dead 2.5%/3.0% drops (72,000 combos).
+The production grid (72,000 combos) spans the full position-sizing range and
+probes below the dip threshold so the optimizer's choices are interior, not
+pinned at an artificial edge. The earlier, narrower study grids (v1/v2) are
+retained only so `--grid v1`/`v2` can reproduce historical results.
 """
 
 import itertools
@@ -250,9 +245,25 @@ def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
 
 def max_drawdown(port: np.ndarray) -> float:
     """Worst peak-to-trough drop of the equity curve, as a negative fraction
-    (e.g. −0.55 = −55%). Used for the Calmar (CAGR / |maxDD|) selection rule."""
+    (e.g. −0.55 = −55%)."""
+    if port.size == 0:
+        return 0.0
     running_max = np.maximum.accumulate(port)
     return float(((port - running_max) / running_max).min())
+
+
+def real_max_drawdown(df: pd.DataFrame, port: np.ndarray, dd_start: int) -> float:
+    """Max drawdown measured ONLY over the real-ETF period (dd_start onward).
+
+    This is the drawdown used for the Balanced (Calmar) selection rule. It is
+    deliberately measured on real data only — identical to the calendar-year
+    DD filter's philosophy — because the synthetic pre-inception leveraged
+    series carries punishing, unrealistic drawdowns (e.g. a synthetic 3× SPY
+    fell ~85% in the 2008 GFC) that would otherwise dominate the ratio and
+    force every Balanced pick down to 2× regardless of its real-period
+    behaviour. Falls back to the full series if no real-period rows exist."""
+    real = port[df.index.year >= dd_start]
+    return max_drawdown(real if real.size else port)
 
 
 def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int,
@@ -291,22 +302,59 @@ def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int,
 # Embarrassingly parallel; each worker receives the training DataFrame once
 # via the Pool initializer. pool.imap (ordered) keeps results in grid order
 # so ties resolve identically to a single-worker run.
+#
+# The per-window date arrays (calendar years, year-block boundaries, the
+# real-ETF-period mask) are derived ONCE in _init_worker and cached as module
+# globals, so the hot path never touches the (slow) pandas DatetimeIndex again.
 
 _W_DF = _W_EXIT_MA = _W_DD_START = _W_DD_LIMIT = _W_MAX_DD = None
+_W_REAL_MASK = _W_YEAR_BOUNDS = None
 
 
 def _init_worker(df, exit_ma, dd_start, dd_limit, max_dd_limit):
     global _W_DF, _W_EXIT_MA, _W_DD_START, _W_DD_LIMIT, _W_MAX_DD
+    global _W_REAL_MASK, _W_YEAR_BOUNDS
     _W_DF, _W_EXIT_MA, _W_DD_START = df, exit_ma, dd_start
     _W_DD_LIMIT, _W_MAX_DD = dd_limit, max_dd_limit
+
+    years = df.index.year.to_numpy()
+    _W_REAL_MASK = years >= dd_start
+    # Contiguous per-year [start, end] row indices (data is date-sorted), plus
+    # whether each year is in the real-ETF (filtered) period.
+    uniq, starts = np.unique(years, return_index=True)
+    ends = np.append(starts[1:] - 1, len(years) - 1)
+    _W_YEAR_BOUNDS = [(int(y), int(s), int(e), int(y) >= dd_start)
+                      for y, s, e in zip(uniq, starts, ends)]
+
+
+def _check_dd_fast(port):
+    """Worker-local check_dd using the cached year boundaries / real mask.
+    Equivalent to check_dd(_W_DF, port, _W_DD_START, _W_DD_LIMIT, _W_MAX_DD)."""
+    worst = 0.0
+    for _y, s, e, is_real in _W_YEAR_BOUNDS:
+        ann = (port[e] - port[s]) / port[s] if port[s] else 0.0
+        if ann < worst:
+            worst = ann
+        if is_real and ann < -_W_DD_LIMIT:
+            return False, ann
+    if _W_MAX_DD < 1.0:
+        real = port[_W_REAL_MASK]
+        if real.size and max_drawdown(real) < -_W_MAX_DD:
+            return False, worst
+    return True, worst
+
+
+def _real_mdd_fast(port):
+    real = port[_W_REAL_MASK]
+    return max_drawdown(real if real.size else port)
 
 
 def _eval_combo(combo):
     entry, drop, exit_, buy, ab, ax2 = combo
     c, port   = opt_backtest(_W_DF, entry, drop, exit_, buy, ab, ax2,
                              exit_ma=_W_EXIT_MA)
-    ok, worst = check_dd(_W_DF, port, _W_DD_START, _W_DD_LIMIT, _W_MAX_DD)
-    return ok, c, worst, max_drawdown(port), combo
+    ok, worst = _check_dd_fast(port)
+    return ok, c, worst, max_drawdown(port), _real_mdd_fast(port), combo
 
 
 def run_grid_search(df: pd.DataFrame, grid, exit_ma: int, dd_start: int,
@@ -316,7 +364,8 @@ def run_grid_search(df: pd.DataFrame, grid, exit_ma: int, dd_start: int,
     """Run every combo; return one row per combo (pass and fail alike).
 
     Columns: entry_signal, drop_level, exit_signal, buy_pct, alloc_base,
-    alloc_x2, alloc_x3, cagr (%), worst_ann_ret (%), passed.
+    alloc_x2, alloc_x3, cagr (%), worst_ann_ret (%), max_dd, max_dd_real,
+    passed, calmar.
     Rows keep grid order, so `df.loc[df[df.passed].cagr.idxmax()]` resolves
     ties identically across runs and worker counts.
 
@@ -326,17 +375,16 @@ def run_grid_search(df: pd.DataFrame, grid, exit_ma: int, dd_start: int,
     if workers > 1:
         with Pool(workers, initializer=_init_worker,
                   initargs=(df, exit_ma, dd_start, dd_limit, max_dd_limit)) as pool:
-            for ok, c, worst, mdd, combo in tqdm(
+            for ok, c, worst, mdd, mdd_real, combo in tqdm(
                     pool.imap(_eval_combo, grid, chunksize=64),
                     total=len(grid), desc=desc, leave=False):
-                records.append((combo, c, worst, mdd, ok))
+                records.append((combo, c, worst, mdd, mdd_real, ok))
     else:
+        # Single-process: set up the same cached arrays, then reuse _eval_combo.
+        _init_worker(df, exit_ma, dd_start, dd_limit, max_dd_limit)
         for combo in tqdm(grid, desc=desc, leave=False):
-            entry, drop, exit_, buy, ab, ax2 = combo
-            c, port   = opt_backtest(df, entry, drop, exit_, buy, ab, ax2,
-                                     exit_ma=exit_ma)
-            ok, worst = check_dd(df, port, dd_start, dd_limit, max_dd_limit)
-            records.append((combo, c, worst, max_drawdown(port), ok))
+            ok, c, worst, mdd, mdd_real, _ = _eval_combo(combo)
+            records.append((combo, c, worst, mdd, mdd_real, ok))
 
     out = pd.DataFrame([{
         "entry_signal": e, "drop_level": d, "exit_signal": x,
@@ -345,9 +393,14 @@ def run_grid_search(df: pd.DataFrame, grid, exit_ma: int, dd_start: int,
         "cagr": round(c * 100, 4),
         "worst_ann_ret": round(w * 100, 4),
         "max_dd": round(mdd * 100, 4),
+        "max_dd_real": round(mdd_real * 100, 4),
         "passed": ok,
-    } for (e, d, x, b, ab, ax2), c, w, mdd, ok in records])
-    # Calmar = CAGR / |maxDD|. Guard against div-by-zero (a combo that never
-    # drew down — e.g. stayed in cash all-history). |maxDD| floored at 1%.
-    out["calmar"] = (out["cagr"] / out["max_dd"].abs().clip(lower=1.0)).round(4)
+    } for (e, d, x, b, ab, ax2), c, w, mdd, mdd_real, ok in records])
+    # Calmar = CAGR / |maxDD| over the REAL-ETF period (max_dd_real). Measuring
+    # the drawdown on real data only (consistent with the DD filter) keeps the
+    # Balanced rule from being dominated by the punishing synthetic
+    # pre-inception leveraged drawdowns. Guard against div-by-zero (a combo
+    # that never drew down); |maxDD| floored at 1%.
+    out["calmar"] = (out["cagr"]
+                     / out["max_dd_real"].abs().clip(lower=1.0)).round(4)
     return out

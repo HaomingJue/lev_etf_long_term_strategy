@@ -1,5 +1,5 @@
 Preset          : QQQ
-Period          : 2003-01-01 -> 2026-06-12
+Period          : 2003-01-01 -> 2026-06-13
 Entry signal    : 1.04x MA200
 Exit signal     : 1.01x MA200
 Drop level      : 0.00%
@@ -7,12 +7,12 @@ Buy pct         : 100% per signal
 Alloc base      : 0%  lev2 0%  lev3 100%
 Cost per trade  : 0.000%
 Cash yield      : off
-Ontario tax     : ON (salary $100,000, total tax $437,240.45)
+Ontario tax     : ON (salary $100,000, total tax $437,244.75)
 
-Strategy CAGR   : 24.99%
-B&H CAGR (QQQ)  : 16.16%
-Strategy edge   : +8.83pp
-Final value     : $1,863,543.47
+Strategy CAGR   : 25.09%
+B&H CAGR (QQQ)  : 16.18%
+Strategy edge   : +8.91pp
+Final value     : $1,902,517.79
 Worst year      : -37.52%
 Max drawdown    : -57.54%
 Sharpe ratio    : 0.70

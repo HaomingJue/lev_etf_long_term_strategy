@@ -9,8 +9,7 @@ Each cell = median CAGR of all PASSING combos with that (row, col) pair,
 medianed over the remaining free parameters. Blue box = top passing combo.
 
 Usage:
-  python param_heatmap.py                # QQQ ma200 + SPY ma100, grid v3
-  python param_heatmap.py --grid v2
+  python param_heatmap.py                # QQQ ma200 + SPY ma100
   python param_heatmap.py --no-show
 """
 
@@ -130,9 +129,9 @@ def main():
             )
 
     fig.suptitle(
-        f"Parameter Robustness Heatmaps (grid {args.grid}) — median CAGR of "
-        f"all passing combos\nBlue box = top passing combo. Wide bright "
-        f"region = plateau (robust). Isolated bright cell = spike (fragile).",
+        "Parameter Robustness Heatmaps — median CAGR of all passing combos\n"
+        "Blue box = top passing combo. Wide bright region = plateau (robust). "
+        "Isolated bright cell = spike (fragile).",
         fontsize=11)
     plt.tight_layout(rect=(0, 0, 1, 0.94))
     os.makedirs(os.path.dirname(SAVE_PATH), exist_ok=True)

@@ -59,31 +59,63 @@ from optimizer_core import (DD_LIMIT, DEFAULT_GRID, GRID_AXES, PRESETS,
 # PHASE 1 — build param schedule
 # ──────────────────────────────────────────────────────────────
 
-# Default secondary-sort tolerance per preset.
-# All disabled by default (plain top-CAGR). Enable for QQQ with --tie-tolerance 0.01
-# to trade ~4pp CAGR over 12 years for ~20pp better max drawdown.
-# See section 6.2 of README for the honest cost-benefit.
-_DEFAULT_TIE_TOLERANCE = {"QQQ": 0.0, "SPY": 0.0, "IWM": 0.0}
+def _rule_threshold(select: str, prefix: str):
+    """Parse a '{prefix}{N}' rule (e.g. 'maxdd50' / 'buycap40'), returning N/100
+    or None if `select` does not have that prefix."""
+    if select.startswith(prefix):
+        try:
+            return int(select[len(prefix):]) / 100.0
+        except ValueError:
+            pass
+    return None
 
 
-def _pick_combo(passing, select: str, tie_tolerance: float):
+def _maxdd_cap(select: str):
+    return _rule_threshold(select, "maxdd")
+
+
+def _buy_cap(select: str):
+    return _rule_threshold(select, "buycap")
+
+
+def _pick_combo(passing, select: str):
     """Return (chosen_row, leader_row) for one training window's passing combos.
 
     select:
-      'cagr'   — highest CAGR (optionally refined by tie_tolerance: among
-                 combos within tie_tolerance·100 pp CAGR of the leader, take
-                 the best worst-calendar-year).
-      'calmar' — highest Calmar ratio (CAGR / |max drawdown|): the best
-                 return-per-unit-of-drawdown trade-off. Ignores tie_tolerance.
+      'cagr'      — Highest CAGR: the best-performing passing combo. Maximizes
+                    growth; converges to the most aggressive sizing.
+      'maxdd{N}'  — highest-CAGR combo whose real-ETF-period max drawdown stays
+                    within N% (e.g. 'maxdd50'). A mild in-sample regularizer:
+                    excellent for QQQ (it even beats uncapped Highest-CAGR
+                    out-of-sample), but it CANNOT bound a tail the training data
+                    has never seen — on SPY the cap is slack on every pre-2022
+                    window, so it does not prevent the 2022 loss.
+      'buycap{N}' — Balanced (recommended): highest-CAGR combo with buy_pct ≤ N%
+                    (e.g. 'buycap50'). A *structural* exposure cap (independent
+                    of in-sample drawdown), so it limits leverage even against
+                    an unseen tail. This is what lets SPY beat buy-and-hold
+                    out-of-sample; for QQQ it costs almost nothing.
+      'calmar'    — highest Calmar ratio (CAGR / |real-period maxDD|): the most
+                    conservative rule, converges to 2× and the shallowest
+                    drawdowns, at a real cost in CAGR.
     leader is always the plain top-CAGR row, for reporting how much CAGR the
-    rule traded away.
+    chosen rule traded away.
     """
-    leader = passing.loc[passing["cagr"].idxmax()]
+    leader   = passing.loc[passing["cagr"].idxmax()]
+    maxdd    = _maxdd_cap(select)
+    buy      = _buy_cap(select)
     if select == "calmar":
         chosen = passing.loc[passing["calmar"].idxmax()]
-    elif tie_tolerance > 0:
-        within = passing[leader["cagr"] - passing["cagr"] <= tie_tolerance * 100]
-        chosen = within.loc[within["worst_ann_ret"].idxmax()]
+    elif maxdd is not None:
+        survivors = passing[passing["max_dd_real"] >= -maxdd * 100]
+        # If nothing survives the cap (very tight cap on an early window),
+        # fall back to the shallowest-drawdown passing combo.
+        chosen = (survivors.loc[survivors["cagr"].idxmax()] if not survivors.empty
+                  else passing.loc[passing["max_dd_real"].idxmax()])
+    elif buy is not None:
+        survivors = passing[passing["buy_pct"] <= buy + 1e-9]
+        chosen = (survivors.loc[survivors["cagr"].idxmax()] if not survivors.empty
+                  else leader)
     else:
         chosen = leader
     return chosen, leader
@@ -99,18 +131,20 @@ def _row_to_params(chosen) -> dict:
         train_cagr=round(chosen["cagr"], 2),
         train_worst_year=round(chosen["worst_ann_ret"], 2),
         train_max_dd=round(chosen["max_dd"], 2),
+        train_max_dd_real=round(chosen.get("max_dd_real", chosen["max_dd"]), 2),
         train_calmar=round(chosen["calmar"], 3),
     )
 
 
 def build_param_schedules(preset: str, start_year: int, end_year: int,
                           df_full: pd.DataFrame, exit_ma: int = 200,
-                          tie_tolerance: float | None = None,
                           grid_version: str = DEFAULT_GRID,
                           workers: int = 1,
                           dd_limit: float = DD_LIMIT,
                           max_dd_limit: float = 1.0,
-                          selects=("cagr",)) -> dict:
+                          selects=("cagr", "calmar"),
+                          save_grids: bool = True,
+                          from_grids: bool = False) -> dict:
     """
     Build per-year param schedules for one or more selection rules in a SINGLE
     pass. The grid search (the expensive part) runs ONCE per training window;
@@ -118,45 +152,68 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
     the same efficient pattern as daily_signal/reopt.py. Running the grid once
     and deriving N variants costs ~1× a grid search, not N×.
 
-    selects : iterable of 'cagr' / 'calmar' (or a single such string).
+    selects : iterable of selection rules (see _pick_combo): 'cagr',
+              'maxdd{N}' (e.g. 'maxdd50'), 'calmar' — or a single such string.
     Returns {select_rule: {trade_year: params_dict}}.
 
-    select rules — see _pick_combo. tie_tolerance only affects 'cagr'.
+    save_grids : if True, write each training window's FULL grid result
+                 (all combos, every metric) to results/walkforward/grids/ as a
+                 gzip CSV (~1 MB/window). This lets you browse every year's
+                 return/drawdown landscape and re-derive any selection rule
+                 offline without re-running the (expensive) search.
+    from_grids : if True, DON'T run the grid search — load each window's
+                 previously-saved grid from results/walkforward/grids/ and just
+                 re-derive the picks. Materializes any selection rule's full
+                 schedule in seconds. Errors if a window's grid is missing.
     """
     if isinstance(selects, str):
         selects = (selects,)
     selects = list(dict.fromkeys(selects))  # de-dupe, preserve order
-    if tie_tolerance is None:
-        tie_tolerance = _DEFAULT_TIE_TOLERANCE.get(preset, 0.0)
 
     dd_start  = PRESETS[preset]["dd_start"]
     grid      = build_grid(grid_version)
     schedules = {s: {} for s in selects}
 
+    grids_dir = Path(__file__).parent / "results" / "walkforward" / "grids" / preset
+    if save_grids and not from_grids:
+        grids_dir.mkdir(parents=True, exist_ok=True)
+
+    src = ("cached grids" if from_grids
+           else f"{len(grid):,} combos searched ONCE per window")
     print(f"\nPhase 1 — building param schedule(s) ({preset}, "
-          f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, grid {grid_version}, "
+          f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, "
           f"{workers} worker(s), selects={','.join(selects)})")
-    print(f"  {len(grid):,} combos × {end_year - start_year + 1} training "
-          f"windows — grid searched ONCE per window, {len(selects)} rule(s) "
-          f"derived from it\n")
+    print(f"  {src} × {end_year - start_year + 1} training windows — "
+          f"{len(selects)} rule(s) derived from each\n")
 
     for trade_yr in range(start_year, end_year + 1):
         train_end = trade_yr - 1
-        df_train  = df_full[df_full.index.year <= train_end]
-        if len(df_train) < 250:
-            print(f"  {trade_yr}: insufficient training data — skipped")
-            continue
+        gpath = grids_dir / (f"{preset}_ma{exit_ma}_train2003-{train_end}"
+                             f"_results.csv.gz")
 
-        res = run_grid_search(df_train, grid, exit_ma, dd_start,
-                              workers=workers, desc=f"  2003–{train_end}",
-                              dd_limit=dd_limit, max_dd_limit=max_dd_limit)
+        if from_grids:
+            if not gpath.exists():
+                sys.exit(f"  --from-grids: missing {gpath}. Run once without "
+                         f"--from-grids to build the grids first.")
+            res = pd.read_csv(gpath)
+        else:
+            df_train = df_full[df_full.index.year <= train_end]
+            if len(df_train) < 250:
+                print(f"  {trade_yr}: insufficient training data — skipped")
+                continue
+            res = run_grid_search(df_train, grid, exit_ma, dd_start,
+                                  workers=workers, desc=f"  2003–{train_end}",
+                                  dd_limit=dd_limit, max_dd_limit=max_dd_limit)
+            if save_grids:
+                res.to_csv(gpath, index=False, compression="gzip")
+
         passing = res[res["passed"]]
         if passing.empty:
             print(f"  {trade_yr}: no passing combo found")
             continue
 
         for s in selects:
-            chosen, leader = _pick_combo(passing, s, tie_tolerance)
+            chosen, leader = _pick_combo(passing, s)
             schedules[s][trade_yr] = _row_to_params(chosen)
             tag = ""
             if chosen.name != leader.name:
@@ -176,7 +233,6 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
 
 def build_param_schedule(preset: str, start_year: int, end_year: int,
                          df_full: pd.DataFrame, exit_ma: int = 200,
-                         tie_tolerance: float | None = None,
                          grid_version: str = DEFAULT_GRID,
                          workers: int = 1,
                          dd_limit: float = DD_LIMIT,
@@ -184,7 +240,7 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
     """Single-rule convenience wrapper around build_param_schedules."""
     return build_param_schedules(
         preset, start_year, end_year, df_full, exit_ma=exit_ma,
-        tie_tolerance=tie_tolerance, grid_version=grid_version,
+        grid_version=grid_version,
         workers=workers, dd_limit=dd_limit, selects=(select,))[select]
 
 
@@ -195,8 +251,8 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
 def run_walkforward(preset: str, schedule: dict,
                     start_year: int, end_year: int,
                     capital: float, no_show: bool,
-                    exit_ma: int = 200, tie_tolerance: float = 0.0,
-                    cash_yield: bool = False, grid_version: str = "v1",
+                    exit_ma: int = 200,
+                    cash_yield: bool = False, grid_version: str = DEFAULT_GRID,
                     dd_limit: float = DD_LIMIT, select: str = "cagr",
                     max_dd_limit: float = 1.0):
 
@@ -253,16 +309,15 @@ def run_walkforward(preset: str, schedule: dict,
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # MA200 keeps original filenames for back-compat; non-200 gets a suffix.
-    # Tie-break runs add _tiebreak so Highest CAGR and Balanced variants
-    # never collide on the same output files.
+    # The selection rule (_sel{rule}) keeps the Highest-CAGR and Balanced
+    # variants on separate output files.
     ma_tag   = "" if exit_ma == 200 else f"_ma{exit_ma}"
-    tie_tag  = "_tiebreak" if tie_tolerance > 0 else ""
     grid_tag = "" if grid_version == "v1" else f"_grid{grid_version}"
     dd_tag   = "" if dd_limit == DD_LIMIT else f"_dd{int(round(dd_limit*100))}"
     mdd_tag  = "" if max_dd_limit >= 1.0 else f"_maxdd{int(round(max_dd_limit*100))}"
     sel_tag  = "" if select == "cagr" else f"_sel{select}"
     cy_tag   = "_cy" if cash_yield else ""
-    slug     = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}{grid_tag}{dd_tag}{mdd_tag}{sel_tag}{cy_tag}"
+    slug     = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{grid_tag}{dd_tag}{mdd_tag}{sel_tag}{cy_tag}"
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
     print(f"\n  Saved: results/walkforward/{slug}_yearly.csv")
 
@@ -515,29 +570,37 @@ def _parse_args():
     p.add_argument("--exit-ma",    type=int, default=200, choices=[50, 100, 200],
                    help="MA period used for exit signal "
                         "(arm/entry always uses MA200)")
-    p.add_argument("--tie-tolerance", type=float, default=None,
-                   help="Secondary-sort tolerance in CAGR fraction (e.g. 0.01 = 1pp). "
-                        "From combos within this CAGR of the leader, pick the one "
-                        "with the best worst calendar year. "
-                        "Defaults: QQQ=0.01, SPY/IWM=0.0. Pass 0.0 to force plain top-CAGR.")
     p.add_argument("--workers", type=int,
                    default=max(1, (os.cpu_count() or 4) - 2),
                    help="Parallel worker processes for the Phase 1 grid search. "
                         "Results are identical to a single-worker run.")
     p.add_argument("--grid", default=DEFAULT_GRID, choices=list(GRID_AXES),
-                   help="Optimizer grid version (defined in optimizer_core). "
-                        "v3 (default) extends buy_pct to 1.00, exits down to "
-                        "0.93 and probes negative drop levels. Non-v1 "
-                        "schedules/outputs get a _grid{N} suffix; pass v1/v2 "
-                        "to reproduce earlier studies.")
-    p.add_argument("--select", default="cagr",
+                   help="Optimizer grid (defined in optimizer_core). The "
+                        "production grid is the default; alternates are kept "
+                        "only for reproducing historical studies.")
+    p.add_argument("--select", default="cagr,maxdd50,buycap50",
                    help="Per-window selection rule(s) among DD-filter survivors, "
                         "comma-separated for several in one grid pass. "
-                        "'cagr' (default) picks highest CAGR (refined by "
-                        "--tie-tolerance). 'calmar' picks highest CAGR/|maxDD| "
-                        "— the best return-per-drawdown trade-off. "
-                        "E.g. --select cagr,calmar. Non-'cagr' rules get a "
-                        "_sel{rule} output suffix.")
+                        "'cagr' = Highest CAGR (max growth). 'maxdd{N}' = highest "
+                        "CAGR with real-period maxDD within N%% (best for QQQ). "
+                        "'buycap{N}' = highest CAGR with buy_pct <= N%% — a "
+                        "structural exposure cap (the robust cross-index "
+                        "Balanced rule; the only one that lifts SPY past B&H "
+                        "out-of-sample). 'calmar' = highest CAGR/|maxDD| (most "
+                        "conservative, ~2x). Non-'cagr' rules get a _sel{rule} "
+                        "output suffix.")
+    p.add_argument("--no-save-grids", action="store_true",
+                   help="Do not save each training window's full grid result "
+                        "(by default Phase 1 writes results/walkforward/grids/"
+                        "{preset}/*.csv.gz, ~1 MB/window, so every year's full "
+                        "return/drawdown landscape can be browsed and any "
+                        "selection rule re-derived offline).")
+    p.add_argument("--from-grids", action="store_true",
+                   help="Skip the grid search entirely and re-derive the "
+                        "schedule(s) from the per-window grids saved earlier in "
+                        "results/walkforward/grids/. Materializes any --select "
+                        "rule's full walk-forward (schedule + charts + CSVs) in "
+                        "seconds. Errors if a window's grid is missing.")
     p.add_argument("--max-dd", type=float, default=1.0,
                    help="Hard max-drawdown ceiling for the Phase 1 filter "
                         "(fraction, e.g. 0.50 rejects any combo whose real-period "
@@ -582,23 +645,19 @@ if __name__ == "__main__":
     # --select may be comma-separated (e.g. "cagr,calmar"): the grid is
     # searched once per window and each rule derives its own schedule.
     selects = [s.strip() for s in args.select.split(",") if s.strip()]
-    _valid_selects = {"cagr", "calmar"}
-    bad = [s for s in selects if s not in _valid_selects]
+    bad = [s for s in selects
+           if s not in ("cagr", "calmar")
+           and _maxdd_cap(s) is None and _buy_cap(s) is None]
     if bad or not selects:
-        sys.exit(f"--select: invalid rule(s) {bad or '(empty)'}; "
-                 f"choose from {sorted(_valid_selects)}, comma-separated.")
-
-    _tie_tol_resolved = (args.tie_tolerance
-                         if args.tie_tolerance is not None
-                         else _DEFAULT_TIE_TOLERANCE.get(args.preset, 0.0))
+        sys.exit(f"--select: invalid rule(s) {bad or '(empty)'}; choose from "
+                 f"'cagr', 'calmar', 'maxdd{{N}}', 'buycap{{N}}' "
+                 f"(e.g. maxdd50, buycap50), comma-separated.")
 
     # Per-rule schedule path. MA200 keeps the original filename for back-compat;
-    # non-200 adds _ma{N}; tie-break / grid / dd-limit / select each add a tag
-    # so variants never collide on the same file.
+    # non-200 adds _ma{N}; grid / dd-limit / select each add a tag so variants
+    # never collide on the same file.
     def _sched_path(select: str) -> Path:
         suffix = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
-        if _tie_tol_resolved > 0:
-            suffix += "_tiebreak"
         if args.grid != "v1":
             suffix += f"_grid{args.grid}"
         if args.dd_limit != DD_LIMIT:
@@ -619,16 +678,20 @@ if __name__ == "__main__":
             schedules[s] = json.loads(_sched_path(s).read_text())
 
     if to_build:
-        # For --only-year, just need data through that year's training cutoff.
-        end_buffer = (f"{args.only_year}-01-15"
-                      if args.only_year is not None
-                      else f"{args.end_year}-12-31")
-        df_full = load_full_data(args.preset, end_buffer)
+        if args.from_grids:
+            df_full = None  # grids are cached — no data download / search needed
+        else:
+            # For --only-year, just need data through that year's training cutoff.
+            end_buffer = (f"{args.only_year}-01-15"
+                          if args.only_year is not None
+                          else f"{args.end_year}-12-31")
+            df_full = load_full_data(args.preset, end_buffer)
         built = build_param_schedules(
             args.preset, args.start_year, args.end_year, df_full,
-            exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance,
+            exit_ma=args.exit_ma,
             grid_version=args.grid, workers=args.workers,
-            dd_limit=args.dd_limit, max_dd_limit=args.max_dd, selects=to_build)
+            dd_limit=args.dd_limit, max_dd_limit=args.max_dd, selects=to_build,
+            save_grids=not args.no_save_grids, from_grids=args.from_grids)
 
         for s, schedule in built.items():
             path = _sched_path(s)
@@ -659,7 +722,6 @@ if __name__ == "__main__":
             args.start_year, args.end_year,
             args.capital, args.no_show,
             exit_ma=args.exit_ma,
-            tie_tolerance=_tie_tol_resolved,
             cash_yield=args.cash_yield,
             grid_version=args.grid,
             dd_limit=args.dd_limit,
