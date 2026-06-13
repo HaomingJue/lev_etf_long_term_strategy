@@ -87,6 +87,18 @@ GRID_AXES = {
         base=[0.0, 0.10, 0.20, 0.30],
         x2=[0.0, 0.25, 0.50, 0.75, 1.0],
     ),
+    # v3cap: identical to v3 but buy_pct capped at 0.60. Investigates whether
+    # SPY's out-of-sample walk-forward failure is caused purely by the
+    # optimizer selecting aggressive (buy 80-100%) position sizes that pass the
+    # in-sample DD filter but breach it badly OOS (e.g. -49% SPY 2022).
+    "v3cap": dict(
+        entry=[1.01, 1.02, 1.03, 1.04, 1.05, 1.06],
+        drop=[-0.010, -0.005, 0.0, 0.0025, 0.005, 0.010, 0.015, 0.020],
+        exit=[0.93, 0.94, 0.95, 0.97, 0.99, 1.00, 1.01, 1.02],
+        buy=[0.10, 0.20, 0.30, 0.40, 0.50, 0.60],
+        base=[0.0, 0.10, 0.20, 0.30],
+        x2=[0.0, 0.25, 0.50, 0.75, 1.0],
+    ),
 }
 
 DEFAULT_GRID = "v3"
@@ -236,8 +248,21 @@ def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
     return c, port
 
 
-def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
-    """Pass = no calendar year from dd_start onward lost more than DD_LIMIT.
+def max_drawdown(port: np.ndarray) -> float:
+    """Worst peak-to-trough drop of the equity curve, as a negative fraction
+    (e.g. −0.55 = −55%). Used for the Calmar (CAGR / |maxDD|) selection rule."""
+    running_max = np.maximum.accumulate(port)
+    return float(((port - running_max) / running_max).min())
+
+
+def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int,
+             dd_limit: float = DD_LIMIT, max_dd_limit: float = 1.0):
+    """Pass = (a) no calendar year from dd_start onward lost more than dd_limit,
+    and (b) the peak-to-trough max drawdown over the dd_start-onward (real-ETF)
+    period does not exceed max_dd_limit (default 1.0 = no maxDD cap).
+
+    The maxDD cap is measured only on the real-data period for the same reason
+    as the annual filter: synthetic pre-inception drawdowns are too punishing.
 
     Returns (passed, worst_calendar_year_return) — worst is over ALL years,
     including pre-dd_start synthetic ones, for reporting.
@@ -248,8 +273,15 @@ def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
         mask = np.where(idx.year == yr)[0]
         ann  = (port[mask[-1]] - port[mask[0]]) / port[mask[0]]
         worst = min(worst, ann)
-        if yr >= dd_start and ann < -DD_LIMIT:
+        if yr >= dd_start and ann < -dd_limit:
             return False, ann
+    if max_dd_limit < 1.0:
+        real = port[idx.year >= dd_start]
+        if real.size:
+            rm  = np.maximum.accumulate(real)
+            mdd = ((real - rm) / rm).min()
+            if mdd < -max_dd_limit:
+                return False, worst
     return True, worst
 
 
@@ -260,52 +292,62 @@ def check_dd(df: pd.DataFrame, port: np.ndarray, dd_start: int):
 # via the Pool initializer. pool.imap (ordered) keeps results in grid order
 # so ties resolve identically to a single-worker run.
 
-_W_DF = _W_EXIT_MA = _W_DD_START = None
+_W_DF = _W_EXIT_MA = _W_DD_START = _W_DD_LIMIT = _W_MAX_DD = None
 
 
-def _init_worker(df, exit_ma, dd_start):
-    global _W_DF, _W_EXIT_MA, _W_DD_START
+def _init_worker(df, exit_ma, dd_start, dd_limit, max_dd_limit):
+    global _W_DF, _W_EXIT_MA, _W_DD_START, _W_DD_LIMIT, _W_MAX_DD
     _W_DF, _W_EXIT_MA, _W_DD_START = df, exit_ma, dd_start
+    _W_DD_LIMIT, _W_MAX_DD = dd_limit, max_dd_limit
 
 
 def _eval_combo(combo):
     entry, drop, exit_, buy, ab, ax2 = combo
     c, port   = opt_backtest(_W_DF, entry, drop, exit_, buy, ab, ax2,
                              exit_ma=_W_EXIT_MA)
-    ok, worst = check_dd(_W_DF, port, _W_DD_START)
-    return ok, c, worst, combo
+    ok, worst = check_dd(_W_DF, port, _W_DD_START, _W_DD_LIMIT, _W_MAX_DD)
+    return ok, c, worst, max_drawdown(port), combo
 
 
 def run_grid_search(df: pd.DataFrame, grid, exit_ma: int, dd_start: int,
-                    workers: int = 1, desc: str = "grid") -> pd.DataFrame:
+                    workers: int = 1, desc: str = "grid",
+                    dd_limit: float = DD_LIMIT,
+                    max_dd_limit: float = 1.0) -> pd.DataFrame:
     """Run every combo; return one row per combo (pass and fail alike).
 
     Columns: entry_signal, drop_level, exit_signal, buy_pct, alloc_base,
     alloc_x2, alloc_x3, cagr (%), worst_ann_ret (%), passed.
     Rows keep grid order, so `df.loc[df[df.passed].cagr.idxmax()]` resolves
     ties identically across runs and worker counts.
+
+    dd_limit : calendar-year loss cap for the pass/fail filter (default −40%).
     """
     records = []
     if workers > 1:
         with Pool(workers, initializer=_init_worker,
-                  initargs=(df, exit_ma, dd_start)) as pool:
-            for ok, c, worst, combo in tqdm(
+                  initargs=(df, exit_ma, dd_start, dd_limit, max_dd_limit)) as pool:
+            for ok, c, worst, mdd, combo in tqdm(
                     pool.imap(_eval_combo, grid, chunksize=64),
                     total=len(grid), desc=desc, leave=False):
-                records.append((combo, c, worst, ok))
+                records.append((combo, c, worst, mdd, ok))
     else:
         for combo in tqdm(grid, desc=desc, leave=False):
             entry, drop, exit_, buy, ab, ax2 = combo
             c, port   = opt_backtest(df, entry, drop, exit_, buy, ab, ax2,
                                      exit_ma=exit_ma)
-            ok, worst = check_dd(df, port, dd_start)
-            records.append((combo, c, worst, ok))
+            ok, worst = check_dd(df, port, dd_start, dd_limit, max_dd_limit)
+            records.append((combo, c, worst, max_drawdown(port), ok))
 
-    return pd.DataFrame([{
+    out = pd.DataFrame([{
         "entry_signal": e, "drop_level": d, "exit_signal": x,
         "buy_pct": b, "alloc_base": ab, "alloc_x2": ax2,
         "alloc_x3": round(1 - ax2, 4),
         "cagr": round(c * 100, 4),
         "worst_ann_ret": round(w * 100, 4),
+        "max_dd": round(mdd * 100, 4),
         "passed": ok,
-    } for (e, d, x, b, ab, ax2), c, w, ok in records])
+    } for (e, d, x, b, ab, ax2), c, w, mdd, ok in records])
+    # Calmar = CAGR / |maxDD|. Guard against div-by-zero (a combo that never
+    # drew down — e.g. stayed in cash all-history). |maxDD| floored at 1%.
+    out["calmar"] = (out["cagr"] / out["max_dd"].abs().clip(lower=1.0)).round(4)
+    return out

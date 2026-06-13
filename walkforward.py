@@ -3,19 +3,26 @@ walkforward.py  —  Expanding-window walk-forward backtester
 
 Phase 1 (slow, cached):
   For each trade year Y in [start_year .. end_year]:
-    Run the optimizer on 2003-01-01 to (Y-1)-12-31.
-    Pick the best passing combo by CAGR.
-  Save the param schedule to results/walkforward/{preset}_param_schedule.json.
-  Skip Phase 1 with --no-rebuild if the JSON already exists.
+    Run the optimizer (grid search) ONCE on 2003-01-01 to (Y-1)-12-31.
+    From that single passing set, pick a combo per selection rule in --select:
+      cagr   — Highest CAGR (the best-performing passing combo).
+      calmar — Balanced: highest Calmar = CAGR / |max drawdown|, i.e. the
+               best return-per-drawdown trade-off.
+    --select may list several rules (e.g. "cagr,calmar"); the grid is searched
+    once and every rule derives its own schedule from it (same efficient
+    pattern as daily_signal/reopt.py — N variants cost ~1× a grid search).
+  Save each rule's schedule to results/walkforward/{preset}_param_schedule
+  [_sel{rule}].json. Skip Phase 1 with --no-rebuild if the JSON already exists.
 
 Phase 2 (fast):
-  Run one continuous backtest from start_year to end_year.
-  At Jan 1 of each year the strategy params are swapped to that year's
-  optimizer output — portfolio state (holdings, cash, armed) is preserved.
+  For each selection rule, run one continuous backtest from start_year to
+  end_year. At Jan 1 of each year the strategy params are swapped to that
+  year's pick — portfolio state (holdings, cash, armed) is preserved.
 
 Usage:
-  python walkforward.py --preset QQQ
-  python walkforward.py --preset SPY --start-year 2014 --end-year 2025
+  python walkforward.py --preset QQQ                       # Highest CAGR only
+  python walkforward.py --preset QQQ --select cagr,calmar  # both variants, one grid pass
+  python walkforward.py --preset SPY --exit-ma 100 --select calmar
   python walkforward.py --preset QQQ --no-rebuild --no-show
 """
 
@@ -44,7 +51,7 @@ from backtester import run_backtest, print_results, cagr as compute_cagr, _tbill
 # Shared engine — the same data pipeline, backtest loop, DD filter and grid
 # as the standalone optimizer.py, so Phase 1 here IS the optimizer run on a
 # truncated training window.
-from optimizer_core import (DEFAULT_GRID, GRID_AXES, PRESETS,
+from optimizer_core import (DD_LIMIT, DEFAULT_GRID, GRID_AXES, PRESETS,
                             build_grid, load_full_data, run_grid_search)
 
 
@@ -59,35 +66,79 @@ from optimizer_core import (DEFAULT_GRID, GRID_AXES, PRESETS,
 _DEFAULT_TIE_TOLERANCE = {"QQQ": 0.0, "SPY": 0.0, "IWM": 0.0}
 
 
-def build_param_schedule(preset: str, start_year: int, end_year: int,
-                         df_full: pd.DataFrame, exit_ma: int = 200,
-                         tie_tolerance: float | None = None,
-                         grid_version: str = DEFAULT_GRID,
-                         workers: int = 1) -> dict:
-    """
-    Build the per-year param schedule. Each trade year's window is one call
-    to the shared optimizer_core.run_grid_search on data through Dec 31 of
-    the prior year — identical engine and grid as `python optimizer.py`.
+def _pick_combo(passing, select: str, tie_tolerance: float):
+    """Return (chosen_row, leader_row) for one training window's passing combos.
 
-    tie_tolerance : float | None
-        If > 0, applies a secondary-sort rule: from combos within
-        `tie_tolerance` CAGR (fraction, e.g. 0.01 = 1pp) of the top combo,
-        pick the one with the best (least negative) worst calendar year.
-        If None, uses the preset default. If 0.0, plain top-CAGR ranking.
+    select:
+      'cagr'   — highest CAGR (optionally refined by tie_tolerance: among
+                 combos within tie_tolerance·100 pp CAGR of the leader, take
+                 the best worst-calendar-year).
+      'calmar' — highest Calmar ratio (CAGR / |max drawdown|): the best
+                 return-per-unit-of-drawdown trade-off. Ignores tie_tolerance.
+    leader is always the plain top-CAGR row, for reporting how much CAGR the
+    rule traded away.
     """
+    leader = passing.loc[passing["cagr"].idxmax()]
+    if select == "calmar":
+        chosen = passing.loc[passing["calmar"].idxmax()]
+    elif tie_tolerance > 0:
+        within = passing[leader["cagr"] - passing["cagr"] <= tie_tolerance * 100]
+        chosen = within.loc[within["worst_ann_ret"].idxmax()]
+    else:
+        chosen = leader
+    return chosen, leader
+
+
+def _row_to_params(chosen) -> dict:
+    """Convert one passing-combo row into a schedule params dict."""
+    return dict(
+        entry_signal=chosen["entry_signal"], drop_level=chosen["drop_level"],
+        exit_signal=chosen["exit_signal"],   buy_pct=chosen["buy_pct"],
+        alloc_base=chosen["alloc_base"],     alloc_x2=chosen["alloc_x2"],
+        alloc_x3=round(1 - chosen["alloc_x2"], 4),
+        train_cagr=round(chosen["cagr"], 2),
+        train_worst_year=round(chosen["worst_ann_ret"], 2),
+        train_max_dd=round(chosen["max_dd"], 2),
+        train_calmar=round(chosen["calmar"], 3),
+    )
+
+
+def build_param_schedules(preset: str, start_year: int, end_year: int,
+                          df_full: pd.DataFrame, exit_ma: int = 200,
+                          tie_tolerance: float | None = None,
+                          grid_version: str = DEFAULT_GRID,
+                          workers: int = 1,
+                          dd_limit: float = DD_LIMIT,
+                          max_dd_limit: float = 1.0,
+                          selects=("cagr",)) -> dict:
+    """
+    Build per-year param schedules for one or more selection rules in a SINGLE
+    pass. The grid search (the expensive part) runs ONCE per training window;
+    every rule in `selects` then picks its row from that same passing set —
+    the same efficient pattern as daily_signal/reopt.py. Running the grid once
+    and deriving N variants costs ~1× a grid search, not N×.
+
+    selects : iterable of 'cagr' / 'calmar' (or a single such string).
+    Returns {select_rule: {trade_year: params_dict}}.
+
+    select rules — see _pick_combo. tie_tolerance only affects 'cagr'.
+    """
+    if isinstance(selects, str):
+        selects = (selects,)
+    selects = list(dict.fromkeys(selects))  # de-dupe, preserve order
     if tie_tolerance is None:
         tie_tolerance = _DEFAULT_TIE_TOLERANCE.get(preset, 0.0)
 
-    dd_start = PRESETS[preset]["dd_start"]
-    grid     = build_grid(grid_version)
-    schedule = {}
+    dd_start  = PRESETS[preset]["dd_start"]
+    grid      = build_grid(grid_version)
+    schedules = {s: {} for s in selects}
 
-    rule_note = (f"plain top-CAGR" if tie_tolerance <= 0
-                 else f"secondary-sort within {tie_tolerance*100:.1f}pp CAGR")
-    print(f"\nPhase 1 — building param schedule ({preset}, "
+    print(f"\nPhase 1 — building param schedule(s) ({preset}, "
           f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, grid {grid_version}, "
-          f"{workers} worker(s), {rule_note})")
-    print(f"  {len(grid):,} combos × {end_year - start_year + 1} training windows\n")
+          f"{workers} worker(s), selects={','.join(selects)})")
+    print(f"  {len(grid):,} combos × {end_year - start_year + 1} training "
+          f"windows — grid searched ONCE per window, {len(selects)} rule(s) "
+          f"derived from it\n")
 
     for trade_yr in range(start_year, end_year + 1):
         train_end = trade_yr - 1
@@ -97,46 +148,44 @@ def build_param_schedule(preset: str, start_year: int, end_year: int,
             continue
 
         res = run_grid_search(df_train, grid, exit_ma, dd_start,
-                              workers=workers, desc=f"  2003–{train_end}")
+                              workers=workers, desc=f"  2003–{train_end}",
+                              dd_limit=dd_limit, max_dd_limit=max_dd_limit)
         passing = res[res["passed"]]
         if passing.empty:
             print(f"  {trade_yr}: no passing combo found")
             continue
 
-        # Plain top-CAGR pick (idxmax keeps grid order on exact ties)
-        leader = passing.loc[passing["cagr"].idxmax()]
+        for s in selects:
+            chosen, leader = _pick_combo(passing, s, tie_tolerance)
+            schedules[s][trade_yr] = _row_to_params(chosen)
+            tag = ""
+            if chosen.name != leader.name:
+                cagr_cost = leader["cagr"] - chosen["cagr"]
+                dd_gain   = chosen["max_dd"] - leader["max_dd"]  # less neg = better
+                tag = (f"  [-{cagr_cost:.2f}pp CAGR, +{dd_gain:.1f}pp maxDD "
+                       f"vs top-CAGR]")
+            p = schedules[s][trade_yr]
+            print(f"  {trade_yr} [{s:6}]  entry={p['entry_signal']}  "
+                  f"drop={p['drop_level']}  exit={p['exit_signal']}  "
+                  f"buy={p['buy_pct']}  CAGR={p['train_cagr']:.1f}%  "
+                  f"maxDD={p['train_max_dd']:.1f}%  "
+                  f"Calmar={p['train_calmar']:.2f}{tag}")
 
-        # Secondary-sort: within tolerance, pick best worst-year
-        if tie_tolerance > 0:
-            within = passing[leader["cagr"] - passing["cagr"]
-                             <= tie_tolerance * 100]
-            chosen = within.loc[within["worst_ann_ret"].idxmax()]
-        else:
-            chosen = leader
+    return schedules
 
-        best = dict(
-            entry_signal=chosen["entry_signal"], drop_level=chosen["drop_level"],
-            exit_signal=chosen["exit_signal"],   buy_pct=chosen["buy_pct"],
-            alloc_base=chosen["alloc_base"],     alloc_x2=chosen["alloc_x2"],
-            alloc_x3=round(1 - chosen["alloc_x2"], 4),
-            train_cagr=round(chosen["cagr"], 2),
-            train_worst_year=round(chosen["worst_ann_ret"], 2),
-        )
-        schedule[trade_yr] = best
 
-        # Annotate if secondary-sort changed the pick
-        changed = tie_tolerance > 0 and chosen.name != leader.name
-        tag = ""
-        if changed:
-            cagr_cost  = leader["cagr"] - chosen["cagr"]
-            ulcer_gain = chosen["worst_ann_ret"] - leader["worst_ann_ret"]
-            tag = f"  [tie-break: -{cagr_cost:.2f}pp CAGR, +{ulcer_gain:.1f}pp worst-yr]"
-        print(f"  {trade_yr}  train=2003–{train_end}  "
-              f"entry={best['entry_signal']}  drop={best['drop_level']}  "
-              f"exit={best['exit_signal']}  buy={best['buy_pct']}  "
-              f"CAGR={best['train_cagr']:.1f}%  worst={best['train_worst_year']:.1f}%{tag}")
-
-    return schedule
+def build_param_schedule(preset: str, start_year: int, end_year: int,
+                         df_full: pd.DataFrame, exit_ma: int = 200,
+                         tie_tolerance: float | None = None,
+                         grid_version: str = DEFAULT_GRID,
+                         workers: int = 1,
+                         dd_limit: float = DD_LIMIT,
+                         select: str = "cagr") -> dict:
+    """Single-rule convenience wrapper around build_param_schedules."""
+    return build_param_schedules(
+        preset, start_year, end_year, df_full, exit_ma=exit_ma,
+        tie_tolerance=tie_tolerance, grid_version=grid_version,
+        workers=workers, dd_limit=dd_limit, selects=(select,))[select]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -147,7 +196,9 @@ def run_walkforward(preset: str, schedule: dict,
                     start_year: int, end_year: int,
                     capital: float, no_show: bool,
                     exit_ma: int = 200, tie_tolerance: float = 0.0,
-                    cash_yield: bool = False, grid_version: str = "v1"):
+                    cash_yield: bool = False, grid_version: str = "v1",
+                    dd_limit: float = DD_LIMIT, select: str = "cagr",
+                    max_dd_limit: float = 1.0):
 
     int_sched = {int(k): v for k, v in schedule.items()}
     # Fixed-model baseline = the params for the START year (trained on data
@@ -207,8 +258,11 @@ def run_walkforward(preset: str, schedule: dict,
     ma_tag   = "" if exit_ma == 200 else f"_ma{exit_ma}"
     tie_tag  = "_tiebreak" if tie_tolerance > 0 else ""
     grid_tag = "" if grid_version == "v1" else f"_grid{grid_version}"
+    dd_tag   = "" if dd_limit == DD_LIMIT else f"_dd{int(round(dd_limit*100))}"
+    mdd_tag  = "" if max_dd_limit >= 1.0 else f"_maxdd{int(round(max_dd_limit*100))}"
+    sel_tag  = "" if select == "cagr" else f"_sel{select}"
     cy_tag   = "_cy" if cash_yield else ""
-    slug     = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}{grid_tag}{cy_tag}"
+    slug     = f"{preset}_walkforward_{start_year}-{end_year}{ma_tag}{tie_tag}{grid_tag}{dd_tag}{mdd_tag}{sel_tag}{cy_tag}"
     year_df.to_csv(out_dir / f"{slug}_yearly.csv", index=False)
     print(f"\n  Saved: results/walkforward/{slug}_yearly.csv")
 
@@ -476,6 +530,26 @@ def _parse_args():
                         "0.93 and probes negative drop levels. Non-v1 "
                         "schedules/outputs get a _grid{N} suffix; pass v1/v2 "
                         "to reproduce earlier studies.")
+    p.add_argument("--select", default="cagr",
+                   help="Per-window selection rule(s) among DD-filter survivors, "
+                        "comma-separated for several in one grid pass. "
+                        "'cagr' (default) picks highest CAGR (refined by "
+                        "--tie-tolerance). 'calmar' picks highest CAGR/|maxDD| "
+                        "— the best return-per-drawdown trade-off. "
+                        "E.g. --select cagr,calmar. Non-'cagr' rules get a "
+                        "_sel{rule} output suffix.")
+    p.add_argument("--max-dd", type=float, default=1.0,
+                   help="Hard max-drawdown ceiling for the Phase 1 filter "
+                        "(fraction, e.g. 0.50 rejects any combo whose real-period "
+                        "peak-to-trough drawdown exceeds 50%%). Default 1.0 = no "
+                        "cap. Directly bounds the worst-case tail; gets a "
+                        "_maxdd{N} output suffix.")
+    p.add_argument("--dd-limit", type=float, default=DD_LIMIT,
+                   help="Calendar-year loss cap for the Phase 1 pass/fail filter "
+                        "(fraction, e.g. 0.30 = combos that lost >30%% in any "
+                        "in-sample year from the ETF-inception cutoff are "
+                        "rejected). Default 0.40. Non-default values get a "
+                        "_dd{N} output suffix.")
     p.add_argument("--cash-yield", action="store_true",
                    help="Accrue daily T-bill interest (^IRX) on idle cash in the "
                         "Phase 2 backtest (models SGOV/BIL). Phase 1 optimizer "
@@ -505,60 +579,90 @@ if __name__ == "__main__":
     out_dir = Path(__file__).parent / "results" / "walkforward"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Schedule path: MA200 keeps the original filename for back-compat;
-    # non-200 adds _ma{N}; tie-break runs (tolerance > 0) add _tiebreak so
-    # the Highest CAGR and Balanced variants never collide on the same file.
+    # --select may be comma-separated (e.g. "cagr,calmar"): the grid is
+    # searched once per window and each rule derives its own schedule.
+    selects = [s.strip() for s in args.select.split(",") if s.strip()]
+    _valid_selects = {"cagr", "calmar"}
+    bad = [s for s in selects if s not in _valid_selects]
+    if bad or not selects:
+        sys.exit(f"--select: invalid rule(s) {bad or '(empty)'}; "
+                 f"choose from {sorted(_valid_selects)}, comma-separated.")
+
     _tie_tol_resolved = (args.tie_tolerance
                          if args.tie_tolerance is not None
                          else _DEFAULT_TIE_TOLERANCE.get(args.preset, 0.0))
-    sched_suffix  = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
-    if _tie_tol_resolved > 0:
-        sched_suffix += "_tiebreak"
-    if args.grid != "v1":
-        sched_suffix += f"_grid{args.grid}"
-    schedule_path = out_dir / f"{args.preset}_param_schedule{sched_suffix}.json"
 
-    if args.no_rebuild and schedule_path.exists():
-        print(f"Loading cached schedule: {schedule_path}")
-        schedule = json.loads(schedule_path.read_text())
-    else:
+    # Per-rule schedule path. MA200 keeps the original filename for back-compat;
+    # non-200 adds _ma{N}; tie-break / grid / dd-limit / select each add a tag
+    # so variants never collide on the same file.
+    def _sched_path(select: str) -> Path:
+        suffix = "" if args.exit_ma == 200 else f"_ma{args.exit_ma}"
+        if _tie_tol_resolved > 0:
+            suffix += "_tiebreak"
+        if args.grid != "v1":
+            suffix += f"_grid{args.grid}"
+        if args.dd_limit != DD_LIMIT:
+            suffix += f"_dd{int(round(args.dd_limit*100))}"
+        if args.max_dd < 1.0:
+            suffix += f"_maxdd{int(round(args.max_dd*100))}"
+        if select != "cagr":
+            suffix += f"_sel{select}"
+        return out_dir / f"{args.preset}_param_schedule{suffix}.json"
+
+    # Build (or load) one schedule per selection rule.
+    schedules: dict[str, dict] = {}
+    to_build = [s for s in selects
+                if not (args.no_rebuild and _sched_path(s).exists())]
+    for s in selects:
+        if args.no_rebuild and _sched_path(s).exists():
+            print(f"Loading cached schedule [{s}]: {_sched_path(s)}")
+            schedules[s] = json.loads(_sched_path(s).read_text())
+
+    if to_build:
         # For --only-year, just need data through that year's training cutoff.
         end_buffer = (f"{args.only_year}-01-15"
                       if args.only_year is not None
                       else f"{args.end_year}-12-31")
-        df_full  = load_full_data(args.preset, end_buffer)
-        schedule = build_param_schedule(
+        df_full = load_full_data(args.preset, end_buffer)
+        built = build_param_schedules(
             args.preset, args.start_year, args.end_year, df_full,
             exit_ma=args.exit_ma, tie_tolerance=args.tie_tolerance,
-            grid_version=args.grid, workers=args.workers)
+            grid_version=args.grid, workers=args.workers,
+            dd_limit=args.dd_limit, max_dd_limit=args.max_dd, selects=to_build)
 
-        if args.only_year is not None:
-            # Merge into existing schedule — preserve all other years.
-            existing = {}
-            if schedule_path.exists():
-                existing = json.loads(schedule_path.read_text())
-            for yr_int, row in schedule.items():
-                existing[str(yr_int)] = row
-            schedule_path.write_text(json.dumps(existing, indent=2))
-            years_now = sorted(int(k) for k in existing.keys())
-            print(f"\n  Merged year {args.only_year} into {schedule_path}")
-            print(f"  Schedule now spans: {years_now[0]}–{years_now[-1]} "
-                  f"({len(years_now)} rows)")
-        else:
-            schedule_path.write_text(json.dumps(schedule, indent=2))
-            print(f"\n  Saved schedule: {schedule_path}")
+        for s, schedule in built.items():
+            path = _sched_path(s)
+            if args.only_year is not None:
+                # Merge into existing schedule — preserve all other years.
+                existing = json.loads(path.read_text()) if path.exists() else {}
+                for yr_int, row in schedule.items():
+                    existing[str(yr_int)] = row
+                path.write_text(json.dumps(existing, indent=2))
+                years_now = sorted(int(k) for k in existing.keys())
+                print(f"\n  [{s}] Merged year {args.only_year} into {path}")
+                print(f"  [{s}] Schedule now spans: {years_now[0]}–"
+                      f"{years_now[-1]} ({len(years_now)} rows)")
+            else:
+                path.write_text(json.dumps(schedule, indent=2))
+                print(f"\n  Saved schedule [{s}]: {path}")
+            schedules[s] = schedule
 
     # --only-year: skip Phase 2 — there's no meaningful continuous backtest window
     if args.only_year is not None:
         print(f"  Phase 2 skipped (--only-year mode).")
         sys.exit(0)
 
-    run_walkforward(
-        args.preset, schedule,
-        args.start_year, args.end_year,
-        args.capital, args.no_show,
-        exit_ma=args.exit_ma,
-        tie_tolerance=_tie_tol_resolved,
-        cash_yield=args.cash_yield,
-        grid_version=args.grid,
-    )
+    # Phase 2 — one walk-forward backtest per selection rule.
+    for s in selects:
+        run_walkforward(
+            args.preset, schedules[s],
+            args.start_year, args.end_year,
+            args.capital, args.no_show,
+            exit_ma=args.exit_ma,
+            tie_tolerance=_tie_tol_resolved,
+            cash_yield=args.cash_yield,
+            grid_version=args.grid,
+            dd_limit=args.dd_limit,
+            select=s,
+            max_dd_limit=args.max_dd,
+        )
