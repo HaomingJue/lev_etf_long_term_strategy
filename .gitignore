@@ -219,3 +219,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Run logs & console captures (build artifacts, not deliverables)
+results/logs/
+*.out
+*.log

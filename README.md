@@ -481,3 +481,73 @@ Full-history (2003 → 2026) optimizer picks — these match the §4 backtests a
 **Common flags (most tools):** `--no-show` (don't pop plot windows), `--cash-yield` (accrue T-bill interest on idle cash), `--tax-ontario --salary N` (model an Ontario taxable account), `--preset {QQQ,SPY,IWM}`, `--exit-ma {50,100,200}`.
 
 </details>
+
+<details>
+<summary><b>D · Command-line flags for every script</b></summary>
+
+Exhaustive per-script reference. `crisis_analysis.py`, `run_backtests.py`, and `run_build.py` take **no flags** — run them as-is (`python <file>.py`).
+
+#### `optimizer.py` — grid-search one window
+
+| Flag | Type / default | What it does |
+|---|---|---|
+| `--preset` | QQQ \| SPY \| IWM · **QQQ** | Which base/2×/3× ETF set to search. |
+| `--exit-ma` | 50 \| 100 \| 200 · **200** | MA period for the **exit** signal (arming always uses MA200). |
+| `--grid` | v1 \| v2 \| v3 \| v3cap · **v3** | Parameter grid (defined in `optimizer_core.GRID_AXES`). v3 = the 72k production grid; others reproduce historical studies. |
+| `--end` | date · **data end** | Data end date, **exclusive**. Use e.g. `2014-12-31` to search only a training window. |
+| `--workers` | int · **CPU cores − 2** | Parallel worker processes. Results are identical regardless of count. |
+| `--top` | int · **20** | Number of leaderboard rows to print and save. |
+| `--no-show` | flag | Don't open interactive plot windows (files still saved). |
+
+#### `walkforward.py` — expanding-window validation (the honest test)
+
+| Flag | Type / default | What it does |
+|---|---|---|
+| `--preset` | QQQ \| SPY \| IWM · **QQQ** | ETF set. |
+| `--start-year` | int · **2015** | First trade year scored out-of-sample. |
+| `--end-year` | int · **2026** | Last trade year. |
+| `--capital` | float · **10000** | Starting capital for the Phase-2 backtest. |
+| `--exit-ma` | 50 \| 100 \| 200 · **200** | Exit MA period (arm/entry always MA200). |
+| `--workers` | int · **CPU cores − 2** | Parallel workers for the Phase-1 grid search. |
+| `--grid` | v1…v3cap · **v3** | Optimizer grid version. |
+| `--select` | csv · **cagr,maxdd50,buycap50** | Selection rule(s) applied to each window's survivors, comma-separated to derive several **in one grid pass**: `cagr` (Aggressive), `maxdd{N}` (DD-Capped, e.g. `maxdd50`), `buycap{N}` (Buy-Capped, e.g. `buycap50`), `calmar` (Conservative). |
+| `--from-grids` | flag | Re-derive the schedule(s) from per-window grids saved earlier (seconds, no re-search). |
+| `--no-save-grids` | flag | Don't write each window's full grid to `results/walkforward/grids/`. |
+| `--max-dd` | float · **1.0** | Hard real-period maxDD ceiling for the Phase-1 filter (e.g. `0.50` rejects combos drawing worse than −50%). 1.0 = off. |
+| `--dd-limit` | float · **0.40** | Calendar-year loss cap for the pass/fail filter (e.g. `0.30` rejects any combo that lost >30% in a year). |
+| `--cash-yield` | flag | Accrue daily T-bill (^IRX) interest on idle cash in Phase 2 (models SGOV/BIL). |
+| `--no-rebuild` | flag | Skip Phase 1 if the schedule JSON already exists. |
+| `--only-year` | int · None | Optimize only this single trade year (train 2003→year−1) and merge into the schedule — the annual re-opt. |
+| `--no-show` | flag | Suppress plot windows. |
+
+#### `backtester.py` — authoritative single-config run
+
+| Flag | Type / default | What it does |
+|---|---|---|
+| `--preset` | QQQ \| SPY \| IWM · **QQQ** | ETF set. |
+| `--start` | date · **preset inception** | Backtest start (e.g. `2003-01-01`, or `2007-06-01` for a crisis window). |
+| `--end` | date · **today** | Backtest end. |
+| `--capital` | float · **10000** | Starting capital. |
+| `--entry-signal` | float · **1.04** | Arm when price > `MA200 × entry`. |
+| `--drop-level` | float · **0.01** | Min single-day drop to fire a buy (`0.0` = any non-up day; negative = buy on mildly-up days). |
+| `--exit-signal` | float · **1.00** | Exit when price < `exit_MA × exit`. |
+| `--buy-pct` | float · **0.20** | Fraction of portfolio deployed per buy. |
+| `--alloc-base` | float · **0.20** | One-time base-ETF cushion (filled first buy, trimmed first exit). |
+| `--alloc-x2` | float · **0.00** | Share of the leveraged tranche in the 2× ETF. |
+| `--alloc-x3` | float · **1.00** | Share in the 3× ETF (`x2 + x3 = 1`). |
+| `--exit-ma` | 50 \| 100 \| 200 · **200** | Exit-signal MA period. |
+| `--cost-per-trade` | float · **0.0** | One-way transaction cost as a fraction of trade value (e.g. `0.001` = 0.1%), charged on every buy and sell. |
+| `--cash-yield` | flag | Accrue T-bill interest on idle cash. |
+| `--tax-ontario` | flag | Model an Ontario taxable account (50% CG inclusion, interest 100% taxable, loss carry-forward, tax paid each January). **Not** for TFSA/RRSP. |
+| `--salary` | float · **100000** | Employment income the gains stack on (sets the marginal rate). Only with `--tax-ontario`. |
+| `--save-plot` | path · None | Save the chart to this path instead of showing it. |
+| `--no-show` | flag | Suppress the interactive plot window. |
+
+#### `param_heatmap.py` — robustness heatmaps
+
+| Flag | Type / default | What it does |
+|---|---|---|
+| `--grid` | str · **v3** | Grid version whose saved optimizer results to summarize. |
+| `--no-show` | flag | Suppress plot window (PNG still saved). |
+
+</details>
