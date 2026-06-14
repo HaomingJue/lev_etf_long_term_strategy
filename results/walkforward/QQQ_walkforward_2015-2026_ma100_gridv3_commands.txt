@@ -1,5 +1,5 @@
 # Walk-forward command log — QQQ 2015–2026 (exit MA100)
-# Generated: 2026-06-12
+# Generated: 2026-06-14
 #
 # Each block is the equivalent backtester.py call for that trade year.
 # Re-run any year with: python backtester.py [args]

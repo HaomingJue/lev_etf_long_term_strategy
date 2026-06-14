@@ -47,11 +47,11 @@ VARIANTS = [
     dict(key="QQQ_aggr", preset="QQQ", label="QQQ Aggressive — Max-CAGR (3×, buy 100%)",
          entry=1.04, drop=0.0, exit=1.01, buy=1.0, base=0.0, x2=0.0, ma=200,
          color="#c0392b", lw=2.2),
-    dict(key="QQQ_bal", preset="QQQ", label="QQQ Balanced — DD-Capped (3×, buy 90% + 20% base)",
-         entry=1.04, drop=0.0, exit=1.01, buy=0.9, base=0.2, x2=0.0, ma=200,
+    dict(key="QQQ_bal", preset="QQQ", label="QQQ Balanced — DD-Capped (3×, buy 90% + 10% base)",
+         entry=1.04, drop=0.0, exit=1.01, buy=0.9, base=0.1, x2=0.0, ma=200,
          color="#e67e22", lw=2.0),
-    dict(key="QQQ_cons", preset="QQQ", label="QQQ Conservative — Calmar (2×, buy 80% + 30% base)",
-         entry=1.04, drop=0.0, exit=1.01, buy=0.8, base=0.3, x2=1.0, ma=200,
+    dict(key="QQQ_cons", preset="QQQ", label="QQQ Conservative — Calmar (2×, buy 80% + 20% base)",
+         entry=1.04, drop=0.0, exit=1.01, buy=0.8, base=0.2, x2=1.0, ma=200,
          color="#27ae60", lw=2.0),
     dict(key="SPY_bal", preset="SPY", label="SPY Balanced — Buy-Capped (3× buy 20%, MA50)",
          entry=1.02, drop=0.0025, exit=0.93, buy=0.2, base=0.0, x2=0.0, ma=50,
@@ -101,6 +101,7 @@ def run(df: pd.DataFrame, v: dict):
     entry, drop, exit_, buy, ab, ax2, exit_ma = (
         v["entry"], v["drop"], v["exit"], v["buy"], v["base"], v["x2"], v["ma"])
     ax3 = 1.0 - ax2
+    eff_buy = min(buy, max(1.0 - ab, 0.0))   # lev buy capped at (1 - base)
     f = df.iloc[0]
     nb = df["base"].values / f["base"]
     n2 = df["lev2"].values / f["lev2"]
@@ -111,7 +112,7 @@ def run(df: pd.DataFrame, v: dict):
 
     cash = oc.CAPITAL
     s_b = s_2 = s_3 = 0.0
-    armed = bf = bt = False
+    armed = False
     port = np.empty(len(df)); port[0] = oc.CAPITAL
     n_buys = n_exits = 0
     buy_years, exit_years = [], []
@@ -120,15 +121,14 @@ def run(df: pd.DataFrame, v: dict):
         if (np.isnan(ma_arm[i]) or ma_arm[i] == 0
                 or np.isnan(ma_exit[i]) or ma_exit[i] == 0):
             port[i] = port[i-1]; continue
-        vb = s_b*nb[i]; v2 = s_2*n2[i]; v3 = s_3*n3[i]
+        v2 = s_2*n2[i]; v3 = s_3*n3[i]
         if nb[i] < ma_exit[i]*exit_ and (s_2 > 0 or s_3 > 0):
             cash += v2 + v3; s_2 = s_3 = 0.0
             n_exits += 1; exit_years.append(years[i])
-            if not bt and ab > 0:
-                vb = s_b*nb[i]; tot = cash+vb; tgt = tot*ab
+            if ab > 0:                       # trim base back down to target
+                vb = s_b*nb[i]; tgt = (cash+vb)*ab
                 if vb > tgt+0.01:
                     s_b -= (vb-tgt)/nb[i]; cash += vb-tgt
-                bt = True
             armed = False
         else:
             if not armed and nb[i] > ma_arm[i]*entry:
@@ -137,13 +137,12 @@ def run(df: pd.DataFrame, v: dict):
             if armed and nb[i] > ma_arm[i]*entry and d >= drop and cash > 0.01:
                 tot = cash + s_b*nb[i] + s_2*n2[i] + s_3*n3[i]
                 did_buy = False
-                if not bf and ab > 0:
+                if ab > 0:                   # top base up to target first
                     sp = min(max(tot*ab - s_b*nb[i], 0), cash)
                     if sp > 0.01:
                         s_b += sp/nb[i]; cash -= sp; did_buy = True
-                    bf = True
                     tot = cash + s_b*nb[i] + s_2*n2[i] + s_3*n3[i]
-                lev = min(buy*tot, cash)
+                lev = min(eff_buy*tot, cash)
                 if lev > 0.01:
                     if ax2 > 0: s_2 += lev*ax2/n2[i]
                     if ax3 > 0: s_3 += lev*ax3/n3[i]

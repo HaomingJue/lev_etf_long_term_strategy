@@ -7,19 +7,19 @@
 #   Arm condition : price closes above MA200 × entry_signal
 #   Trigger       : armed AND same-day drop >= drop_level
 #
-#   First signal in a cycle:
-#     1. Buy base up to alloc_base × total_portfolio (one shot)
-#     2. Then spend min(buy_pct × total, remaining cash) on lev
-#        split by alloc_x2 / alloc_x3
-#
-#   Subsequent signals (base already filled):
-#     - Spend min(buy_pct × total, cash) on lev only
+#   Every buy signal:
+#     1. Top the base sleeve up to alloc_base × total_portfolio if it is
+#        currently below target (fills the gap each time, not just once).
+#     2. Then spend min(buy_pct × total, (1 - alloc_base) × total, cash) on
+#        lev, split by alloc_x2 / alloc_x3. The single-buy lev size can never
+#        exceed (1 - alloc_base) of the portfolio — the base weight is always
+#        reserved (e.g. base 20% ⇒ a lev buy is capped at 80% of total).
 #
 # EXIT RULES  (price < exit_MA × exit_signal):
 #   exit_MA is MA50, MA100, or MA200 (set via --exit-ma, default 200)
 #   Arm/entry always uses MA200.
 #   1. Sell ALL 2× and 3× holdings → cash
-#   2. If base value > alloc_base × total → trim excess → cash
+#   2. If base value > alloc_base × total → trim excess → cash (every exit)
 #   3. Dis-arm: next buy cycle needs a fresh arm
 #
 # All trades execute at the closing price of the signal day.
@@ -374,8 +374,6 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
     s_3   = 0.0      # units of lev3 held
 
     armed           = False   # True once price re-crosses entry threshold
-    base_filled     = False   # True after base is bought for the first time
-    base_trimmed    = False   # True after the one-time exit trim has fired
 
     # Weighted avg base-stock price for lev gain% on exit
     lev_price_wsum  = 0.0
@@ -556,8 +554,8 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                 lev_price_wsum = lev_dollar_sum = 0.0
                 notes.append(f"lev gain {gain_pct:+.2f}%")
 
-            # 2. Trim base if over target — ONE TIME ONLY, never again
-            if not base_trimmed and active_base > 0:
+            # 2. Trim base back down to target if it overshot (every exit)
+            if active_base > 0:
                 val_b  = s_b * nb
                 total  = cash + val_b
                 target = total * active_base
@@ -572,11 +570,9 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                     cash         -= excess * args.cost_per_trade  # transaction cost
                     total         = cash + s_b * nb
                     notes.append(f"base trimmed ${excess:,.2f}")
-                base_trimmed = True   # never trim again regardless
 
-            # Dis-arm: need fresh entry signal for next cycle.
-            # base_filled stays True — base is never fully sold,
-            # so the next cycle does NOT re-buy base on its first signal.
+            # Dis-arm: need fresh entry signal for next cycle. The base sleeve
+            # is kept (never fully sold) and re-topped on the next buy signal.
             armed = False
 
             transactions.append({
@@ -609,8 +605,8 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
             if is_drop_signal:
                 buy_notes = []
 
-                # ── First signal in cycle: fill base ────
-                if not base_filled and active_base > 0:
+                # ── Top base up to target on every signal ────
+                if active_base > 0:
                     target_base_val = total * active_base
                     current_base_val = s_b * nb
                     base_needed = max(target_base_val - current_base_val, 0.0)
@@ -623,13 +619,12 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
                         cash  -= base_spend * args.cost_per_trade  # transaction cost
                         buy_notes.append(f"base filled ${base_spend:,.2f}")
 
-                    base_filled = True
-
                     # Recalc total after base buy
                     total = cash + s_b * nb + s_2 * n2 + s_3 * n3
 
-                # ── Lev buy (every signal) ───────────────
-                lev_spend = min(active_buy * total, cash)
+                # ── Lev buy: never exceed (1 - base) of total per signal ──
+                eff_buy   = min(active_buy, max(1.0 - active_base, 0.0))
+                lev_spend = min(eff_buy * total, cash)
 
                 if lev_spend > 0.01:
                     a2 = lev_spend * active_x2
@@ -986,7 +981,8 @@ if __name__ == "__main__":
     print(f"  Exit     : price < {args.exit_signal}x MA{args.exit_ma}")
     print(f"  Alloc    : base {args.alloc_base*100:.0f}%  |  "
           f"2x {args.alloc_x2*100:.0f}%  |  3x {args.alloc_x3*100:.0f}%")
-    print(f"  Lev buy  : min({args.buy_pct*100:.0f}% of portfolio, cash) per signal")
+    print(f"  Lev buy  : min({args.buy_pct*100:.0f}%, "
+          f"{max(1-args.alloc_base,0)*100:.0f}% (1-base) of portfolio, cash) per signal")
     if args.cash_yield:
         print(f"  Cash     : earns ^IRX T-bill rate while idle")
     print(f"{'='*60}")

@@ -1,5 +1,5 @@
 # Walk-forward command log — IWM 2015–2026 (exit MA200)
-# Generated: 2026-06-13
+# Generated: 2026-06-14
 #
 # Each block is the equivalent backtester.py call for that trade year.
 # Re-run any year with: python backtester.py [args]
@@ -61,5 +61,5 @@ python backtester.py --preset IWM --start 2025-01-01 --end 2025-12-31 \
 
 # Year 2026  (trained on 2003–2025)
 python backtester.py --preset IWM --start 2026-01-01 --end 2026-12-31 \
-  --entry-signal 1.05 --drop-level 0.015 --exit-signal 0.95 \
-  --buy-pct 0.3 --alloc-base 0.1 --alloc-x2 0.0 --alloc-x3 1.0
+  --entry-signal 1.04 --drop-level 0.015 --exit-signal 0.95 \
+  --buy-pct 0.5 --alloc-base 0.3 --alloc-x2 0.0 --alloc-x3 1.0

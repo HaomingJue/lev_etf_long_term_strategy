@@ -8,7 +8,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 27.4,
-    "train_worst_year": -17.03
+    "train_worst_year": -17.03,
+    "train_max_dd": -46.61,
+    "train_max_dd_real": -41.31,
+    "train_calmar": 0.663
   },
   "2016": {
     "entry_signal": 1.01,
@@ -19,7 +22,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 22.25,
-    "train_worst_year": -17.22
+    "train_worst_year": -17.22,
+    "train_max_dd": -40.0,
+    "train_max_dd_real": -38.87,
+    "train_calmar": 0.572
   },
   "2017": {
     "entry_signal": 1.02,
@@ -30,7 +36,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 22.77,
-    "train_worst_year": -22.42
+    "train_worst_year": -22.42,
+    "train_max_dd": -45.54,
+    "train_max_dd_real": -39.4,
+    "train_calmar": 0.578
   },
   "2018": {
     "entry_signal": 1.02,
@@ -41,7 +50,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 25.54,
-    "train_worst_year": -22.42
+    "train_worst_year": -22.42,
+    "train_max_dd": -45.54,
+    "train_max_dd_real": -39.4,
+    "train_calmar": 0.648
   },
   "2019": {
     "entry_signal": 1.02,
@@ -52,7 +64,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 23.0,
-    "train_worst_year": -17.03
+    "train_worst_year": -17.03,
+    "train_max_dd": -40.98,
+    "train_max_dd_real": -34.77,
+    "train_calmar": 0.661
   },
   "2020": {
     "entry_signal": 1.02,
@@ -63,7 +78,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 24.32,
-    "train_worst_year": -17.03
+    "train_worst_year": -17.03,
+    "train_max_dd": -40.98,
+    "train_max_dd_real": -34.77,
+    "train_calmar": 0.699
   },
   "2021": {
     "entry_signal": 1.03,
@@ -74,7 +92,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 22.18,
-    "train_worst_year": -17.03
+    "train_worst_year": -17.03,
+    "train_max_dd": -55.44,
+    "train_max_dd_real": -55.44,
+    "train_calmar": 0.4
   },
   "2022": {
     "entry_signal": 1.03,
@@ -85,7 +106,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 25.35,
-    "train_worst_year": -17.03
+    "train_worst_year": -17.03,
+    "train_max_dd": -55.44,
+    "train_max_dd_real": -55.44,
+    "train_calmar": 0.457
   },
   "2023": {
     "entry_signal": 1.02,
@@ -96,7 +120,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 21.14,
-    "train_worst_year": -29.84
+    "train_worst_year": -29.84,
+    "train_max_dd": -47.49,
+    "train_max_dd_real": -43.23,
+    "train_calmar": 0.489
   },
   "2024": {
     "entry_signal": 1.02,
@@ -107,7 +134,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 22.26,
-    "train_worst_year": -32.63
+    "train_worst_year": -32.63,
+    "train_max_dd": -49.74,
+    "train_max_dd_real": -49.74,
+    "train_calmar": 0.448
   },
   "2025": {
     "entry_signal": 1.02,
@@ -118,7 +148,10 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 23.88,
-    "train_worst_year": -32.63
+    "train_worst_year": -32.63,
+    "train_max_dd": -49.74,
+    "train_max_dd_real": -49.74,
+    "train_calmar": 0.48
   },
   "2026": {
     "entry_signal": 1.02,
@@ -129,6 +162,9 @@
     "alloc_x2": 0.0,
     "alloc_x3": 1.0,
     "train_cagr": 23.41,
-    "train_worst_year": -32.63
+    "train_worst_year": -32.63,
+    "train_max_dd": -49.74,
+    "train_max_dd_real": -49.74,
+    "train_calmar": 0.471
   }
 }

@@ -1,0 +1,19 @@
+Preset          : QQQ
+Period          : 2003-01-01 -> 2026-06-12
+Entry signal    : 1.04x MA200
+Exit signal     : 1.01x MA200
+Drop level      : 0.00%
+Buy pct         : 90% per signal
+Alloc base      : 10%  lev2 0%  lev3 100%
+Cost per trade  : 0.000%
+Cash yield      : off
+Ontario tax     : off
+
+Strategy CAGR   : 28.16%
+B&H CAGR (QQQ)  : 16.16%
+Strategy edge   : +12.01pp
+Final value     : $3,356,876.40
+Worst year      : -31.85%
+Max drawdown    : -51.75%
+Sharpe ratio    : 0.78
+Total trades    : 43

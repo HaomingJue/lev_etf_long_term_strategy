@@ -1,5 +1,5 @@
 # Walk-forward command log — SPY 2015–2026 (exit MA50)
-# Generated: 2026-06-13
+# Generated: 2026-06-14
 #
 # Each block is the equivalent backtester.py call for that trade year.
 # Re-run any year with: python backtester.py [args]
@@ -7,59 +7,59 @@
 # Year 2015  (trained on 2003–2014)
 python backtester.py --preset SPY --start 2015-01-01 --end 2015-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level -0.01 --exit-signal 0.99 \
-  --buy-pct 0.6 --alloc-base 0.3 --alloc-x2 0.75 --alloc-x3 0.25
+  --buy-pct 0.6 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2016  (trained on 2003–2015)
 python backtester.py --preset SPY --start 2016-01-01 --end 2016-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.93 \
-  --buy-pct 1.0 --alloc-base 0.1 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.9 --alloc-base 0.1 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2017  (trained on 2003–2016)
 python backtester.py --preset SPY --start 2017-01-01 --end 2017-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.93 \
-  --buy-pct 0.8 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2018  (trained on 2003–2017)
 python backtester.py --preset SPY --start 2018-01-01 --end 2018-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.93 \
-  --buy-pct 0.8 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2019  (trained on 2003–2018)
 python backtester.py --preset SPY --start 2019-01-01 --end 2019-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.93 \
-  --buy-pct 0.8 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2020  (trained on 2003–2019)
 python backtester.py --preset SPY --start 2020-01-01 --end 2020-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.005 --exit-signal 0.93 \
-  --buy-pct 0.8 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2021  (trained on 2003–2020)
 python backtester.py --preset SPY --start 2021-01-01 --end 2021-12-31 --exit-ma 50 \
-  --entry-signal 1.02 --drop-level 0.01 --exit-signal 0.93 \
-  --buy-pct 0.9 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --entry-signal 1.03 --drop-level 0.0 --exit-signal 0.93 \
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2022  (trained on 2003–2021)
 python backtester.py --preset SPY --start 2022-01-01 --end 2022-12-31 --exit-ma 50 \
-  --entry-signal 1.02 --drop-level 0.0025 --exit-signal 0.93 \
-  --buy-pct 0.1 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --entry-signal 1.03 --drop-level 0.0 --exit-signal 0.93 \
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2023  (trained on 2003–2022)
 python backtester.py --preset SPY --start 2023-01-01 --end 2023-12-31 --exit-ma 50 \
   --entry-signal 1.02 --drop-level 0.01 --exit-signal 0.93 \
-  --buy-pct 0.9 --alloc-base 0.3 --alloc-x2 1.0 --alloc-x3 0.0
+  --buy-pct 0.8 --alloc-base 0.2 --alloc-x2 1.0 --alloc-x3 0.0
 
 # Year 2024  (trained on 2003–2023)
 python backtester.py --preset SPY --start 2024-01-01 --end 2024-12-31 --exit-ma 50 \
-  --entry-signal 1.02 --drop-level 0.0025 --exit-signal 0.94 \
-  --buy-pct 0.1 --alloc-base 0.1 --alloc-x2 1.0 --alloc-x3 0.0
+  --entry-signal 1.02 --drop-level 0.01 --exit-signal 0.94 \
+  --buy-pct 0.7 --alloc-base 0.3 --alloc-x2 0.5 --alloc-x3 0.5
 
 # Year 2025  (trained on 2003–2024)
 python backtester.py --preset SPY --start 2025-01-01 --end 2025-12-31 --exit-ma 50 \
-  --entry-signal 1.02 --drop-level 0.0025 --exit-signal 0.94 \
-  --buy-pct 0.1 --alloc-base 0.1 --alloc-x2 1.0 --alloc-x3 0.0
+  --entry-signal 1.02 --drop-level 0.01 --exit-signal 0.94 \
+  --buy-pct 0.7 --alloc-base 0.3 --alloc-x2 0.5 --alloc-x3 0.5
 
 # Year 2026  (trained on 2003–2025)
 python backtester.py --preset SPY --start 2026-01-01 --end 2026-12-31 --exit-ma 50 \
-  --entry-signal 1.02 --drop-level 0.0025 --exit-signal 0.94 \
-  --buy-pct 0.1 --alloc-base 0.1 --alloc-x2 1.0 --alloc-x3 0.0
+  --entry-signal 1.02 --drop-level 0.01 --exit-signal 0.94 \
+  --buy-pct 0.7 --alloc-base 0.3 --alloc-x2 0.75 --alloc-x3 0.25

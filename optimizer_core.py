@@ -12,10 +12,11 @@ never drift apart again:
   - the parameter grid and grid builder
   - a parallel grid-search runner that returns one row per combo
 
-The production grid (72,000 combos) spans the full position-sizing range and
-probes below the dip threshold so the optimizer's choices are interior, not
-pinned at an artificial edge. The earlier, narrower study grids (v1/v2) are
-retained only so `--grid v1`/`v2` can reproduce historical results.
+The production grid spans the full position-sizing range and probes below the
+dip threshold so the optimizer's choices are interior, not pinned at an
+artificial edge. After pruning the buy_pct > 1 - alloc_base duplicates (see
+build_grid) it realizes 61,200 combos. The earlier, narrower study grids
+(v1/v2) are retained only so `--grid v1`/`v2` can reproduce historical results.
 """
 
 import itertools
@@ -102,15 +103,23 @@ DEFAULT_GRID = "v3"
 def build_grid(grid_version: str = DEFAULT_GRID):
     """All valid (entry, drop, exit, buy, alloc_base, alloc_x2) combos.
 
-    Constraint: exit_signal < entry_signal — you can't place the exit
-    threshold above the level you armed at.
+    Constraints:
+      - exit_signal < entry_signal — you can't place the exit threshold above
+        the level you armed at.
+      - buy_pct <= 1 - alloc_base — the engine caps a single lev buy at
+        (1 - alloc_base) of the portfolio (the base weight is always reserved),
+        so any buy_pct > 1 - alloc_base is an exact DUPLICATE of
+        buy_pct = 1 - alloc_base. Pruning those duplicates keeps the grid free
+        of redundant combos that would otherwise distort median-based robustness
+        heatmaps and inflate the passing-combo counts. This is why the realized
+        grid is smaller than the raw entry×drop×exit×buy×base×x2 product.
     """
     ax = GRID_AXES[grid_version]
     return [(e, d, x, b, ab, ax2)
             for e, d, x, b, ab, ax2 in itertools.product(
                 ax["entry"], ax["drop"], ax["exit"],
                 ax["buy"], ax["base"], ax["x2"])
-            if x < e]
+            if x < e and b <= 1.0 - ab + 1e-9]
 
 
 # ──────────────────────────────────────────────────────────────
@@ -187,6 +196,12 @@ def load_full_data(preset: str, end: str = DEFAULT_END) -> pd.DataFrame:
 def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
                  exit_ma: int = 200):
     ax3  = 1.0 - ax2
+    # The base sleeve is rebalanced to its target weight `ab` on EVERY trade
+    # event: topped up on every buy if below target, trimmed on every exit if
+    # above. The lev buy is capped so a single signal never deploys more than
+    # (1 - ab) of the portfolio into leverage — the base weight is always
+    # reserved (e.g. base 20% ⇒ a lev buy can never exceed 80% of the total).
+    eff_buy = min(buy, max(1.0 - ab, 0.0))
     f    = df.iloc[0]
     nb   = df["base"].values / f["base"]
     n2   = df["lev2"].values / f["lev2"]
@@ -196,7 +211,7 @@ def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
 
     cash = CAPITAL
     s_b = s_2 = s_3 = 0.0
-    armed = bf = bt = False
+    armed = False
     port  = np.empty(len(df))
     port[0] = CAPITAL
 
@@ -206,17 +221,15 @@ def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
             port[i] = port[i-1]
             continue
 
-        vb = s_b * nb[i]; v2 = s_2 * n2[i]; v3 = s_3 * n3[i]
-        tot = cash + vb + v2 + v3
+        v2 = s_2 * n2[i]; v3 = s_3 * n3[i]
 
         if nb[i] < ma_exit[i] * exit_ and (s_2 > 0 or s_3 > 0):
             cash += v2 + v3
             s_2 = s_3 = 0.0
-            if not bt and ab > 0:
-                vb  = s_b * nb[i]; tot = cash + vb; tgt = tot * ab
+            if ab > 0:                       # trim base back down to target
+                vb = s_b * nb[i]; tgt = (cash + vb) * ab
                 if vb > tgt + 0.01:
                     s_b -= (vb - tgt) / nb[i]; cash += vb - tgt
-                bt = True
             armed = False
         else:
             if not armed and nb[i] > ma_arm[i] * entry:
@@ -224,13 +237,12 @@ def opt_backtest(df: pd.DataFrame, entry, drop, exit_, buy, ab, ax2,
             d = (nb[i-1] - nb[i]) / nb[i-1] if nb[i-1] > 0 else 0.0
             if armed and nb[i] > ma_arm[i] * entry and d >= drop and cash > 0.01:
                 tot = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
-                if not bf and ab > 0:
+                if ab > 0:                   # top base up to target first
                     sp = min(max(tot * ab - s_b * nb[i], 0), cash)
                     if sp > 0.01:
                         s_b += sp / nb[i]; cash -= sp
-                    bf = True
                     tot = cash + s_b * nb[i] + s_2 * n2[i] + s_3 * n3[i]
-                lev = min(buy * tot, cash)
+                lev = min(eff_buy * tot, cash)
                 if lev > 0.01:
                     if ax2 > 0: s_2 += lev * ax2 / n2[i]
                     if ax3 > 0: s_3 += lev * ax3 / n3[i]
