@@ -423,3 +423,61 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 - `results/README_DATA_LEDGER.md` — every figure in this paper with its source file
 
 **Output filename tags:** `_ma{N}` (non-200 exit), `_sel{rule}` (non-CAGR selection, e.g. `_selmaxdd50`, `_selbuycap50`, `_selcalmar`), `_dd{N}` (non-40% filter), `_cy` (cash yield). Variants never collide.
+
+---
+
+## Appendix — full reference (expand when you forget a detail)
+
+<details>
+<summary><b>A · Parameter glossary — what every knob means</b></summary>
+
+Every strategy is just these eight numbers. Arming (deciding we're in an uptrend) **always** uses MA200; only the *exit* MA is tunable.
+
+| Parameter | CLI flag | Meaning | Range tested | QQQ / SPY value |
+|---|---|---|---|---|
+| `entry_signal` | `--entry-signal` | **Arm** (allow buying) when price > `MA200 × entry`. Higher = wait for a stronger uptrend. | 1.01–1.06 | 1.04 / 1.02 |
+| `drop_level` | `--drop-level` | Once armed, a single-day fall ≥ this fires a buy. `0` = buy any non-up day; **negative** = buy even on a mildly-up day. | −1.0% … +2.0% | 0.0% / 0.25% |
+| `exit_signal` | `--exit-signal` | **Sell all leverage** when price < `exit_MA × exit`. Lower = exit later (ride deeper). | 0.93–1.02 | 1.01 / 0.93–0.94 |
+| `buy_pct` | `--buy-pct` | Fraction of the portfolio deployed per buy (capped by available cash). | 10%–100% | 100% / 20% |
+| `alloc_base` | `--alloc-base` | One-time un-leveraged base-ETF cushion, filled on the first buy of a cycle and trimmed back on the first exit. | 0%–30% | 0% / 0% |
+| `alloc_x2` | `--alloc-x2` | Share of the **leveraged tranche** put in the 2× ETF (QLD/SSO). | 0%–100% | — |
+| `alloc_x3` | `--alloc-x3` | Share of the leveraged tranche in the 3× ETF (TQQQ/UPRO). `alloc_x2 + alloc_x3 = 1`. | 0%–100% | 100% / 100% |
+| `exit_ma` | `--exit-ma` | MA period for the **exit** signal only (50 / 100 / 200). Arming always uses MA200. | 50 / 100 / 200 | 200 / 50 |
+
+</details>
+
+<details>
+<summary><b>B · Every shipped variant's exact parameters (so you never re-derive them)</b></summary>
+
+Full-history (2003 → 2026) optimizer picks — these match the §4 backtests and the chart filenames. The **live trade-year row in §1** is re-optimized each January and has been essentially identical; trade that one when it differs.
+
+| Variant | entry | drop | exit | buy% | base | x2 | x3 | exit MA | Holds |
+|---|---|---|---|---|---|---|---|---|---|
+| **QQQ Aggressive — Max-CAGR** | 1.04 | 0.0% | 1.01 | 100% | 0% | 0% | 100% | MA200 | TQQQ (3×) |
+| **QQQ Balanced — DD-Capped** | 1.04 | 0.0% | 1.01 | 90% | 20% | 0% | 100% | MA200 | QQQ + TQQQ (3×) |
+| **QQQ Conservative — Calmar** | 1.04 | 0.0% | 1.01 | 80% | 30% | 100% | 0% | MA200 | QQQ + QLD (2×) |
+| **SPY Balanced — Buy-Capped** | 1.02 | 0.25% | 0.93 | 20% | 0% | 0% | 100% | MA50 | UPRO (3×) |
+
+*To reproduce any row:* `python backtester.py --preset QQQ --entry-signal 1.04 --drop-level 0.0 --exit-signal 1.01 --buy-pct 1.0 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200`. Swap in the row's values (SPY uses `--exit-ma 50`).
+
+</details>
+
+<details>
+<summary><b>C · File-by-file reference — what each file does, how to run it, where it writes</b></summary>
+
+| File | What it is | Typical command | Output |
+|---|---|---|---|
+| `optimizer_core.py` | **The engine.** Data download + synthetic-NAV/MER model, the backtest loop, the −40% calendar-year DD filter, real-period maxDD, the grid, and the parallel search. Single source of truth — imported by everything else, not run directly. | *(imported)* | — |
+| `optimizer.py` | Grid-search **one** training window, keeping every combo (the raw return/risk landscape). | `python optimizer.py --preset QQQ --exit-ma 200 --no-show` | `results/optimizer/{preset}/` |
+| `walkforward.py` | **The honest test.** Re-runs the grid each year on an expanding window, freezes the pick, backtests the schedule. Saves every window's full grid so any rule re-derives in seconds (`--from-grids`). | `python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar` | `results/walkforward/` (+ `grids/`) |
+| `backtester.py` | **Authoritative single-config run** — full precision, with a trade log, transaction costs, T-bill cash-yield, and Ontario tax. The source of any cited CAGR/maxDD/trade count. | `python backtester.py --preset QQQ --entry-signal 1.04 …` | `results/backtester/{preset}/` |
+| `crisis_analysis.py` | **Trade-frequency stats (§1) + per-crisis comparison figures (§8).** Counts buys/exits per variant and plots each crisis. | `python crisis_analysis.py` | `results/crisis/` |
+| `param_heatmap.py` | Parameter robustness heatmaps (§4) — shows the optimum sits on a broad plateau, not a fragile spike. | `python param_heatmap.py` | `results/optimizer/param_robustness_heatmap.png` |
+| `run_backtests.py` | Runs the backtester validation **suite** for each optimizer's top combo (full history, +cash-yield, +Ontario tax, 2× comparison, and the four crisis windows). | `python run_backtests.py` | `results/backtester/{preset}/` |
+| `run_build.py` | Sequential driver that **reproduces the entire result set** (optimizers + multi-select walk-forwards). One parent process so it's easy to stop. | `python run_build.py` | all of `results/` |
+| `results/README_DATA_LEDGER.md` | Working scratch: every figure and number in this paper mapped to its source file. | *(read)* | — |
+| **`daily_signal/`** (companion repo) | Runs the **identical engine** (`optimizer_core.py` is vendored there) to send live BUY/SELL/HOLD Telegram signals 3×/day and re-optimize every January. | see its README | `config/params.json` |
+
+**Common flags (most tools):** `--no-show` (don't pop plot windows), `--cash-yield` (accrue T-bill interest on idle cash), `--tax-ontario --salary N` (model an Ontario taxable account), `--preset {QQQ,SPY,IWM}`, `--exit-ma {50,100,200}`.
+
+</details>
