@@ -44,6 +44,19 @@ The strategy never holds a leveraged ETF unconditionally: it buys dips only whil
 
 All three beat QQQ buy-and-hold (19.4% walk-forward) decisively. **The Balanced variant is the default recommendation:** capping the in-sample drawdown at 50% drops the single most overfit combo (buy 100%, no cushion) in favour of a near-identical one (buy 90% + a 20% base cushion) that earns *more* out-of-sample (34.2% vs 33.7%) at the same worst year and a shallower in-sample drawdown. If you want genuinely shallow drawdowns, the Conservative 2× variant roughly halves the worst year for ~7pp less CAGR.
 
+### SPY — a secondary, higher-risk satellite
+
+SPY also beats buy-and-hold out-of-sample, but **only** on its Balanced (buy-cap, MA50) variant, and the edge is thinner with deeper drawdowns than QQQ:
+
+| | **SPY · Balanced — buy-cap** (the one to trade) | SPY · Conservative — 2× |
+|---|---|---|
+| Selection rule | top CAGR with buy ≤ 50%, **MA50** exit | top Calmar, MA50 exit |
+| SPY walk-forward CAGR (2015–2026) | **16.7%** | 14.0% |
+| vs SPY buy-and-hold (13.7%) | **+3.0pp** | +0.3pp |
+| Worst year | −44.0% | **−22.9%** |
+
+Trade the **Balanced (buy-cap)** variant if you want SPY exposure; the Conservative 2× only matches B&H, at a gentler ride. SPY's Highest-CAGR and maxDD-capped rules *fail* out-of-sample (§5, §7) — the structural buy-cap on the faster MA50 exit is the single lever that works. **QQQ remains the stronger, lower-stress engine; treat SPY as a satellite, and IWM is not recommended at all.**
+
 ### Live parameters for calendar year 2026
 
 Trained on 2003-01-02 → 2025-12-31. A row labeled *year N* was trained on data through Dec 31 of *N−1* and is traded during *N*.
@@ -286,22 +299,30 @@ Expanding 6.2% vs 9.6% B&H — and *every* selection rule fails (maxDD≤50% 5.2
 
 ## 8. Drawdown and tail risk
 
-> **Directly answering "would this prevent an 80% drawdown?" — No in-sample method here guarantees it; only lower leverage meaningfully shrinks it.**
+> **Directly answering "would this prevent an 80% drawdown?" — For QQQ's aggressive 3× config, no: only lower leverage shrinks that tail. But SPY's recommended buy-cap config is structurally far more tail-resistant, because it caps exposure at buy ≤ 20% — the same structural lever that lets it beat B&H (§6) also bounds its tail.**
 
-Crisis backtests of the QQQ Highest-CAGR config (3×) and the Conservative config (2×):
+Crisis backtests of each index's headline config — **QQQ Highest-CAGR** (3×, buy 100%, MA200) and **SPY Balanced** (buy-cap, 3× but buy 20%, MA50) — with QQQ's Conservative 2× for reference:
 
-| Period | Highest-CAGR (3×) | Conservative (2×) |
-|---|---|---|
-| Dot-com 2000–2003 (100% synthetic) | CAGR −26.3%, worst −84.9%, **maxDD −92.1%** | CAGR −10.1%, worst −55.4%, **maxDD −76.8%** |
-| GFC 2007–2010 | +24.7%, maxDD −38.8% | — |
-| COVID 2019–2021 | +69.6%, Sharpe 1.20 | — |
-| 2022 rate-hike 2021–2023 | +39.5% | — |
+| Period | QQQ Highest (3×, buy 100%) | QQQ Conservative (2×) | SPY buy-cap (buy 20%, MA50) |
+|---|---|---|---|
+| Dot-com 2000–2003 (100% synthetic) | CAGR −26.3%, **maxDD −92.1%** | CAGR −10.1%, **maxDD −76.8%** | CAGR +2.5%, **maxDD −43.9%** |
+| GFC 2007–2010 | +24.7%, maxDD −38.8% | — | +9.0%, maxDD −51.6% |
+| COVID 2019–2021 | +69.6%, Sharpe 1.20 | — | +53.8% |
+| 2022 rate-hike 2021–2023 | +39.5% | — | +20.3% |
+| Full history 2003–2026 maxDD | **−55.9%** | −34.2% | **−51.6%** |
+
+| QQQ Highest-CAGR (3×) — 2003–2026 | SPY Balanced · buy-cap (MA50) — 2003–2026 |
+|---|---|
+| ![QQQ equity](results/backtester/QQQ/QQQ_2003-2026_entry1.04_exit1.01_drop0.0_buy1.0_b0_x20_ma200.png) | ![SPY equity](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.93_drop0.0025_buy0.2_b0_x20_ma50.png) |
+| ![QQQ drawdown](results/backtester/QQQ/QQQ_2003-2026_entry1.04_exit1.01_drop0.0_buy1.0_b0_x20_ma200_drawdown.png) | ![SPY drawdown](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.93_drop0.0025_buy0.2_b0_x20_ma50_drawdown.png) |
+
+*Top row: equity curves (log scale). Bottom row: drawdown (underwater) curves. Even the configs that beat buy-and-hold spend years 30–50% below their prior peak — the lived cost of leverage. The QQQ 3× curve is the more violent ride; the SPY buy-cap curve is shallower precisely because only 20% is deployed per dip.*
 
 Three honest points:
 
-1. **The strategy survives ordinary bears well** (it side-steps the GFC and excels in COVID/2022) because the MA200 exit moves it to cash. The catastrophic case is a *sustained, choppy secular bear* (dot-com), where repeated arm→buy→whipsaw-out cycles bleed capital, amplified by leverage.
+1. **Both survive ordinary bears well** (they side-step the GFC and excel in COVID/2022) because the MA exit moves them to cash. The catastrophic case is a *sustained, choppy secular bear* (dot-com), where repeated arm→buy→whipsaw-out cycles bleed capital, amplified by leverage.
 2. **The 80%+ tail is outside all training data.** The optimizer trains on 2003-onward, which contains no dot-com-magnitude secular bear, so neither a selection rule nor an in-sample maxDD cap is calibrated against it.
-3. **Leverage is the only effective lever on the tail.** Moving from 3× to 2× (the Conservative rule) cut the synthetic dot-com drawdown from −92% to −77%. To bound it further would require 2× exclusively, an explicit live circuit-breaker on portfolio drawdown, or simply not trading the strategy through a confirmed multi-year secular bear.
+3. **Only *structural* exposure limits the tail — and SPY's recommended config proves it.** Moving QQQ from 3× to 2× cut the synthetic dot-com drawdown from −92% to −77%; SPY's buy-cap (only 20% deployed per dip) holds the same dot-com tail to **−44%** while still beating B&H out-of-sample. To bound QQQ's tail further would require lower leverage, a live circuit-breaker on portfolio drawdown, or simply not trading through a confirmed multi-year secular bear.
 
 ---
 
