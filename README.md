@@ -337,6 +337,20 @@ Each cell is **`period return · max drawdown`** — both measured *within that 
 
 Three patterns jump out before we even look at the charts: (1) the QQQ variants *side-step or profit from* every crisis **except** the dot-com secular bear, while **QQQ buy-and-hold loses in three of the four** (−61% dot-com, −2.5% GFC, −3.5% in 2022) — the MA exit is what turns those losses into gains. (2) The **Conservative 2×** column has the shallowest *strategy* drawdown in every crisis, the direct payoff for giving up ~7pp of CAGR. (3) SPY Balanced beats SPY buy-and-hold in the secular crash (dot-com +10.8% vs −19.2%) and COVID, but the grind-down bears (GFC, 2022) expose its deep drawdowns — and note SPY buy-and-hold's own drawdowns (−47% to −55%) are nearly as deep as the leveraged strategy's, because the 20% buy-cap keeps real exposure low.
 
+### The timing rule vs. just holding the leveraged ETF
+
+The 1× columns above ask *"should I index instead?"* This table asks the sharper question — *"does the MA timing rule actually earn its keep, or could I just buy and hold the 3× ETF?"* QQQ Aggressive is full 3× at buy 100%, so it differs from holding **TQQQ** by *nothing but the timing rule* — a clean isolation. (SPY Balanced only deploys 20%, so its row is "recommended SPY strategy vs holding **UPRO**," not a pure leverage match.)
+
+| Crisis (window)<br><sub>cells = **total return · max drawdown**</sub> | QQQ Aggressive (3×, **timed**) | Hold TQQQ (3×, **no timing**) | SPY Balanced (**timed**) | Hold UPRO (3×, **no timing**) |
+|---|---|---|---|---|
+| **Dot-com** 2000–2003 | −70.7% · −92.1% | **−100.0% · −100.0%** | +10.8% · −43.9% | −85.0% · −94.2% |
+| **GFC** 2007–2009 | +64.7% · −38.8% | −80.2% · −96.9% | +4.7% · −51.5% | −90.7% · −97.5% |
+| **COVID** 2020 | +103.9% · −51.8% | +100.1% · −69.9% | +22.6% · −41.9% | +7.2% · −76.8% |
+| **2022 rate-hike** Nov'21–mid'23 | +8.9% · −38.0% | −46.9% · −81.7% | −16.3% · −48.5% | −31.3% · −63.9% |
+| **Full history 2003–2026** | **29.1% CAGR · −55.9% maxDD** | 24.6% CAGR · −96.9% maxDD | **24.4% CAGR · −51.5% maxDD** | 14.8% CAGR · −97.5% maxDD |
+
+This is the strategy's real reason to exist. Holding the leveraged ETF straight through is a **wipeout in every decisive bear** — TQQQ −100% in the dot-com bust, −80% in the GFC (a −97% drawdown), −47% in 2022 — because daily-reset volatility decay plus an un-dodged crash compound against you. And it isn't just a risk story: over the full 23 years the **timed strategy earns *more* than buy-and-hold of the same leveraged ETF** (QQQ 29.1% vs 24.6%, SPY 24.4% vs 14.8% CAGR) at **roughly half the max drawdown** (−56% vs −97%). The MA exit adds return *and* cuts risk — the rare free lunch, and the entire point of not just holding TQQQ.
+
 ### Dot-com crash, 2000–2003 — the one case the strategy can't beat
 
 ![Dot-com crisis](results/crisis/crisis_dotcom.png)

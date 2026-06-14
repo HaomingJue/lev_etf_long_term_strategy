@@ -221,6 +221,17 @@ def crisis_figures(data: dict) -> str:
                      label=f"{preset} buy & hold (1×)")
             rows.append((cr["title"], f"{preset} buy & hold (1×)",
                          (base[-1]/base[0]-1)*100, maxdd(base)*100, 0))
+        # leveraged buy & hold (hold the 3x ETF straight through — no timing
+        # rule). Isolates the MA timing from the leverage. Stats only; plotting
+        # it would crush the chart's y-scale (it can fall ~99%).
+        for preset, etf in (("QQQ", "TQQQ"), ("SPY", "UPRO")):
+            df = data[preset]
+            win = df[(df.index >= cr["start"]) & (df.index <= cr["end"])]
+            if len(win) < 30:
+                continue
+            l3 = win["lev3"].values
+            rows.append((cr["title"], f"{preset} hold {etf} (3×, no timing)",
+                         (l3[-1]/l3[0]-1)*100, maxdd(l3)*100, 0))
         ax1.set_yscale("log")
         ax1.set_title(f"{cr['title']} — equity (start = 100, log scale)")
         ax1.set_ylabel("Value (start = 100)")
