@@ -209,15 +209,18 @@ def crisis_figures(data: dict) -> str:
             ax2.plot(win.index, dd, color=v["color"], lw=v["lw"])
             rows.append((cr["title"], v["label"],
                          (port[-1]/port[0]-1)*100, maxdd(port)*100, nb+nx))
-        # buy & hold references (base index, normalized)
+        # buy & hold references (base index, normalized) + stats
         for preset, c in (("QQQ", "#7f8c8d"), ("SPY", "#bdc3c7")):
             df = data[preset]
             win = df[(df.index >= cr["start"]) & (df.index <= cr["end"])]
             if len(win) < 30:
                 continue
-            bh = 100.0*win["base"].values/win["base"].values[0]
+            base = win["base"].values
+            bh = 100.0*base/base[0]
             ax1.plot(win.index, bh, color=c, lw=1.3, ls="--",
                      label=f"{preset} buy & hold (1×)")
+            rows.append((cr["title"], f"{preset} buy & hold (1×)",
+                         (base[-1]/base[0]-1)*100, maxdd(base)*100, 0))
         ax1.set_yscale("log")
         ax1.set_title(f"{cr['title']} — equity (start = 100, log scale)")
         ax1.set_ylabel("Value (start = 100)")
