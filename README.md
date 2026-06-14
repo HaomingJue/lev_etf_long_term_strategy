@@ -333,7 +333,7 @@ Each cell is **`period return · max drawdown`** — both measured *within that 
 | **2022 rate-hike** Nov'21–mid'23 | +8.9% · −38.0% | +7.0% · −35.9% | +4.7% · **−26.7%** | _−3.5% · −35.1%_ | −16.3% · −48.5% | _−1.0% · −24.5%_ |
 | Full history 2003–2026 maxDD | −55.9% | −49.7% | **−34.2%** | _−53.4%_ | −51.5% | _−55.2%_ |
 
-*Buy-and-hold (1×) columns in italics are the plain index over the same window, for comparison.*
+*The italic **buy & hold (1×)** columns are the plain index over the same window — the benchmark answering "would I just have been better off holding the index?" The strategy clears it comfortably in the GFC, COVID, and 2022 (and over the full record wins by a landslide — §7: 33.7% vs 19.4% CAGR). The **one** place it fails the benchmark is the dot-com secular bear, where the 3× variants (−71% / −65%) trail even 1× QQQ B&H (−61.5%) — the documented worst case, not hidden.*
 
 Three patterns jump out before we even look at the charts: (1) the QQQ variants *side-step or profit from* every crisis **except** the dot-com secular bear, while **QQQ buy-and-hold loses in three of the four** (−61% dot-com, −2.5% GFC, −3.5% in 2022) — the MA exit is what turns those losses into gains. (2) The **Conservative 2×** column has the shallowest *strategy* drawdown in every crisis, the direct payoff for giving up ~7pp of CAGR. (3) SPY Balanced beats SPY buy-and-hold in the secular crash (dot-com +10.8% vs −19.2%) and COVID, but the grind-down bears (GFC, 2022) expose its deep drawdowns — and note SPY buy-and-hold's own drawdowns (−47% to −55%) are nearly as deep as the leveraged strategy's, because the 20% buy-cap keeps real exposure low.
 
