@@ -175,10 +175,10 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
     schedules = {s: {} for s in selects}
 
     grids_dir = Path(__file__).parent / "results" / "walkforward" / "grids" / preset
-    if save_grids and not from_grids:
+    if save_grids:
         grids_dir.mkdir(parents=True, exist_ok=True)
 
-    src = ("cached grids" if from_grids
+    src = ("cached grids (optimizer re-run for any missing window)" if from_grids
            else f"{len(grid):,} combos searched ONCE per window")
     print(f"\nPhase 1 — building param schedule(s) ({preset}, "
           f"{start_year}–{end_year}, exit_ma=MA{exit_ma}, "
@@ -191,12 +191,12 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
         gpath = grids_dir / (f"{preset}_ma{exit_ma}_train2003-{train_end}"
                              f"_results.csv.gz")
 
-        if from_grids:
-            if not gpath.exists():
-                sys.exit(f"  --from-grids: missing {gpath}. Run once without "
-                         f"--from-grids to build the grids first.")
+        if from_grids and gpath.exists():
             res = pd.read_csv(gpath)
         else:
+            if from_grids:
+                print(f"  {trade_yr}: no cached grid ({gpath.name}) — "
+                      f"running optimizer for this window")
             df_train = df_full[df_full.index.year <= train_end]
             if len(df_train) < 250:
                 print(f"  {trade_yr}: insufficient training data — skipped")
@@ -596,11 +596,13 @@ def _parse_args():
                         "return/drawdown landscape can be browsed and any "
                         "selection rule re-derived offline).")
     p.add_argument("--from-grids", action="store_true",
-                   help="Skip the grid search entirely and re-derive the "
-                        "schedule(s) from the per-window grids saved earlier in "
-                        "results/walkforward/grids/. Materializes any --select "
-                        "rule's full walk-forward (schedule + charts + CSVs) in "
-                        "seconds. Errors if a window's grid is missing.")
+                   help="Re-derive the schedule(s) from the per-window grids "
+                        "saved earlier in results/walkforward/grids/ instead of "
+                        "searching. Materializes any --select rule's full "
+                        "walk-forward (schedule + charts + CSVs) in seconds. Any "
+                        "window whose grid is missing falls back to running the "
+                        "optimizer for that window (and caches it unless "
+                        "--no-save-grids).")
     p.add_argument("--max-dd", type=float, default=1.0,
                    help="Hard max-drawdown ceiling for the Phase 1 filter "
                         "(fraction, e.g. 0.50 rejects any combo whose real-period "
