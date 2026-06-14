@@ -50,10 +50,23 @@ KEY findings:
 - SPY's only OOS-positive lever is the STRUCTURAL buy-cap (≤50%), reproducing the
   conservative sizing of the original study — and it still only edges B&H.
 
-## Crisis stress tests (QQQ buy100 3× Highest, vs 2× Conservative)
-- Dot-com 2000–2003 (100% synthetic): 3× CAGR −26.3%, worst −84.9%, maxDD −92.1%;
-  2× maxDD −76.8% → leverage is the only tail lever.
-- GFC 2007–2010: +24.7%, maxDD −38.8%. COVID 2019–2021: +69.6%. 2022 hike 2021–2023: +39.5%.
+## Crisis stress tests — README §8 (crisis_analysis.py → results/crisis/)
+Period return · maxDD within each window, all 3 QQQ variants + SPY Balanced (buy-cap):
+- Dot-com 2000–2003 (100% synthetic): Aggr −70.7% · −92.1% | Bal −64.7% · −89.5% |
+  Cons(2×) −36.8% · −76.6% | SPY-bal +10.8% · −43.9%  → leverage is the tail lever; buy-cap survives.
+- GFC 2007–2009: Aggr +64.7% · −38.8% | Bal +52.8% · −39.7% | Cons +38.5% · −32.4% | SPY +4.7% · −51.5%.
+- COVID 2020: Aggr +103.9% · −51.8% | Bal +97.0% · −45.5% | Cons +65.0% · −32.6% | SPY +22.6% · −41.9%.
+- 2022 hike Nov'21–mid'23: Aggr +8.9% · −38.0% | Bal +7.0% · −35.9% | Cons +4.7% · −26.7% | SPY −16.3% · −48.5%.
+Figures: results/crisis/crisis_{dotcom,gfc,covid,ratehike}.png (2-panel equity log + underwater).
+
+## Trade frequency — README §1 (crisis_analysis.py, cross-checks backtester Total trades)
+Full history 2003–2026 (~23.4 yr): QQQ Aggr 43 (22 buy/21 exit, 1.8/yr) | Bal 50 (2.1/yr) |
+Cons 47 (2.0/yr) | SPY-bal 59 (49 buy/10 exit, 2.5/yr). Busiest single year ever = 5 (SPY 7 in 2020).
+→ "~2 trades/year, mostly HOLD" message in §1 + daily_signal README.
+
+## Naming (2026-06-13/14): tiers = Aggressive (cagr) / Balanced (maxdd50 QQQ, buycap50 SPY) / Conservative (calmar).
+Display labels only; internal keys (QQQ_highest_cagr etc.) + select rule "cagr" unchanged. Applied to
+both lev_etf + daily_signal READMEs/code. §3–§7 keep "highest-CAGR" as the *rule* name (ties to Aggressive in §6).
 
 ## Heatmap
 - results/optimizer/param_robustness_heatmap.png (param_heatmap.py; QQQ MA200 + SPY MA100)

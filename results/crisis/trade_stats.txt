@@ -1,0 +1,7 @@
+TRADE FREQUENCY — full history (2003-01-01 → data end)
+
+Variant                                     yrs  buys  exits  trades  tr/yr            busiest yr
+QQQ Aggressive — Max-CAGR (3×, buy 100%)   23.4    22     21      43    1.8       2004 (4 trades)
+QQQ Balanced — DD-Capped (3×, buy 90% + 20% base) 23.4    29     21      50    2.1       2019 (5 trades)
+QQQ Conservative — Calmar (2×, buy 80% + 30% base) 23.4    26     21      47    2.0       2023 (5 trades)
+SPY Balanced — Buy-Capped (3× buy 20%, MA50) 23.4    49     10      59    2.5       2020 (7 trades)

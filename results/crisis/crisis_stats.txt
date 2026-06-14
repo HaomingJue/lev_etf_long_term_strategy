@@ -1,0 +1,17 @@
+                                 crisis                                            variant  period_ret_%  maxDD_%  trades
+  Dot-com crash & aftermath (2000–2003)           QQQ Aggressive — Max-CAGR (3×, buy 100%)         -70.7    -92.1       9
+  Dot-com crash & aftermath (2000–2003)  QQQ Balanced — DD-Capped (3×, buy 90% + 20% base)         -64.7    -89.5       9
+  Dot-com crash & aftermath (2000–2003) QQQ Conservative — Calmar (2×, buy 80% + 30% base)         -36.8    -76.6      10
+  Dot-com crash & aftermath (2000–2003)       SPY Balanced — Buy-Capped (3× buy 20%, MA50)          10.8    -43.9      11
+    Global Financial Crisis (2007–2009)           QQQ Aggressive — Max-CAGR (3×, buy 100%)          64.7    -38.8       5
+    Global Financial Crisis (2007–2009)  QQQ Balanced — DD-Capped (3×, buy 90% + 20% base)          52.8    -39.7       5
+    Global Financial Crisis (2007–2009) QQQ Conservative — Calmar (2×, buy 80% + 30% base)          38.5    -32.4       5
+    Global Financial Crisis (2007–2009)       SPY Balanced — Buy-Capped (3× buy 20%, MA50)           4.7    -51.5      13
+        COVID crash & V-recovery (2020)           QQQ Aggressive — Max-CAGR (3×, buy 100%)         103.9    -51.8       3
+        COVID crash & V-recovery (2020)  QQQ Balanced — DD-Capped (3×, buy 90% + 20% base)          97.0    -45.5       3
+        COVID crash & V-recovery (2020) QQQ Conservative — Calmar (2×, buy 80% + 30% base)          65.0    -32.6       3
+        COVID crash & V-recovery (2020)       SPY Balanced — Buy-Capped (3× buy 20%, MA50)          22.6    -41.9      12
+2022 rate-hike bear (Nov 2021–mid 2023)           QQQ Aggressive — Max-CAGR (3×, buy 100%)           8.9    -38.0       5
+2022 rate-hike bear (Nov 2021–mid 2023)  QQQ Balanced — DD-Capped (3×, buy 90% + 20% base)           7.0    -35.9       5
+2022 rate-hike bear (Nov 2021–mid 2023) QQQ Conservative — Calmar (2×, buy 80% + 30% base)           4.7    -26.7       5
+2022 rate-hike bear (Nov 2021–mid 2023)       SPY Balanced — Buy-Capped (3× buy 20%, MA50)         -16.3    -48.5      14
