@@ -53,6 +53,8 @@ The strategy never holds a leveraged ETF unconditionally: it buys dips only whil
 
 > **You barely trade.** Every variant acts only **~2 times a year** — across the full 23-year history the Aggressive variant placed **43** orders total (22 buys, 21 exits ≈ one round-trip a year), Balanced 50, Conservative 47. The busiest single calendar year ever was **5 trades**. You are in cash or simply holding on ~99% of days; this is a low-turnover, tax-efficient rule you check daily but rarely act on — *not* active trading. (Computed by [`crisis_analysis.py`](crisis_analysis.py); cross-checks `backtester.py`'s trade log.)
 
+> **"buy 90% + 20% base" doesn't sum to 110% — `buy_pct` is capped by cash.** Each buy deploys `min(buy_pct × total, cash_on_hand)` into leverage, *after* the one-time base cushion is funded. So Balanced puts 20% in base ($2k of $10k), leaving $8k, then `min(90%, 80% of cash)` = 80% into TQQQ → **20% base + 80% leverage = 100% invested, never more.** You're never over 100% deployed: the 3× lives *inside* the ETF (you don't borrow). `buy_pct` is just the per-signal sizing ceiling — high values mean "deploy all remaining cash on the first dip," low values (SPY's 20%) genuinely scale in over several dips.
+
 All three beat QQQ buy-and-hold (19.4% walk-forward) decisively. **The Balanced variant is the default recommendation:** capping the in-sample drawdown at 50% drops the single most overfit combo (buy 100%, no cushion) in favour of a near-identical one (buy 90% + a 20% base cushion) that earns *more* out-of-sample (34.2% vs 33.7%) at the same worst year and a shallower in-sample drawdown. If you want genuinely shallow drawdowns, the Conservative 2× variant roughly halves the worst year for ~7pp less CAGR.
 
 ### SPY — a secondary, higher-risk satellite
@@ -438,7 +440,7 @@ Every strategy is just these eight numbers. Arming (deciding we're in an uptrend
 | `entry_signal` | `--entry-signal` | **Arm** (allow buying) when price > `MA200 × entry`. Higher = wait for a stronger uptrend. | 1.01–1.06 | 1.04 / 1.02 |
 | `drop_level` | `--drop-level` | Once armed, a single-day fall ≥ this fires a buy. `0` = buy any non-up day; **negative** = buy even on a mildly-up day. | −1.0% … +2.0% | 0.0% / 0.25% |
 | `exit_signal` | `--exit-signal` | **Sell all leverage** when price < `exit_MA × exit`. Lower = exit later (ride deeper). | 0.93–1.02 | 1.01 / 0.93–0.94 |
-| `buy_pct` | `--buy-pct` | Fraction of the portfolio deployed per buy (capped by available cash). | 10%–100% | 100% / 20% |
+| `buy_pct` | `--buy-pct` | Per-buy deployment ceiling: each buy puts `min(buy_pct × total, cash)` into leverage. **Capped by cash**, so `buy_pct + alloc_base` can read past 100% on paper (e.g. 90% + 20%) yet still total ≤100% invested — the cushion is funded first, leverage gets the rest. | 10%–100% | 100% / 20% |
 | `alloc_base` | `--alloc-base` | One-time un-leveraged base-ETF cushion, filled on the first buy of a cycle and trimmed back on the first exit. | 0%–30% | 0% / 0% |
 | `alloc_x2` | `--alloc-x2` | Share of the **leveraged tranche** put in the 2× ETF (QLD/SSO). | 0%–100% | — |
 | `alloc_x3` | `--alloc-x3` | Share of the leveraged tranche in the 3× ETF (TQQQ/UPRO). `alloc_x2 + alloc_x3 = 1`. | 0%–100% | 100% / 100% |
