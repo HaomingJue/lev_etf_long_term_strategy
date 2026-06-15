@@ -907,6 +907,23 @@ def plot_results(hist, base_tk, args):
         mticker.FuncFormatter(lambda x, _: f"${x:,.0f}"))
     ax.legend(fontsize=11)
     ax.grid(True, alpha=0.4)
+
+    # Strategy stats box (same basis as the text summary: full-period CAGR,
+    # peak-to-trough maxDD, and ^IRX-risk-free annualised Sharpe).
+    days      = (hist.index[-1] - hist.index[0]).days
+    scagr     = cagr(hist["Strategy"].iloc[-1], args.capital, days) * 100
+    strat_max = ((hist["Strategy"] / hist["Strategy"].cummax() - 1).min()) * 100
+    daily_ret = hist["Strategy"].pct_change().dropna()
+    excess    = daily_ret - _tbill_daily(daily_ret.index)
+    sharpe    = (excess.mean() / excess.std() * np.sqrt(252)
+                 if excess.std() > 0 else 0.0)
+    ax.text(0.015, 0.985,
+            f"Strategy\nCAGR  {scagr:.1f}%\nMax DD  {strat_max:.1f}%\n"
+            f"Sharpe  {sharpe:.2f}\nFinal  ${hist['Strategy'].iloc[-1]:,.0f}",
+            transform=ax.transAxes, fontsize=10, va="top", ha="left",
+            family="monospace",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8,
+                      edgecolor="darkorange"))
     plt.tight_layout()
     if args.save_plot:
         path = args.save_plot

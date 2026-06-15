@@ -179,7 +179,7 @@ Constraints: `exit < entry`, and **`buy_pct ≤ 1 − alloc_base`** — since th
 
 **Every window's grid is saved.** Walk-forward Phase 1 writes each training window's complete grid (all 61,200 combos, every metric) to `results/walkforward/grids/{preset}/*.csv.gz` (~1 MB/window). The expensive search runs **once per window**; any selection rule can then be browsed and re-derived offline in seconds with `walkforward.py --from-grids`.
 
-**Sharpe** uses the historical 13-week T-bill (^IRX) as a daily-varying risk-free rate, so it properly penalizes failing to beat cash in high-rate years.
+**Sharpe** uses the historical 13-week T-bill (^IRX) as a daily-varying risk-free rate, so it properly penalizes failing to beat cash in high-rate years. It is reported by the authoritative `backtester.py` over the full 2003→2026 history for each shipped variant (the §4 table), so the synthetic pre-inception leg is included — keeping it on the same basis as the CAGR, max-DD, and Final-value columns beside it.
 
 ---
 
@@ -197,14 +197,14 @@ SPY's in-sample winner is **MA50**, and it stays the best choice out-of-sample *
 
 **Authoritative backtests of the chosen full-history configs (2003 → 2026-06-11, $10k):**
 
-| Config | CAGR | B&H | Worst year | Max DD | Final |
-|---|---|---|---|---|---|
-| QQQ Aggressive — Max-CAGR (3×, buy 100%) | **29.1%** | 16.2% | −35.0% | −55.9% | $3,987,903 |
-| QQQ Balanced — DD-Capped (3×, buy 90% + 10% base) | 28.2% | 16.2% | −31.9% | −51.8% | $3,356,876 |
-| QQQ Conservative — Calmar (2×, buy 80% + 20% base) | 20.9% | 16.2% | **−19.1%** | **−33.4%** | $856,189 |
-| SPY Aggressive — Max-CAGR (3×, buy 100%, MA50) | 25.2% | 11.3% | −31.5% | −52.1% | $1,947,757 |
-| SPY Balanced — Buy-Capped (3×, buy 20%, MA50) | 24.5% | 11.3% | −36.5% | −51.5% | $1,700,103 |
-| SPY Conservative — Calmar (2×, buy 90% + 10% base, MA50) | 17.4% | 11.3% | **−21.4%** | −36.8% | $432,313 |
+| Config | CAGR | B&H | Worst year | Max DD | Sharpe | Final |
+|---|---|---|---|---|---|---|
+| QQQ Aggressive — Max-CAGR (3×, buy 100%) | **29.1%** | 16.2% | −35.0% | −55.9% | 0.78 | $3,987,913 |
+| QQQ Balanced — DD-Capped (3×, buy 90% + 10% base) | 28.2% | 16.2% | −31.9% | −51.8% | 0.78 | $3,356,876 |
+| QQQ Conservative — Calmar (2×, buy 80% + 20% base) | 20.9% | 16.2% | **−19.1%** | **−33.4%** | **0.80** | $856,189 |
+| SPY Aggressive — Max-CAGR (3×, buy 100%, MA50) | 25.2% | 11.3% | −31.5% | −52.1% | 0.78 | $1,947,757 |
+| SPY Balanced — Buy-Capped (3×, buy 20%, MA50) | 24.4% | 11.3% | −36.5% | −51.5% | 0.76 | $1,674,245 |
+| SPY Conservative — Calmar (2×, buy 90% + 10% base, MA50) | 17.4% | 11.3% | **−21.4%** | −36.8% | 0.77 | $432,313 |
 
 With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets ~25.1% after-tax (TFSA/RRSP: untaxed).
 
@@ -358,9 +358,9 @@ The 1× columns above ask *"should I index instead?"* This table asks the sharpe
 | **GFC** 2007–2009 | +64.7% · −38.8% | −80.2% · −96.9% | +4.7% · −51.5% | −90.7% · −97.5% |
 | **COVID** 2020 | +103.9% · −51.8% | +100.1% · −69.9% | +22.6% · −41.9% | +7.2% · −76.8% |
 | **2022 rate-hike** Nov'21–mid'23 | +8.9% · −38.0% | −46.9% · −81.7% | −16.3% · −48.5% | −31.3% · −63.9% |
-| **Full history 2003–2026** | **29.1% CAGR · −55.9% maxDD** | 24.6% CAGR · −96.9% maxDD | **24.5% CAGR · −51.5% maxDD** | 14.8% CAGR · −97.5% maxDD |
+| **Full history 2003–2026** | **29.1% CAGR · −55.9% maxDD** | 24.6% CAGR · −96.9% maxDD | **24.4% CAGR · −51.5% maxDD** | 14.8% CAGR · −97.5% maxDD |
 
-This is the strategy's real reason to exist. Holding the leveraged ETF straight through is a **wipeout in every decisive bear** — TQQQ −100% in the dot-com bust, −80% in the GFC (a −97% drawdown), −47% in 2022 — because daily-reset volatility decay plus an un-dodged crash compound against you. And it isn't just a risk story: over the full 23 years the **timed strategy earns *more* than buy-and-hold of the same leveraged ETF** (QQQ 29.1% vs 24.6%, SPY 24.5% vs 14.8% CAGR) at **roughly half the max drawdown** (−56% vs −97%). The MA exit adds return *and* cuts risk — the rare free lunch, and the entire point of not just holding TQQQ.
+This is the strategy's real reason to exist. Holding the leveraged ETF straight through is a **wipeout in every decisive bear** — TQQQ −100% in the dot-com bust, −80% in the GFC (a −97% drawdown), −47% in 2022 — because daily-reset volatility decay plus an un-dodged crash compound against you. And it isn't just a risk story: over the full 23 years the **timed strategy earns *more* than buy-and-hold of the same leveraged ETF** (QQQ 29.1% vs 24.6%, SPY 24.4% vs 14.8% CAGR) at **roughly half the max drawdown** (−56% vs −97%). The MA exit adds return *and* cuts risk — the rare free lunch, and the entire point of not just holding TQQQ.
 
 ### Dot-com crash, 2000–2003 — the one case the strategy can't beat
 
