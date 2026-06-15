@@ -580,3 +580,36 @@ Exhaustive per-script reference. `crisis_analysis.py`, `run_backtests.py`, and `
 | `--no-show` | flag | Suppress plot window (PNG still saved). |
 
 </details>
+
+<details>
+<summary><b>E · File map — how the scripts relate</b></summary>
+
+One engine, four tools that import it, two drivers that orchestrate them, and a companion repo that vendors the engine. Everything writes under `results/`.
+
+```mermaid
+flowchart TD
+    CORE["optimizer_core.py<br/>THE ENGINE: data · synthetic NAV · grid · backtest · DD filter · search"]
+
+    CORE --> OPT["optimizer.py<br/>scan ONE window"]
+    CORE --> WF["walkforward.py<br/>expanding walk-forward + selection rules"]
+    CORE --> BT["backtester.py<br/>authoritative single-config run"]
+    CORE --> CRISIS["crisis_analysis.py<br/>trade counts + crisis charts"]
+
+    OPT --> RES[("results/")]
+    WF --> RES
+    BT --> RES
+    CRISIS --> RES
+    OPT -. saved grids .-> HEAT["param_heatmap.py<br/>robustness heatmaps"]
+    HEAT --> RES
+
+    BUILD["run_build.py<br/>one-command full rebuild"] ==> OPT
+    BUILD ==> WF
+    OPT -. top combo .-> RUNBT["run_backtests.py<br/>backtester suite per winner"]
+    RUNBT --> BT
+
+    CORE -. vendored via sync_core.py .-> DS["daily_signal<br/>companion repo: live BUY / SELL / HOLD signals"]
+```
+
+*`optimizer_core.py` is the single source of truth — `optimizer.py` (scan one window), `walkforward.py` (the honest expanding-window test + selection rules), `backtester.py` (authoritative single run), and `crisis_analysis.py` all import it, so they cannot drift. `run_build.py` reproduces the whole result set; `run_backtests.py` runs the authoritative suite for each optimizer winner; `param_heatmap.py` summarizes the saved optimizer grids. The `daily_signal` companion repo vendors `optimizer_core.py` via `sync_core.py` and runs the identical engine for live signals.*
+
+</details>
