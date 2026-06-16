@@ -12,7 +12,7 @@ Ontario tax     : off
 Strategy CAGR   : 16.90%
 B&H CAGR (IWM)  : 1.47%
 Strategy edge   : +15.43pp
-Final value     : $18,642.49
+Final value     : $18,642.51
 Worst year      : -13.61%
 Max drawdown    : -51.20%
 Sharpe ratio    : 0.55

@@ -38,7 +38,11 @@ if _no_show:
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import datetime
+import json
 import warnings
+
+import tax_engine
+
 warnings.filterwarnings("ignore")
 
 
@@ -70,13 +74,17 @@ PRESET_INCEPTION = {
 # ONTARIO TAX MODEL (--tax-ontario)
 #
 # Combined federal + Ontario personal income tax for a taxable
-# (non-registered) account. 2025 brackets, held constant across
-# the whole backtest (simplification — brackets are inflation-
-# indexed annually).
+# (non-registered) account. The bracket DATA lives in
+# tax_brackets.json and the calculation in tax_engine.py (so the
+# brackets are versioned per year and the backtest stays
+# reproducible). The JSON is seeded with 2025 brackets; years not
+# present fall back to the nearest populated year, so by default
+# every year uses the 2025 table (same as before).
 #
-# - Capital gains: 50% inclusion, taxed at the marginal rate
-#   stacked on top of --salary. Canada has no short/long-term
-#   distinction. Net capital losses carry forward.
+# - Capital gains: inclusion rate from tax_engine.cg_inclusion(year)
+#   (0.50), taxed at the marginal rate stacked on top of --salary
+#   (or --salary-file's per-year income). Net capital losses carry
+#   forward.
 # - T-bill interest (--cash-yield): 100% taxable as income.
 # - Tax on year Y's realized gains is paid from cash on the
 #   first trading day of year Y+1 (sells holdings if cash is
@@ -89,45 +97,15 @@ PRESET_INCEPTION = {
 #   flag when modeling a registered account.
 # ----------------------------------------------------------
 
-FED_BRACKETS = [(57_375, 0.15), (114_750, 0.205), (177_882, 0.26),
-                (253_414, 0.29), (float("inf"), 0.33)]
-ON_BRACKETS  = [(52_886, 0.0505), (105_775, 0.0915), (150_000, 0.1116),
-                (220_000, 0.1216), (float("inf"), 0.1316)]
-FED_BPA = 16_129    # federal basic personal amount (credit @ 15%)
-ON_BPA  = 12_747    # Ontario basic personal amount (credit @ 5.05%)
-ON_SURTAX_T1, ON_SURTAX_T2 = 5_710, 7_307   # Ontario surtax thresholds
-CG_INCLUSION = 0.50
 
-
-def _bracket_tax(income: float, brackets) -> float:
-    tax, lower = 0.0, 0.0
-    for upper, rate in brackets:
-        if income <= lower:
-            break
-        tax += (min(income, upper) - lower) * rate
-        lower = upper
-    return tax
-
-
-def _ontario_total_tax(taxable: float) -> float:
-    if taxable <= 0:
-        return 0.0
-    fed = max(_bracket_tax(taxable, FED_BRACKETS)
-              - 0.15 * min(FED_BPA, taxable), 0.0)
-    on  = max(_bracket_tax(taxable, ON_BRACKETS)
-              - 0.0505 * min(ON_BPA, taxable), 0.0)
-    surtax = (0.20 * max(on - ON_SURTAX_T1, 0.0)
-              + 0.36 * max(on - ON_SURTAX_T2, 0.0))
-    return fed + on + surtax
-
-
-def _ontario_tax_on_investment(salary: float, taxable_gains: float,
-                               interest: float) -> float:
-    """Incremental tax from investment income stacked on top of salary."""
-    extra = max(taxable_gains, 0.0) + max(interest, 0.0)
-    if extra <= 0:
-        return 0.0
-    return _ontario_total_tax(salary + extra) - _ontario_total_tax(salary)
+def _salary_desc(args) -> str:
+    """One-line description of the income assumption for the tax report."""
+    sched = getattr(args, "salary_schedule", None) or {}
+    if sched:
+        yrs = sorted(sched)
+        return (f"per-year income from --salary-file: {len(sched)} entries "
+                f"{yrs[0]}–{yrs[-1]} (pre-{yrs[0]} ${args.salary:,.0f})")
+    return f"salary ${args.salary:,.0f}"
 
 
 # ----------------------------------------------------------
@@ -179,7 +157,15 @@ def parse_args():
                         "TFSA/RRSP accounts (those are untaxed).")
     p.add_argument("--salary",      type=float, default=100_000,
                    help="Employment income the strategy's gains stack on top of "
-                        "(sets the marginal tax rate). Used only with --tax-ontario.")
+                        "(sets the marginal tax rate). Used only with --tax-ontario. "
+                        "Ignored for any year covered by --salary-file.")
+    p.add_argument("--salary-file", default=None,
+                   help="Path to a JSON file mapping calendar year -> employment "
+                        'income, e.g. {"2003": 60000, "2010": 90000}. Each entry sets '
+                        "the income from that year forward (carry-forward) until the "
+                        "next entry; years before the first entry fall back to "
+                        "--salary. Lets the marginal rate vary year-to-year. Only used "
+                        "with --tax-ontario; the 2025 brackets are still held constant.")
     p.add_argument("--no-show",     action="store_true",
                    help="Suppress interactive plot window (images still saved if --save-plot is set)")
 
@@ -204,6 +190,21 @@ def parse_args():
     # alloc_base must be in [0, 1)
     if not 0.0 <= args.alloc_base < 1.0:
         p.error("--alloc-base must be in [0.0, 1.0)")
+
+    # Optional per-year income schedule (--salary-file) -> {year: income}.
+    args.salary_schedule = {}
+    if args.salary_file:
+        path = Path(args.salary_file)
+        if not path.exists():
+            p.error(f"--salary-file not found: {path}")
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            args.salary_schedule = {int(k): float(v) for k, v in raw.items()}
+        except Exception as e:
+            p.error('--salary-file must be JSON mapping year -> income, '
+                    f'e.g. {{"2003": 60000, "2010": 90000}} ({e})')
+        if any(v < 0 for v in args.salary_schedule.values()):
+            p.error("--salary-file incomes must be non-negative")
 
     return args
 
@@ -382,6 +383,22 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
     # ── Ontario tax state (--tax-ontario) ─────────────────
     tax_on   = bool(getattr(args, "tax_ontario", False))
     salary   = float(getattr(args, "salary", 100_000.0))
+    sal_sched = {int(k): float(v)
+                 for k, v in (getattr(args, "salary_schedule", None) or {}).items()}
+    sal_years = sorted(sal_sched)
+
+    def _salary_for(year: int) -> float:
+        """Employment income for a given tax year: the most recent --salary-file
+        entry on/before `year` (carry-forward); years before the first entry (or
+        with no file) fall back to the flat --salary."""
+        chosen = salary
+        for y in sal_years:
+            if y <= year:
+                chosen = sal_sched[y]
+            else:
+                break
+        return chosen
+
     acb_b = acb_2 = acb_3 = 0.0   # adjusted cost base (CAD average-cost rule)
     realized_y  = 0.0   # net capital gains realized this calendar year
     interest_y  = 0.0   # taxable interest earned this calendar year
@@ -461,6 +478,7 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
 
         # ── Year boundary: settle last year's Ontario tax ──
         if tax_on and idx[i].year != idx[i - 1].year:
+            yr_settled = idx[i - 1].year   # the year that just ended
             net = realized_y
             if net < 0:
                 loss_cf     += -net
@@ -468,8 +486,9 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
             else:
                 offset       = min(loss_cf, net)
                 loss_cf     -= offset
-                taxable_gain = (net - offset) * CG_INCLUSION
-            tax_due = _ontario_tax_on_investment(salary, taxable_gain, interest_y)
+                taxable_gain = (net - offset) * tax_engine.cg_inclusion(yr_settled)
+            tax_due = tax_engine.tax_on_investment(
+                _salary_for(yr_settled), taxable_gain, interest_y, yr_settled)
             realized_y = interest_y = 0.0
             if tax_due > 0.01:
                 total_tax += tax_due
@@ -672,18 +691,21 @@ def run_backtest(args, param_schedule=None) -> tuple[pd.DataFrame, pd.DataFrame,
     # Settle the final (possibly partial) year's tax against the last day,
     # so the after-tax final value is honest. Unrealized gains stay deferred.
     if tax_on:
+        yr_settled = idx[-1].year
         net    = realized_y
         offset = min(loss_cf, max(net, 0.0))
-        taxable_gain = max(net - offset, 0.0) * CG_INCLUSION
-        final_tax = _ontario_tax_on_investment(salary, taxable_gain, interest_y)
+        taxable_gain = max(net - offset, 0.0) * tax_engine.cg_inclusion(yr_settled)
+        final_tax = tax_engine.tax_on_investment(
+            _salary_for(yr_settled), taxable_gain, interest_y, yr_settled)
         if final_tax > 0.01:
             total_tax += final_tax
             history[-1]["Strategy"] -= final_tax
 
     hist = pd.DataFrame(history).set_index("Date")
-    hist.attrs["total_tax"] = total_tax
-    hist.attrs["tax_on"]    = tax_on
-    hist.attrs["salary"]    = salary
+    hist.attrs["total_tax"]       = total_tax
+    hist.attrs["tax_on"]          = tax_on
+    hist.attrs["salary"]          = salary
+    hist.attrs["salary_schedule"] = sal_sched
 
     # ── Yearly summary ────────────────────────────────────
     yearly = hist.resample("YE").last()
@@ -815,7 +837,7 @@ def save_results_files(hist, year_df, trans_df, base_tk, args):
         f"Cost per trade  : {args.cost_per_trade*100:.3f}%",
         f"Cash yield      : {'ON (^IRX T-bill rate on idle cash)' if getattr(args, 'cash_yield', False) else 'off'}",
         f"Ontario tax     : "
-        + (f"ON (salary ${args.salary:,.0f}, total tax ${hist.attrs['total_tax']:,.2f})"
+        + (f"ON ({_salary_desc(args)}, total tax ${hist.attrs['total_tax']:,.2f})"
            if hist.attrs.get("tax_on") else "off"),
         f"",
         f"Strategy CAGR   : {scagr*100:.2f}%",
@@ -877,7 +899,7 @@ def print_results(hist, year_df, trans_df, base_tk, args):
         print(f"  Cash yield            : ON (^IRX T-bill rate on idle cash)")
     if hist.attrs.get("tax_on"):
         print(f"  Ontario tax paid      : ${hist.attrs['total_tax']:,.2f}  "
-              f"(salary ${hist.attrs['salary']:,.0f}; final value above is after-tax; "
+              f"({_salary_desc(args)}; final value above is after-tax; "
               f"unrealized gains still deferred)")
     print()
 

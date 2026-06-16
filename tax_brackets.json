@@ -1,0 +1,67 @@
+{
+  "_about": "Combined federal + Ontario personal income tax brackets, versioned by calendar year. Consumed by tax_engine.py. Years not present fall back to the NEAREST available year. Source: taxtips.ca prior-year tax-rate pages (federal + Ontario), compiled 2026-06. Federal rates are STATUTORY marginal rates (e.g. 0.29, not taxtips' BPA-phaseout-adjusted 29.3%); fed_bpa is the maximum (enhanced) basic personal amount, applied as a flat 15% credit (the high-income BPA phase-out is not modelled). Ontario surtax thresholds were cross-checked for monotonic year-over-year indexation (T2 > T1 every year). cg_inclusion = 0.50 throughout (the 2024 proposed 2/3 inclusion never took effect). Populated 2015-2025: this spans the full walk-forward (2015-2026) and every materially-taxed exit in the full-history backtest; pre-2015 portfolios are tiny so they fall back to 2015 with negligible effect. 'inf' = top-bracket upper bound; brackets are [upper_bound, marginal_rate].",
+  "_schema": {
+    "fed_brackets": "[[upper, rate], ...] federal statutory marginal brackets",
+    "on_brackets": "[[upper, rate], ...] Ontario marginal brackets",
+    "fed_bpa": "federal basic personal amount, max/enhanced (credit at 15%)",
+    "on_bpa": "Ontario basic personal amount (credit at 5.05%)",
+    "on_surtax_t1": "Ontario tax above which the 20% surtax applies",
+    "on_surtax_t2": "Ontario tax above which the additional 36% surtax applies",
+    "cg_inclusion": "capital-gains inclusion rate"
+  },
+  "2015": {
+    "fed_brackets": [[44701, 0.15], [89401, 0.22], [138586, 0.26], ["inf", 0.29]],
+    "on_brackets": [[40922, 0.0505], [81847, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 11327, "on_bpa": 9863, "on_surtax_t1": 4418, "on_surtax_t2": 5654, "cg_inclusion": 0.50
+  },
+  "2016": {
+    "fed_brackets": [[45282, 0.15], [90563, 0.205], [140388, 0.26], [200000, 0.29], ["inf", 0.33]],
+    "on_brackets": [[41536, 0.0505], [83075, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 11474, "on_bpa": 10011, "on_surtax_t1": 4484, "on_surtax_t2": 5740, "cg_inclusion": 0.50
+  },
+  "2017": {
+    "fed_brackets": [[45916, 0.15], [91831, 0.205], [142353, 0.26], [202800, 0.29], ["inf", 0.33]],
+    "on_brackets": [[42201, 0.0505], [84404, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 11635, "on_bpa": 10171, "on_surtax_t1": 4556, "on_surtax_t2": 5831, "cg_inclusion": 0.50
+  },
+  "2018": {
+    "fed_brackets": [[46605, 0.15], [93208, 0.205], [144489, 0.26], [205842, 0.29], ["inf", 0.33]],
+    "on_brackets": [[42960, 0.0505], [85923, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 11809, "on_bpa": 10354, "on_surtax_t1": 4638, "on_surtax_t2": 5936, "cg_inclusion": 0.50
+  },
+  "2019": {
+    "fed_brackets": [[47630, 0.15], [95259, 0.205], [147667, 0.26], [210371, 0.29], ["inf", 0.33]],
+    "on_brackets": [[43906, 0.0505], [87813, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 12069, "on_bpa": 10582, "on_surtax_t1": 4740, "on_surtax_t2": 6067, "cg_inclusion": 0.50
+  },
+  "2020": {
+    "fed_brackets": [[48535, 0.15], [97069, 0.205], [150473, 0.26], [214368, 0.29], ["inf", 0.33]],
+    "on_brackets": [[44740, 0.0505], [89482, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 13229, "on_bpa": 10783, "on_surtax_t1": 4830, "on_surtax_t2": 6182, "cg_inclusion": 0.50
+  },
+  "2021": {
+    "fed_brackets": [[49020, 0.15], [98040, 0.205], [151978, 0.26], [216511, 0.29], ["inf", 0.33]],
+    "on_brackets": [[45142, 0.0505], [90287, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 13808, "on_bpa": 10880, "on_surtax_t1": 4874, "on_surtax_t2": 6237, "cg_inclusion": 0.50
+  },
+  "2022": {
+    "fed_brackets": [[50197, 0.15], [100392, 0.205], [155625, 0.26], [221708, 0.29], ["inf", 0.33]],
+    "on_brackets": [[46226, 0.0505], [92454, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 14398, "on_bpa": 11141, "on_surtax_t1": 4991, "on_surtax_t2": 6387, "cg_inclusion": 0.50
+  },
+  "2023": {
+    "fed_brackets": [[53359, 0.15], [106717, 0.205], [165430, 0.26], [235675, 0.29], ["inf", 0.33]],
+    "on_brackets": [[49231, 0.0505], [98463, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 15000, "on_bpa": 11865, "on_surtax_t1": 5315, "on_surtax_t2": 6802, "cg_inclusion": 0.50
+  },
+  "2024": {
+    "fed_brackets": [[55867, 0.15], [111733, 0.205], [173205, 0.26], [246752, 0.29], ["inf", 0.33]],
+    "on_brackets": [[51446, 0.0505], [102894, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 15705, "on_bpa": 12399, "on_surtax_t1": 5554, "on_surtax_t2": 7108, "cg_inclusion": 0.50
+  },
+  "2025": {
+    "fed_brackets": [[57375, 0.15], [114750, 0.205], [177882, 0.26], [253414, 0.29], ["inf", 0.33]],
+    "on_brackets": [[52886, 0.0505], [105775, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 16129, "on_bpa": 12747, "on_surtax_t1": 5710, "on_surtax_t2": 7307, "cg_inclusion": 0.50
+  }
+}

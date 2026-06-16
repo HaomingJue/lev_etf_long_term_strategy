@@ -206,7 +206,7 @@ SPY's in-sample winner is **MA50**, and it stays the best choice out-of-sample *
 | SPY Balanced — Buy-Capped (3×, buy 20%, MA50) | 24.4% | 11.3% | −36.5% | −51.5% | 0.76 | $1,674,245 |
 | SPY Conservative — Calmar (2×, buy 90% + 10% base, MA50) | 17.4% | 11.3% | **−21.4%** | −36.8% | 0.77 | $432,313 |
 
-With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets ~25.1% after-tax (TFSA/RRSP: untaxed).
+With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets **~24.6% after-tax** (TFSA/RRSP: untaxed). The tax is modelled with **per-year** federal + Ontario brackets (`tax_engine.py` + `tax_brackets.json`, 2015–2025), so each realized gain is taxed at the marginal rate that actually applied that year — see §9 and Appendix D.
 
 ### Reading the robustness heatmaps
 
@@ -410,7 +410,7 @@ For reference, the full 23-year equity and underwater curves of the two headline
 - **SPY is modest-but-real; IWM fails.** On the MA50 exit with the buy-cap, SPY beats B&H by ~3pp out-of-sample (§7) — worth trading, but with −44% drawdowns and far less margin than QQQ. IWM loses outright. The strategy's durable edge is still QQQ.
 - **An in-sample drawdown cap cannot bound an out-of-sample tail.** It only constrains what the backtest already contained (§6). The structural levers (buy-size cap, lower leverage) are the ones that limit an unseen tail.
 - **3× requires stomaching −20% to −35% calendar years.** If you cannot, trade the Conservative 2× variant or stay unleveraged.
-- **Taxes are the largest real cost.** In an Ontario taxable account at $100k salary, QQQ Aggressive nets ~25% vs 29% pre-tax. Use TFSA → RRSP → taxable.
+- **Taxes are the largest real cost.** In an Ontario taxable account at $100k salary, QQQ Aggressive nets ~24.6% vs 29% pre-tax (modelled with per-year federal + Ontario brackets, capital gains at 50% inclusion). Use TFSA → RRSP → taxable.
 - **Synthetic-data dependence.** ~6–7 early years rely on the leverage-decay model; the dot-com numbers especially are approximations, not traded prices.
 
 ---
@@ -447,9 +447,12 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 - `optimizer.py` — full-window grid-search CLI → `results/optimizer/{preset}/`
 - `walkforward.py` — expanding-window validation → `results/walkforward/` (and per-window grids in `results/walkforward/grids/{preset}/`)
 - `backtester.py` — authoritative single-config runner → `results/backtester/{preset}/`
+- `tax_engine.py` + `tax_brackets.json` — per-year federal + Ontario tax (data versioned by year); used by `backtester.py --tax-ontario`
+- `crisis_analysis.py` — trade counts + per-crisis comparison figures → `results/crisis/`
 - `param_heatmap.py` — robustness heatmaps
-- `run_build.py` — reproduces the full result set (optimizers + multi-select walk-forwards)
 - `results/README_DATA_LEDGER.md` — every figure in this paper with its source file
+
+To regenerate every result from scratch, see **Appendix F** (full pipeline, no wrapper).
 
 **Output filename tags:** `_ma{N}` (non-200 exit), `_sel{rule}` (non-CAGR selection, e.g. `_selmaxdd50`, `_selbuycap50`, `_selcalmar`), `_dd{N}` (non-40% filter), `_cy` (cash yield). Variants never collide.
 
@@ -500,11 +503,12 @@ Full-history (2003 → 2026) optimizer picks — these match the §4 backtests a
 | `optimizer.py` | Grid-search **one** training window, keeping every combo (the raw return/risk landscape). | `python optimizer.py --preset QQQ --exit-ma 200 --no-show` | `results/optimizer/{preset}/` |
 | `walkforward.py` | **The honest test.** Re-runs the grid each year on an expanding window, freezes the pick, backtests the schedule. Saves every window's full grid so any rule re-derives in seconds (`--from-grids`). | `python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar` | `results/walkforward/` (+ `grids/`) |
 | `backtester.py` | **Authoritative single-config run** — full precision, with a trade log, transaction costs, T-bill cash-yield, and Ontario tax. The source of any cited CAGR/maxDD/trade count. | `python backtester.py --preset QQQ --entry-signal 1.04 …` | `results/backtester/{preset}/` |
+| `tax_engine.py` + `tax_brackets.json` | **Per-year tax engine.** Combined federal + Ontario personal income tax; brackets/BPA/surtax versioned by year in the JSON (2015–2025, source taxtips.ca), calculation in the module. Imported by `backtester.py --tax-ontario`; years absent from the JSON fall back to the nearest. | *(imported; `python tax_engine.py` prints the populated years)* | — |
 | `crisis_analysis.py` | **Trade-frequency stats (§1) + per-crisis comparison figures (§8).** Counts buys/exits per variant and plots each crisis. | `python crisis_analysis.py` | `results/crisis/` |
 | `param_heatmap.py` | Parameter robustness heatmaps (§4) — shows the optimum sits on a broad plateau, not a fragile spike. | `python param_heatmap.py` | `results/optimizer/param_robustness_heatmap.png` |
-| `run_backtests.py` | Runs the backtester validation **suite** for each optimizer's top combo (full history, +cash-yield, +Ontario tax, 2× comparison, and the four crisis windows). | `python run_backtests.py` | `results/backtester/{preset}/` |
-| `run_build.py` | Sequential driver that **reproduces the entire result set** (optimizers + multi-select walk-forwards). One parent process so it's easy to stop. | `python run_build.py` | all of `results/` |
 | `results/README_DATA_LEDGER.md` | Working scratch: every figure and number in this paper mapped to its source file. | *(read)* | — |
+
+To regenerate everything in order, see **Appendix F**.
 | **`daily_signal/`** (companion repo) | Runs the **identical engine** (`optimizer_core.py` is vendored there) to send live BUY/SELL/HOLD Telegram signals 3×/day and re-optimize every January. | see its README | `config/params.json` |
 
 **Common flags (most tools):** `--no-show` (don't pop plot windows), `--cash-yield` (accrue T-bill interest on idle cash), `--tax-ontario --salary N` (model an Ontario taxable account), `--preset {QQQ,SPY,IWM}`, `--exit-ma {50,100,200}`.
@@ -514,7 +518,7 @@ Full-history (2003 → 2026) optimizer picks — these match the §4 backtests a
 <details>
 <summary><b>D · Command-line flags for every script</b></summary>
 
-Exhaustive per-script reference. `crisis_analysis.py`, `run_backtests.py`, and `run_build.py` take **no flags** — run them as-is (`python <file>.py`).
+Exhaustive per-script reference. `crisis_analysis.py` takes **no flags** — run it as-is (`python crisis_analysis.py`).
 
 #### `optimizer.py` — grid-search one window
 
@@ -567,8 +571,9 @@ Exhaustive per-script reference. `crisis_analysis.py`, `run_backtests.py`, and `
 | `--exit-ma` | 50 \| 100 \| 200 · **200** | Exit-signal MA period. |
 | `--cost-per-trade` | float · **0.0** | One-way transaction cost as a fraction of trade value (e.g. `0.001` = 0.1%), charged on every buy and sell. |
 | `--cash-yield` | flag | Accrue T-bill interest on idle cash. |
-| `--tax-ontario` | flag | Model an Ontario taxable account (50% CG inclusion, interest 100% taxable, loss carry-forward, tax paid each January). **Not** for TFSA/RRSP. |
-| `--salary` | float · **100000** | Employment income the gains stack on (sets the marginal rate). Only with `--tax-ontario`. |
+| `--tax-ontario` | flag | Model an Ontario taxable account (50% CG inclusion, interest 100% taxable, loss carry-forward, tax paid each January) using **per-year** federal + Ontario brackets from `tax_engine.py`/`tax_brackets.json`. Off by default. **Not** for TFSA/RRSP. |
+| `--salary` | float · **100000** | Employment income the gains stack on (sets the marginal rate). Only with `--tax-ontario`. Ignored for any year covered by `--salary-file`. |
+| `--salary-file` | path · None | JSON mapping calendar year → income, e.g. `{"2003": 60000, "2010": 90000}`. Each entry carries forward until the next; years before the first fall back to `--salary`. Lets the marginal rate vary year-to-year (brackets stay 2025). Only with `--tax-ontario`. |
 | `--save-plot` | path · None | Save the chart to this path instead of showing it. |
 | `--no-show` | flag | Suppress the interactive plot window. |
 
@@ -584,7 +589,7 @@ Exhaustive per-script reference. `crisis_analysis.py`, `run_backtests.py`, and `
 <details>
 <summary><b>E · File map — how the scripts relate</b></summary>
 
-One engine, four tools that import it, two drivers that orchestrate them, and a companion repo that vendors the engine. Everything writes under `results/`.
+One engine, four tools that import it, and a companion repo that vendors the engine. Everything writes under `results/`.
 
 ```mermaid
 flowchart TD
@@ -602,14 +607,59 @@ flowchart TD
     OPT -. saved grids .-> HEAT["param_heatmap.py<br/>robustness heatmaps"]
     HEAT --> RES
 
-    BUILD["run_build.py<br/>one-command full rebuild"] ==> OPT
-    BUILD ==> WF
-    OPT -. top combo .-> RUNBT["run_backtests.py<br/>backtester suite per winner"]
-    RUNBT --> BT
-
     CORE -. vendored via sync_core.py .-> DS["daily_signal<br/>companion repo: live BUY / SELL / HOLD signals"]
 ```
 
-*`optimizer_core.py` is the single source of truth — `optimizer.py` (scan one window), `walkforward.py` (the honest expanding-window test + selection rules), `backtester.py` (authoritative single run), and `crisis_analysis.py` all import it, so they cannot drift. `run_build.py` reproduces the whole result set; `run_backtests.py` runs the authoritative suite for each optimizer winner; `param_heatmap.py` summarizes the saved optimizer grids. The `daily_signal` companion repo vendors `optimizer_core.py` via `sync_core.py` and runs the identical engine for live signals.*
+*`optimizer_core.py` is the single source of truth — `optimizer.py` (scan one window), `walkforward.py` (the honest expanding-window test + selection rules), `backtester.py` (authoritative single run), and `crisis_analysis.py` all import it, so they cannot drift. `param_heatmap.py` summarizes the saved optimizer grids. To reproduce the whole result set, run the five scripts in the order given in **Appendix F**. The `daily_signal` companion repo vendors `optimizer_core.py` via `sync_core.py` and runs the identical engine for live signals.*
+
+</details>
+
+<details>
+<summary><b>F · Recreate this research from scratch (full pipeline)</b></summary>
+
+Every figure and number in this paper comes from **five scripts run in order**. There is no build wrapper — run them directly. The grid search dominates the runtime (a few hours total); pass `--workers N` to use more cores. Everything writes under `results/`. All commands assume you are in the project directory.
+
+**1 · Full-history grid search — §4 in-sample landscape + §5 MA bake-off.** One run per preset × exit-MA (9 runs); this also produces the per-window inputs `param_heatmap.py` reads:
+
+```bash
+python optimizer.py --preset QQQ --exit-ma 200 --no-show   # then repeat with --exit-ma 100 and 50
+python optimizer.py --preset SPY --exit-ma 50  --no-show   # then repeat with --exit-ma 100 and 200
+python optimizer.py --preset IWM --exit-ma 200 --no-show   # then repeat with --exit-ma 100 and 50
+```
+
+**2 · Walk-forward validation — §5–§7, the honest test.** One grid pass per production config derives all four selection rules at once and caches every window's grid (so any other rule re-derives in seconds with `--from-grids`):
+
+```bash
+python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,buycap50,calmar --start-year 2015 --end-year 2026 --no-show
+python walkforward.py --preset SPY --exit-ma 50  --select cagr,maxdd50,buycap50,calmar --start-year 2015 --end-year 2026 --no-show
+python walkforward.py --preset IWM --exit-ma 200 --select cagr,maxdd50,buycap50,calmar --start-year 2015 --end-year 2026 --no-show
+```
+
+> SPY's production exit is **MA50**, not MA100 (§5). To reproduce the full §5 OOS-vs-MA matrix, also run the walk-forward at the other exit-MAs (e.g. SPY `--exit-ma 100`/`200`, QQQ `--exit-ma 100`).
+
+**3 · Authoritative backtests of each shipped variant — §4 table, §8 full-history charts.** Run `backtester.py` once per row of **Appendix B**. Two examples:
+
+```bash
+# QQQ Aggressive — Max-CAGR (3×)
+python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.04 --drop-level 0.0 --exit-signal 1.01 --buy-pct 1.0 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200 --no-show
+# SPY Balanced — Buy-Capped (3×, MA50)
+python backtester.py --preset SPY --start 2003-01-01 --entry-signal 1.02 --drop-level 0.0025 --exit-signal 0.93 --buy-pct 0.2 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 50 --no-show
+```
+
+Add `--cash-yield` for the T-bill sleeve, or `--tax-ontario --salary N` for after-tax figures (`--salary-file year_income.json` for a per-year income trajectory).
+
+**4 · Robustness heatmaps — §4.** Summarizes the optimizer grids from step 1:
+
+```bash
+python param_heatmap.py --no-show
+```
+
+**5 · Trade counts (§1) + per-crisis comparison charts (§8):**
+
+```bash
+python crisis_analysis.py
+```
+
+That reproduces the entire paper. Because all five import `optimizer_core.py`, the numbers cannot drift between tools, and `backtester.py` remains authoritative for any cited figure.
 
 </details>
