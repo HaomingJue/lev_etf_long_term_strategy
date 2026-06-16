@@ -7,12 +7,12 @@ Buy pct         : 100% per signal
 Alloc base      : 0%  lev2 0%  lev3 100%
 Cost per trade  : 0.000%
 Cash yield      : off
-Ontario tax     : ON (salary $100,000, total tax $400,009.25)
+Ontario tax     : ON (salary $100,000, total tax $400,007.33)
 
 Strategy CAGR   : 24.55%
 B&H CAGR (QQQ)  : 16.18%
 Strategy edge   : +8.36pp
-Final value     : $1,717,570.17
+Final value     : $1,717,562.87
 Worst year      : -38.47%
 Max drawdown    : -58.18%
 Sharpe ratio    : 0.69

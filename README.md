@@ -206,7 +206,7 @@ SPY's in-sample winner is **MA50**, and it stays the best choice out-of-sample *
 | SPY Balanced — Buy-Capped (3×, buy 20%, MA50) | 24.4% | 11.3% | −36.5% | −51.5% | 0.76 | $1,674,245 |
 | SPY Conservative — Calmar (2×, buy 90% + 10% base, MA50) | 17.4% | 11.3% | **−21.4%** | −36.8% | 0.77 | $432,313 |
 
-With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets **~24.6% after-tax** (TFSA/RRSP: untaxed). The tax is modelled with **per-year** federal + Ontario brackets (`tax_engine.py` + `tax_brackets.json`, 2015–2025), so each realized gain is taxed at the marginal rate that actually applied that year — see §9 and Appendix D.
+With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets **~24.6% after-tax** (TFSA/RRSP: untaxed). The tax is modelled with **per-year** federal + Ontario brackets (`tax_engine.py` + `tax_brackets.json`, 2011–2025), so each realized gain is taxed at the marginal rate that actually applied that year — see §9 and Appendix D.
 
 ### Reading the robustness heatmaps
 
@@ -503,7 +503,7 @@ Full-history (2003 → 2026) optimizer picks — these match the §4 backtests a
 | `optimizer.py` | Grid-search **one** training window, keeping every combo (the raw return/risk landscape). | `python optimizer.py --preset QQQ --exit-ma 200 --no-show` | `results/optimizer/{preset}/` |
 | `walkforward.py` | **The honest test.** Re-runs the grid each year on an expanding window, freezes the pick, backtests the schedule. Saves every window's full grid so any rule re-derives in seconds (`--from-grids`). | `python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar` | `results/walkforward/` (+ `grids/`) |
 | `backtester.py` | **Authoritative single-config run** — full precision, with a trade log, transaction costs, T-bill cash-yield, and Ontario tax. The source of any cited CAGR/maxDD/trade count. | `python backtester.py --preset QQQ --entry-signal 1.04 …` | `results/backtester/{preset}/` |
-| `tax_engine.py` + `tax_brackets.json` | **Per-year tax engine.** Combined federal + Ontario personal income tax; brackets/BPA/surtax versioned by year in the JSON (2015–2025, source taxtips.ca), calculation in the module. Imported by `backtester.py --tax-ontario`; years absent from the JSON fall back to the nearest. | *(imported; `python tax_engine.py` prints the populated years)* | — |
+| `tax_engine.py` + `tax_brackets.json` | **Per-year tax engine.** Combined federal + Ontario personal income tax; brackets/BPA/surtax versioned by year in the JSON (2011–2025, source taxtips.ca), calculation in the module. Imported by `backtester.py --tax-ontario`; years absent from the JSON fall back to the nearest. | *(imported; `python tax_engine.py` prints the populated years)* | — |
 | `crisis_analysis.py` | **Trade-frequency stats (§1) + per-crisis comparison figures (§8).** Counts buys/exits per variant and plots each crisis. | `python crisis_analysis.py` | `results/crisis/` |
 | `param_heatmap.py` | Parameter robustness heatmaps (§4) — shows the optimum sits on a broad plateau, not a fragile spike. | `python param_heatmap.py` | `results/optimizer/param_robustness_heatmap.png` |
 | `results/README_DATA_LEDGER.md` | Working scratch: every figure and number in this paper mapped to its source file. | *(read)* | — |

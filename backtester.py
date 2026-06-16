@@ -45,6 +45,15 @@ import tax_engine
 
 warnings.filterwarnings("ignore")
 
+# Windows consoles default to cp1252, which can't encode characters like the
+# ">=" sign or box-drawing used in help text / summaries; force UTF-8 so
+# printing (incl. argparse --help) never raises UnicodeEncodeError.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+
 
 # ----------------------------------------------------------
 # PRESET CONFIGS
@@ -127,7 +136,7 @@ def parse_args():
     p.add_argument("--entry-signal", type=float, default=1.04,
                    help="Arm buys when price > MA200 × entry_signal")
     p.add_argument("--drop-level",   type=float, default=0.01,
-                   help="Buy trigger: day drop ≥ drop_level (0.01 = 1%%)")
+                   help="Buy trigger: day drop >= drop_level (0.01 = 1%%)")
     p.add_argument("--exit-signal",  type=float, default=1.00,
                    help="Exit when price < MA200 × exit_signal")
     p.add_argument("--buy-pct",      type=float, default=0.20,

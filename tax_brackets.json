@@ -1,5 +1,5 @@
 {
-  "_about": "Combined federal + Ontario personal income tax brackets, versioned by calendar year. Consumed by tax_engine.py. Years not present fall back to the NEAREST available year. Source: taxtips.ca prior-year tax-rate pages (federal + Ontario), compiled 2026-06. Federal rates are STATUTORY marginal rates (e.g. 0.29, not taxtips' BPA-phaseout-adjusted 29.3%); fed_bpa is the maximum (enhanced) basic personal amount, applied as a flat 15% credit (the high-income BPA phase-out is not modelled). Ontario surtax thresholds were cross-checked for monotonic year-over-year indexation (T2 > T1 every year). cg_inclusion = 0.50 throughout (the 2024 proposed 2/3 inclusion never took effect). Populated 2015-2025: this spans the full walk-forward (2015-2026) and every materially-taxed exit in the full-history backtest; pre-2015 portfolios are tiny so they fall back to 2015 with negligible effect. 'inf' = top-bracket upper bound; brackets are [upper_bound, marginal_rate].",
+  "_about": "Combined federal + Ontario personal income tax brackets, versioned by calendar year. Consumed by tax_engine.py. Years not present fall back to the NEAREST available year. Source: taxtips.ca prior-year tax-rate pages (federal + Ontario), compiled 2026-06. Federal rates are STATUTORY marginal rates (e.g. 0.29, not taxtips' BPA-phaseout-adjusted 29.3%); fed_bpa is the maximum (enhanced) basic personal amount, applied as a flat 15% credit (the high-income BPA phase-out is not modelled). Ontario surtax thresholds were cross-checked for monotonic year-over-year indexation (T2 > T1 every year; a few were reconstructed by indexation where the source's two-tier values were ambiguous). cg_inclusion = 0.50 throughout (the 2024 proposed 2/3 inclusion never took effect). POPULATED 2011-2025 — this spans the full walk-forward (2015-2026) and every materially-taxed exit in the full-history backtest (the first sizeable taxed exit is 2014). The table starts at 2011 because tax_engine applies the federal basic-personal-amount credit at 15% and the Ontario credit at 5.05%, which only hold from 2011 on (Ontario's lowest rate was 6.05% before 2010; the federal lowest rate was 16%/15.25% in 2004-2006), and because taxtips' clean Ontario-only archive does not reach earlier years. Pre-2011 falls back to 2011 (nearest) with negligible effect: the backtest realizes essentially no taxable gains before 2011 (no exit in 2003; tiny gains 2004-2010). 'inf' = top-bracket upper bound; brackets are [upper_bound, marginal_rate].",
   "_schema": {
     "fed_brackets": "[[upper, rate], ...] federal statutory marginal brackets",
     "on_brackets": "[[upper, rate], ...] Ontario marginal brackets",
@@ -8,6 +8,26 @@
     "on_surtax_t1": "Ontario tax above which the 20% surtax applies",
     "on_surtax_t2": "Ontario tax above which the additional 36% surtax applies",
     "cg_inclusion": "capital-gains inclusion rate"
+  },
+  "2011": {
+    "fed_brackets": [[41544, 0.15], [83088, 0.22], [128800, 0.26], ["inf", 0.29]],
+    "on_brackets": [[37774, 0.0505], [75550, 0.0915], ["inf", 0.1116]],
+    "fed_bpa": 10527, "on_bpa": 9104, "on_surtax_t1": 4078, "on_surtax_t2": 5219, "cg_inclusion": 0.50
+  },
+  "2012": {
+    "fed_brackets": [[42707, 0.15], [85414, 0.22], [132406, 0.26], ["inf", 0.29]],
+    "on_brackets": [[39020, 0.0505], [78043, 0.0915], [500000, 0.1116], ["inf", 0.1216]],
+    "fed_bpa": 10822, "on_bpa": 9405, "on_surtax_t1": 4213, "on_surtax_t2": 5391, "cg_inclusion": 0.50
+  },
+  "2013": {
+    "fed_brackets": [[43561, 0.15], [87123, 0.22], [135054, 0.26], ["inf", 0.29]],
+    "on_brackets": [[39723, 0.0505], [79448, 0.0915], [509000, 0.1116], ["inf", 0.1316]],
+    "fed_bpa": 11038, "on_bpa": 9574, "on_surtax_t1": 4288, "on_surtax_t2": 5488, "cg_inclusion": 0.50
+  },
+  "2014": {
+    "fed_brackets": [[43953, 0.15], [87907, 0.22], [136270, 0.26], ["inf", 0.29]],
+    "on_brackets": [[40120, 0.0505], [80242, 0.0915], [150000, 0.1116], [220000, 0.1216], ["inf", 0.1316]],
+    "fed_bpa": 11138, "on_bpa": 9670, "on_surtax_t1": 4331, "on_surtax_t2": 5543, "cg_inclusion": 0.50
   },
   "2015": {
     "fed_brackets": [[44701, 0.15], [89401, 0.22], [138586, 0.26], ["inf", 0.29]],
