@@ -477,6 +477,7 @@ python backtester.py --preset QQQ --start 2003-01-01 \
 - `tax_engine.py` + `tax_brackets.json` — per-year federal + Ontario tax (data versioned by year); used by `backtester.py --tax-ontario`
 - `crisis_analysis.py` — trade counts + per-crisis comparison figures → `results/crisis/`
 - `param_heatmap.py` — robustness heatmaps
+- `experiments/` — out-of-window robustness checks (§5, §9): `regime_reliability.py` (MA200/MA50 trend signal on 1950–2026 S&P), `vix_probe.py` + `backtester_vix.py` (the VIX-filter negative result). Isolated sandbox — they import the engine read-only and print to the console; no shipped file depends on them.
 - `results/README_DATA_LEDGER.md` — every figure in this paper with its source file
 
 To regenerate every result from scratch, see **Appendix F** (full pipeline, no wrapper).
@@ -688,5 +689,13 @@ python crisis_analysis.py
 ```
 
 That reproduces the entire paper. Because all five import `optimizer_core.py`, the numbers cannot drift between tools, and `backtester.py` remains authoritative for any cited figure.
+
+**6 · Out-of-window robustness experiments (optional) — §5 (MA reliability) + §9 (VIX filter).** Self-contained sandbox scripts in `experiments/`; they download their own data, **print tables to the console** (nothing is written to `results/`), and never touch the shipped pipeline (`regime_reliability.py`/`vix_probe.py` are standalone; `backtester_vix.py` imports `optimizer_core.py` read-only, so its no-filter baseline reproduces the §4 Balanced row to the dollar):
+
+```bash
+python experiments/regime_reliability.py   # §5: MA200 vs MA50 trend signal across the 1950–2026 S&P regimes
+python experiments/vix_probe.py            # §9: does VIX even flag the strategy's losing years? (it doesn't)
+python experiments/backtester_vix.py       # §9: VIX-gate threshold sweep on QQQ Balanced — the negative result
+```
 
 </details>
