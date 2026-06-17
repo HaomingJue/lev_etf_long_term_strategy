@@ -231,6 +231,8 @@ With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable 
 
 The exit MA controls *how fast you bail*. A **fast** MA (50-day) sells at the first wobble: it shrinks drawdowns but whipsaws you out of healthy pullbacks and back in higher. A **slow** MA (200-day) rides through normal volatility but surrenders more before it concedes the trend is over. Neither is universally right — the ideal exit speed depends on how choppy each index's uptrends are — so we grid-search all three (MA50 / MA100 / MA200) for every index and let the evidence decide.
 
+> **Out-of-window check (1950–2026).** Because the grid only sees 2003+, we separately ran the *unleveraged* MA-timing signal on 75 years of S&P 500 ([`experiments/regime_reliability.py`](experiments/regime_reliability.py)). Over the full span the **MA200** long/cash rule nearly halved buy-and-hold's max drawdown (**−30% vs −57%**) and *added* return in every sideways/bear regime — including the **1966–82** secular chop (+2.1pp; −16% vs −48% drawdown) that the 2003+ sample never contains — while **MA50** was strictly worse (−45% maxDD, far more whipsaws). This is a signal-reliability probe, not a re-backtest of the leveraged product, but it confirms the slow **MA200** (the universal arming signal, and QQQ's exit) is the more robust trend filter *across regimes*, not an artifact of the post-2003 window. SPY's faster MA50 exit stays a deliberate, separate trade-off (§6).
+
 **How we decide — two stages, because the in-sample winner is a trap.** Picking the MA with the best full-history CAGR (§4) would just be overfitting to the past. So:
 1. **In-sample screen** — full-history best CAGR per MA (§4 table). Narrows the field.
 2. **Out-of-sample tiebreak** — the expanding-window walk-forward (§7): whichever MA's annually-re-optimized schedule actually wins 2015–2026. **Crucially, judge it under the *same selection rule you intend to trade*** — for SPY that distinction flips the answer (see below).
@@ -324,6 +326,27 @@ The Aggressive schedule converges to `1.04 / 0.0 / 1.01 / buy 100%` and holds it
 
 Expanding 6.2% vs 9.6% B&H — and *every* selection rule fails (maxDD≤50% 4.9%, Calmar 7.0%, buy-cap 1.0%). Small-cap LETF decay and unstable parameters; disclosed for completeness only.
 
+### Parameter stability — is this one rule, or twelve?
+
+A fair objection to *annual* re-optimization is that the headline CAGR is the average of twelve different rules stitched together — not something an investor could actually hold. For the three **QQQ** variants the schedules say otherwise: each used only **two or three distinct parameter sets** across 2015–2026, and the *trigger geometry* (entry / drop / exit) converges to a single setting — **arm at 1.04 × MA200, buy any non-up day, exit at 1.01 × MA200** — that then never moves again. **SPY** (the only shipped non-QQQ variant) drifts more, in a way that is itself informative (takeaway 4).
+
+| Variant | Trigger path (entry / drop / exit) | Distinct sets in 12 yrs | Sizing path |
+|---|---|---|---|
+| **Aggressive — Max-CAGR** | 1.01 / 1.5% / 0.94 → **1.04 / 0.0% / 1.01** (2017) | **2** | buy 20% (’15–’16) → **buy 100%** (’17–’26, unchanged) |
+| **Balanced — DD-Capped** | 1.03 / 0.0% / 0.94 → **1.04 / 0.0% / 1.01** (2017) | **3** | buy 50% → buy 100% (’17–’20) → **buy 90% + 10% base** (’21–’26) |
+| **Conservative — Calmar** | **1.04 / 0.0% / 1.01** (all 12 years) | **2** | buy 70% + 30% base (’15–’20) → **buy 80% + 20% base** (’21–’26) |
+| **SPY Balanced — Buy-Capped (MA50)** | ≈1.02 / 0.5% / 0.93 — wobbly ’15–’16, steady ’17–’22 | **~5** | buy 50% (’15–’22) → **buy 20%** (’23–’26, after 2022's −44%) |
+
+Four things follow:
+
+1. **The 33.7% / 34.8% headline is one rule held for a decade, not twelve re-tuned rules.** The Aggressive schedule is byte-identical for all ten years 2017–2026; Calmar's trigger never changes at all. The only re-optimization that moves the *signal* is the 2015→2017 settling, after which the rule is frozen.
+2. **What drift exists is in *sizing*, and it moves toward *more* caution, exactly once.** Around 2021 — when the 2020 COVID drawdown first enters the training window — the two risk-managed variants add a base cushion (Balanced 100% → 90% + 10%; Calmar 70/30 → 80/20). That is the re-optimizer behaving as designed: a fresh drawdown in the data raises the cushion, it does not chase leverage.
+3. **The instability is confined to the short, data-poor early windows — which is also where the only out-of-sample losses live.** The timid 2015–16 picks (small buy %, deep 0.94 exit) came from training sets too short to contain a full cycle, and those two years are precisely the strategy's worst live stretch (2015 −15%, 2016 −10%, *while QQQ rose +10% and +7%*). By 2017 the window spans the GFC and the rule locks in. **The reassurance:** a deployment today rests on a rule that has been stable for a decade. **The honest catch:** that stability is a function of a long training history — an investor *starting* from a short window would have eaten the burn-in, and a future structural break could force a fresh, unstable re-settling.
+
+4. **SPY is the instructive exception — and it answers "can one bad year move the params?" with a clear yes.** SPY's buy-cap variant never fully settles: its per-dip buy size is **halved from 50% to 20% in 2023** — the first re-optimization after the 2022 −44% drawdown enters the training window. A single bad year *did* materially re-size the rule, but note the **lag**: the cut lands in 2023, *after* the damage, because re-optimization can only react to drawdowns already in the data, never the one ahead of you. So whether a bad year shifts the params depends on the rule. The **risk-capped** rules (DD-cap, Calmar, buy-cap) re-size on any new drawdown that tightens their constraint — exactly why QQQ added its cushion in 2021 (COVID) and SPY cut its size in 2023 (the 2022 bear). The **Max-CAGR** rule barely responds: it only re-sizes if a year is bad enough to dethrone the top-CAGR combo or breach the −40% calendar filter, which no real QQQ year has.
+
+So for QQQ "twelve strategies stitched together" is not what the record shows: it is **one trigger rule, fixed since 2017, with a single one-notch increase in its safety cushion.** SPY drifts more — the price of its thinner, more drawdown-prone edge — but even there the drift is the optimizer *adding caution after a loss*, not chasing returns. Re-optimization is a **risk recalibrator with a one-year lag, not a regime forecaster.** (Full per-year parameters: the `*_commands.txt` logs in [`results/walkforward/`](results/walkforward/).)
+
 ---
 
 ## 8. Drawdown and tail risk
@@ -412,6 +435,10 @@ For reference, the full 23-year equity and underwater curves of the two headline
 - **3× requires stomaching −20% to −35% calendar years.** If you cannot, trade the Conservative 2× variant or stay unleveraged.
 - **Taxes are the largest real cost.** In an Ontario taxable account at $100k salary, QQQ Aggressive nets ~24.6% vs 29% pre-tax (modelled with per-year federal + Ontario brackets, capital gains at 50% inclusion). Use TFSA → RRSP → taxable.
 - **Synthetic-data dependence.** ~6–7 early years rely on the leverage-decay model; the dot-com numbers especially are approximations, not traded prices.
+
+### Experiment — does a VIX regime filter help? (a negative result)
+
+A natural add-on is to sit in cash when fear is high — *hold no leverage while VIX > T*. We tested it on the QQQ Balanced config ([`experiments/backtester_vix.py`](experiments/backtester_vix.py); a faithful engine copy whose no-filter baseline reproduces §4 to the dollar), sweeping **T = 20…35** with the decision taken on the *prior* day's VIX. **It does not help at any threshold.** The gentlest gate (VIX > 35) costs ~1pp of full-history CAGR for *zero* drawdown improvement; tighter gates are worse on *both* axes — VIX > 30 drops CAGR 28.2% → 22.7% **and deepens** max drawdown −51.7% → −57.3%. The mechanism: VIX peaks *at* market bottoms, so the filter sells into the panic and stays in cash through the high-VIX recovery — locking the loss and missing the bounce — while the worst calendar year barely moves. The deeper reason is that VIX does not separate this strategy's good years from its bad ones: its worst year (2016) had the *lowest* VIX of the decade, its best (2020) had 50 days above 35. (For the same reason, adding VIX as a grid *dimension* would simply select "no filter".) The lever that actually tracks the real failure mode — whipsaws in *low*-vol chop — is volatility-scaled position **sizing**, not a fear gate; left for future work.
 
 ---
 
