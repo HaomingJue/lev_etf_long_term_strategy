@@ -53,8 +53,8 @@ VARIANTS = [
     dict(key="QQQ_cons", preset="QQQ", label="QQQ Conservative — Calmar (2×, buy 80% + 20% base)",
          entry=1.04, drop=0.0, exit=1.01, buy=0.8, base=0.2, x2=1.0, ma=200,
          color="#27ae60", lw=2.0),
-    dict(key="SPY_bal", preset="SPY", label="SPY Balanced — Buy-Capped (3× buy 20%, MA50)",
-         entry=1.02, drop=0.0025, exit=0.93, buy=0.2, base=0.0, x2=0.0, ma=50,
+    dict(key="SPY_bal", preset="SPY", label="SPY Satellite — Struct (3×, buy 30%, MA200)",
+         entry=1.02, drop=0.0025, exit=0.97, buy=0.3, base=0.0, x2=0.0, ma=200,
          color="#2980b9", lw=2.0),
 ]
 

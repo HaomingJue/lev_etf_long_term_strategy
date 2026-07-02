@@ -4,4 +4,4 @@ Variant                                     yrs  buys  exits  trades  tr/yr     
 QQQ Aggressive — Max-CAGR (3×, buy 100%)   23.4    22     21      43    1.8       2004 (4 trades)
 QQQ Balanced — DD-Capped (3×, buy 90% + 10% base) 23.4    22     21      43    1.8       2004 (4 trades)
 QQQ Conservative — Calmar (2×, buy 80% + 20% base) 23.4    22     21      43    1.8       2004 (4 trades)
-SPY Balanced — Buy-Capped (3× buy 20%, MA50) 23.4    49     10      59    2.5       2020 (7 trades)
+SPY Satellite — Struct (3×, buy 30%, MA200) 23.4    46     12      58    2.5       2004 (5 trades)
