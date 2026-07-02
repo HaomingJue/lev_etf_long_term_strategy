@@ -286,6 +286,10 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
             if from_grids:
                 print(f"  {trade_yr}: no cached grid ({gpath.name}) — "
                       f"running optimizer for this window")
+            if df_full is None:
+                # --from-grids skips the upfront download; a missing window
+                # still needs real data, so load it lazily (once).
+                df_full = load_full_data(preset, f"{end_year}-12-31")
             df_train = df_full[df_full.index.year <= train_end]
             if len(df_train) < 250:
                 print(f"  {trade_yr}: insufficient training data — skipped")
