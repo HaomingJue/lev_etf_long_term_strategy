@@ -186,7 +186,7 @@ An early version of this study used a narrow grid (buy ≤ 40%, dips ≥ 0.5%) a
 
 | Training window | argmax pick (wide grid) | in-sample edge over the sane pick | next-year OOS result |
 |---|---|---|---|
-| 2003–2014 (trades 2015) | `drop −1.0%` — buy even on up days | **+1.4pp** (27.4% vs 26.0%) | **−24.4% vs −12.1%** — a 12pp penalty |
+| 2003–2014 (trades 2015) | `drop −1.0%` — buy even on up days | **+1.4pp** (27.4% vs 26.0%) | **−23.6% vs −12.1%** — an 11.5pp penalty |
 | 2003–2022 (trades 2023) | `exit 0.99` — hair-trigger exit, first window containing the 2022 crash | **+0.7pp** (21.1% vs 20.5%) | **+2.8% vs +42.2%** — a 39pp penalty |
 
 The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) within 0.2pp of each other. An argmax breaks noise-level ties toward aggression every time; the walk-forward then bills you for it.
@@ -332,7 +332,7 @@ A fair objection to annual re-optimization is that the headline CAGR is twelve d
 | **QQQ Aggressive** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **2** | buy 20% → **100%** (’17–’26) |
 | **QQQ Balanced** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **3** | buy 50% → 100% → **90% + 10% base** (’21–) |
 | **QQQ Conservative** | **1.04 / 0.0% / 1.01** (all 12 years) | **2** | 70/30 → **80/20** (’21–) |
-| **SPY Satellite — Struct** | 1.01–1.02 / 0.25–0.5% / 0.94–0.97 | **6** (7 over 16 yrs) | buy 40% → **30%** (’23–, after 2022 enters training) |
+| **SPY Satellite — Struct** | 1.01–1.02 / 0.25–0.5% / 0.95–0.97 (0.94 in the 2011–14 windows) | **6** (7 over 16 yrs) | buy 40% → **30%** (’23–, after 2022 enters training) |
 
 **The SPY disclosure (protocol gate S1, failed and shipped failed):** SPY's rule never fully freezes — it re-tunes by micro-steps roughly every two years. Every set stays inside one family (each change is a single grid step on one axis; compare §4's broken argmax, which swung buy 40↔100% and drop −1%↔+1%), and the drift direction is always *toward caution after a loss* (buy 40%→30% in 2023, exactly as QQQ added its cushion in 2021). But by the protocol's own count it is 6–7 sets, not ≤4, and that failure is disclosed here rather than redefined away.
 
