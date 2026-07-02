@@ -102,6 +102,55 @@ totals **≈ 39 comparisons**. Readers must interpret any single cell's ±2–4p
 accordingly; this is why the gates above demand multi-MA consistency, fork
 robustness, and untouched 2011–2014 data rather than one good number.
 
+## Results (2026-07-02, same day, after freezing)
+
+Walk-forward 2015–2026, cached v3 grids, Phase-2 data through 2026-07-01.
+Cell gate = CAGR ≥ B&H + 1.5pp **and** worst year ≥ −35%.
+
+| Cell | CAGR | edge vs B&H | worst yr | cell gate |
+|---|---|---|---|---|
+| MA200 · struct | 16.35% | +2.60pp | −37.1% | ✗ worst yr |
+| **MA200 · robust1** | 15.89% | +2.14pp | −34.3% | **✓** |
+| MA200 · plateau | 9.58% | −4.16pp | −45.6% | ✗ |
+| MA100 · struct | 14.82% | +1.08pp | −38.6% | ✗ |
+| MA100 · robust1 | 15.26% | +1.52pp | −35.0% | borderline |
+| MA100 · plateau | 15.27% | +1.53pp | −49.5% | ✗ worst yr |
+| MA50 · struct | 17.44% | +3.71pp | −41.5% | ✗ worst yr |
+| MA50 · robust1 | 15.86% | +2.13pp | −36.5% | ✗ worst yr |
+| MA50 · plateau | 16.32% | +2.58pp | −56.5% | ✗ worst yr |
+
+Rule gates:
+
+- **struct** — clears B&H on 3/3 MAs; S2 pass at MA200 (rank-2 +1.69pp, band
+  7.72pp); but **no cell passes the −35% worst-year bar** (best −37.1%). FAIL.
+- **robust1** — MA200 cell passes; S2 pass (rank-2 +0.68pp, band 4.91pp; note
+  ranks 3–4 fall *below* B&H — the edge is thin across near-ties); but
+  **S1 FAIL** (6 distinct param sets > 4) and **F2 FAIL** (QQQ control 29.30%
+  vs production 34.8% = −5.5pp > 3pp; the 1pp-conservative tie-break
+  over-corrects on QQQ). FAIL.
+- **plateau** — passes the QQQ control best (33.05%, converges to the
+  production-Balanced pick — QQQ's plateau is real); but on SPY it keeps
+  selecting aggressive sizing and the 2023 exit-0.99 geometry: fails B&H
+  outright at MA200 and the worst-year bar everywhere. FAIL.
+
+## Verdict (per §4, binding)
+
+**No candidate passes all gates → SPY is demoted to not-recommended.**
+F1 (2011–2014 extended windows) was not run — no candidate survived the
+cheaper gates. Positive by-products for the paper:
+
+1. **QQQ's edge is not a selection artifact.** Even the fully capped `struct`
+   variant (buy ≤ 40%, dip ≥ 0.25%) beats QQQ B&H by +8.5pp (27.78%), and the
+   robustness-first `plateau` selector lands on essentially the production
+   Balanced combo (33.05%). The QQQ recommendation is *strengthened*.
+2. **SPY's edge, where it exists (+2–3pp), sits below the pre-registered
+   risk bar** (−35% worst year) on every exit MA once selection is sane, and
+   the one cell that clears it (robust1 · MA200) belongs to a rule that fails
+   stability and the cross-index control.
+3. The v1-era "SPY works modestly" result was real but rode the v1 grid's
+   implicit caps; it does not survive being asked to prove itself under
+   pre-registered gates.
+
 ## Amendments
 
 *(none yet)*
