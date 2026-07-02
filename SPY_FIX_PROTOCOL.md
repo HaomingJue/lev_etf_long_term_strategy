@@ -181,5 +181,24 @@ wherever that variant is recommended. Under the amended bar:
   **S1 as written** (6 distinct sets over 12 windows, 7 over 16, vs ≤ 4 —
   all one family, max one grid step of drift per axis per change). Ship /
   no-ship pending owner decision on S1 (Amendment 2 or final demotion).
+
+### Amendment 2 — 2026-07-02 (owner decision)
+
+**Change**: the verdict rule is amended to allow shipping `struct · MA200`
+with **S1 recorded as FAILED**. S1 is *not* relabeled a pass and its metric is
+*not* redefined; the README must disclose, wherever the variant is
+recommended, that the rule re-tunes by micro-steps roughly every two years
+within one parameter family (7 distinct sets over 16 windows; every set in
+entry 1.01–1.02 · drop 0.25–0.5% · exit 0.94–0.97×MA200 · buy 30–40%).
+
+## Final verdict (Amendments 1–2 applied)
+
+**SPY ships `struct · MA200`** — highest-CAGR survivor with `buy ≤ 40%` and
+`drop ≥ 0.25%`, exit on MA200 — as a **high-risk satellite** variant:
+walk-forward 16.35% vs 13.75% B&H (2015–2026, worst year −37.1%), extended
+19.80% vs 14.10% (2011–2026). Admitted under two documented post-hoc
+amendments with S1 failed-and-disclosed; readers should weight it
+accordingly. QQQ remains the production strategy, its selection-robustness
+now *positively validated* by this protocol's control runs.
 - `robust1` — unchanged verdict (fails F2/S1 regardless of this amendment).
 - `plateau` — unchanged verdict.
