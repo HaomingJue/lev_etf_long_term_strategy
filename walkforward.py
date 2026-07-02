@@ -78,7 +78,87 @@ def _buy_cap(select: str):
     return _rule_threshold(select, "buycap")
 
 
-def _pick_combo(passing, select: str):
+# The three pre-registered SPY-fix rules (SPY_FIX_PROTOCOL.md §3). `struct` caps
+# both aggressiveness-monotone axes; `robust1`/`plateau` keep the premise floor
+# drop >= 0 (never buy a rally day) and replace raw argmax with a noise-aware /
+# robustness-first ranking.
+STRUCT_BUY_CAP    = 0.40
+STRUCT_DROP_FLOOR = 0.0025
+PREMISE_DROP_FLOOR = 0.0
+ROBUST_TOL_PP     = 1.0
+
+
+def _plateau_scores(res) -> pd.Series:
+    """Median CAGR of each combo's axis-aligned ±1-step grid neighborhood
+    (self included). Neighbors are every *evaluated* combo — pass and fail
+    alike — so a fragile spike next to filter-breaching neighbors scores low;
+    pruned/absent grid points are simply not counted."""
+    axes   = ["entry_signal", "drop_level", "exit_signal",
+              "buy_pct", "alloc_base", "alloc_x2"]
+    lookup = {}
+    coords = np.empty((len(res), len(axes)), dtype=np.int64)
+    for j, a in enumerate(axes):
+        vals = np.sort(res[a].unique())
+        vmap = {v: i for i, v in enumerate(vals)}
+        coords[:, j] = res[a].map(vmap).to_numpy()
+    cagr = res["cagr"].to_numpy()
+    for c, g in zip(map(tuple, coords), cagr):
+        lookup[c] = g
+    scores = np.empty(len(res))
+    for k in range(len(res)):
+        c  = coords[k]
+        vs = [cagr[k]]
+        for j in range(len(axes)):
+            for d in (-1, 1):
+                cc    = c.copy()
+                cc[j] += d
+                v = lookup.get(tuple(cc))
+                if v is not None:
+                    vs.append(v)
+        scores[k] = np.median(vs)
+    return pd.Series(scores, index=res.index)
+
+
+def _rank_combos(passing, select: str, res=None):
+    """Rank one window's passing combos under a selection rule, best first.
+
+    `_pick_combo` trades row 0; the fork-sensitivity diagnostic (protocol gate
+    S2) trades rows 1..N-1. `res` (the full grid, pass+fail) is required only
+    by 'plateau'. Ties resolve in grid order (stable sorts), matching idxmax.
+    """
+    if select == "struct":
+        surv = passing[(passing["buy_pct"] <= STRUCT_BUY_CAP + 1e-9)
+                       & (passing["drop_level"] >= STRUCT_DROP_FLOOR - 1e-9)]
+        if surv.empty:
+            surv = passing
+        return surv.sort_values("cagr", ascending=False, kind="stable")
+
+    if select == "robust1":
+        surv = passing[passing["drop_level"] >= PREMISE_DROP_FLOOR - 1e-9]
+        if surv.empty:
+            surv = passing
+        top  = surv["cagr"].max()
+        tol  = surv[surv["cagr"] >= top - ROBUST_TOL_PP]
+        tol  = tol.sort_values(["buy_pct", "drop_level", "exit_signal"],
+                               ascending=[True, False, True], kind="stable")
+        rest = surv.drop(tol.index).sort_values("cagr", ascending=False,
+                                                kind="stable")
+        return pd.concat([tol, rest])
+
+    if select == "plateau":
+        surv = passing[passing["drop_level"] >= PREMISE_DROP_FLOOR - 1e-9]
+        if surv.empty:
+            surv = passing
+        scores = _plateau_scores(res if res is not None else passing)
+        surv = surv.assign(_plateau=scores.reindex(surv.index))
+        return (surv.sort_values(["_plateau", "cagr"], ascending=False,
+                                 kind="stable")
+                    .drop(columns="_plateau"))
+
+    raise ValueError(f"_rank_combos: unknown ranked rule '{select}'")
+
+
+def _pick_combo(passing, select: str, res=None):
     """Return (chosen_row, leader_row) for one training window's passing combos.
 
     select:
@@ -98,13 +178,22 @@ def _pick_combo(passing, select: str):
       'calmar'    — highest Calmar ratio (CAGR / |real-period maxDD|): the most
                     conservative rule, converges to 2× and the shallowest
                     drawdowns, at a real cost in CAGR.
+      'struct'    — buy_pct ≤ 40% AND drop ≥ 0.25%, then top CAGR: both
+                    aggressiveness-monotone axes structurally capped
+                    (SPY_FIX_PROTOCOL.md candidate 1).
+      'robust1'   — drop ≥ 0, then the most conservative combo within 1pp of
+                    the top in-sample CAGR (candidate 2).
+      'plateau'   — drop ≥ 0, ranked by ±1-step neighborhood median CAGR
+                    (candidate 3). Needs `res`, the full pass+fail grid.
     leader is always the plain top-CAGR row, for reporting how much CAGR the
     chosen rule traded away.
     """
     leader   = passing.loc[passing["cagr"].idxmax()]
     maxdd    = _maxdd_cap(select)
     buy      = _buy_cap(select)
-    if select == "calmar":
+    if select in ("struct", "robust1", "plateau"):
+        chosen = _rank_combos(passing, select, res).iloc[0]
+    elif select == "calmar":
         chosen = passing.loc[passing["calmar"].idxmax()]
     elif maxdd is not None:
         survivors = passing[passing["max_dd_real"] >= -maxdd * 100]
@@ -213,7 +302,7 @@ def build_param_schedules(preset: str, start_year: int, end_year: int,
             continue
 
         for s in selects:
-            chosen, leader = _pick_combo(passing, s)
+            chosen, leader = _pick_combo(passing, s, res)
             schedules[s][trade_yr] = _row_to_params(chosen)
             tag = ""
             if chosen.name != leader.name:
@@ -587,7 +676,11 @@ def _parse_args():
                         "structural exposure cap (the robust cross-index "
                         "Balanced rule; the only one that lifts SPY past B&H "
                         "out-of-sample). 'calmar' = highest CAGR/|maxDD| (most "
-                        "conservative, ~2x). Non-'cagr' rules get a _sel{rule} "
+                        "conservative, ~2x). Pre-registered SPY-fix rules "
+                        "(SPY_FIX_PROTOCOL.md): 'struct' (buy<=40%% and "
+                        "drop>=0.25%%), 'robust1' (most conservative within 1pp "
+                        "of top CAGR, drop>=0), 'plateau' (neighborhood-median "
+                        "CAGR rank, drop>=0). Non-'cagr' rules get a _sel{rule} "
                         "output suffix.")
     p.add_argument("--no-save-grids", action="store_true",
                    help="Do not save each training window's full grid result "
@@ -648,12 +741,13 @@ if __name__ == "__main__":
     # searched once per window and each rule derives its own schedule.
     selects = [s.strip() for s in args.select.split(",") if s.strip()]
     bad = [s for s in selects
-           if s not in ("cagr", "calmar")
+           if s not in ("cagr", "calmar", "struct", "robust1", "plateau")
            and _maxdd_cap(s) is None and _buy_cap(s) is None]
     if bad or not selects:
         sys.exit(f"--select: invalid rule(s) {bad or '(empty)'}; choose from "
                  f"'cagr', 'calmar', 'maxdd{{N}}', 'buycap{{N}}' "
-                 f"(e.g. maxdd50, buycap50), comma-separated.")
+                 f"(e.g. maxdd50, buycap50), 'struct', 'robust1', 'plateau', "
+                 f"comma-separated.")
 
     # Per-rule schedule path. MA200 keeps the original filename for back-compat;
     # non-200 adds _ma{N}; grid / dd-limit / select each add a tag so variants
