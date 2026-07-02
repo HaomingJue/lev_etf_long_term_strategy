@@ -153,4 +153,33 @@ cheaper gates. Positive by-products for the paper:
 
 ## Amendments
 
-*(none yet)*
+### Amendment 1 — 2026-07-02 (post-results, owner decision)
+
+**Change**: cell-gate worst-year bar relaxed from −35% to **−40%**. CAGR bar
+(B&H + 1.5pp) and all other gates unchanged.
+
+**Disclosure**: this is a **post-hoc goalpost move**, made after seeing the
+results table above, to admit `struct · MA200` (16.35%, worst −37.1%) as a
+"tradeable but high-risk" satellite. The README must state this plainly
+wherever that variant is recommended. Under the amended bar:
+
+- `struct · MA200` — cell ✓ (unique: MA100 fails the CAGR bar at +1.08pp,
+  MA50 still fails worst-year at −41.5%), multi-MA ✓, S2 ✓.
+  **S1 as written: FAIL** (6 distinct param sets > 4; they form one cluster —
+  entry 1.02 from 2017 on, exit 0.97 from 2019 on, residual drift
+  drop 0.0025↔0.005 / buy 0.4→0.3 — but the gate counts exact sets).
+  **F1**: run after this amendment — **PASS**. Extended walk-forward
+  2011–2026 (training windows 2003–2010 …, four never-before-searched
+  windows): **19.80% vs 14.10% B&H = +5.69pp** (gate ≥ +0.5pp), worst year
+  −37.1% (2022). The fresh 2011–2014 years scored +5.7pp of edge on picks
+  from the same parameter family (entry 1.01–1.02, drop 0.25–0.5%, exit
+  0.94–0.95×MA200, buy 40%) — incidentally reproducing the v1-era study's
+  combos from data it never saw. (Fixing this run also surfaced and fixed a
+  real `--from-grids` fallback crash in walkforward.py.)
+
+  **Status**: `struct · MA200` passes every gate under Amendment 1 except
+  **S1 as written** (6 distinct sets over 12 windows, 7 over 16, vs ≤ 4 —
+  all one family, max one grid step of drift per axis per change). Ship /
+  no-ship pending owner decision on S1 (Amendment 2 or final demotion).
+- `robust1` — unchanged verdict (fails F2/S1 regardless of this amendment).
+- `plateau` — unchanged verdict.
