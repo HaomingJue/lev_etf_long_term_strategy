@@ -42,6 +42,15 @@ the overfitting case history.
 | **QQQ maxdd50** (production) | 33.96 | 33.85 | **+14.64pp** | **0.91pp** | passes decisively — plateau confirmed directly |
 | SPY struct (shipped) | 16.29 | 15.42 | +1.69pp | 7.72pp | passes, thin |
 | SPY robust1 (not shipped) | 15.85 | 14.41 | +0.68pp (ranks 3-4 fall below B&H) | 4.91pp | contributed to the decision not to ship |
+
+## Why QQQ ships 3 variants, SPY ships 1 — README §5 (walkforward --select cagr,maxdd50,calmar,struct --from-grids, MA200, 2026-07-03 rerun)
+| Rule at SPY MA200 | OOS CAGR | B&H | edge |
+|---|---|---|---|
+| cagr (QQQ's Aggressive rule) | 8.97% | 13.73% | −4.76pp FAIL |
+| maxdd50 (QQQ's Balanced rule) | 10.92% | 13.73% | −2.81pp FAIL |
+| calmar (QQQ's Conservative rule) | 11.04% | 13.73% | −2.69pp FAIL |
+| struct (SPY's shipped rule) | 16.30% | 13.73% | +2.57pp PASS |
+- All three of QQQ's menu rules fail on SPY at its own production MA — not a style choice, `struct` is SPY's only rule of 7 tried that clears B&H at all.
 - QQQ run used fresh data (2026-07-03) vs the §7 table's 2026-06-11 — explains 33.96 vs 34.76 published CAGR (data-end drift, not a bug).
 - `_rank_combos`/`_pick_combo` unified in walkforward.py to support this for all 7 rules (cagr/calmar/maxdd{N}/buycap{N}/struct/robust1/plateau);
   regression-verified byte-identical rank-1 picks against every pre-existing cached schedule before trusting new output.

@@ -223,6 +223,17 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 
 **QQQ ships three of these seven** as its three named variants (Aggressive/Balanced/Conservative — §1); **SPY ships exactly one** (`struct`). The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they're in the codebase because they were candidates during the process that chose SPY's rule, described next, or a one-off check run on QQQ, described after that.
 
+> **Why three variants for QQQ but only one for SPY? Not a style preference — it's what the data supports.** Point the exact same three rules that give QQQ its risk ladder at SPY (same MA200 exit, same 2015–2026 window, B&H 13.73%), and all three **fail**:
+>
+> | Rule | SPY OOS CAGR | vs B&H |
+> |---|---|---|
+> | `cagr` (→ QQQ Aggressive) | 8.97% | −4.76pp ✗ |
+> | `maxdd50` (→ QQQ Balanced) | 10.92% | −2.81pp ✗ |
+> | `calmar` (→ QQQ Conservative) | 11.04% | −2.69pp ✗ |
+> | `struct` (SPY's actual rule) | 16.30% | +2.57pp ✓ |
+>
+> QQQ's three variants are three *different working answers* to "how much risk do you want" — they can all be offered as a genuine menu because QQQ's trend structure is strong enough that almost any reasonable selection philosophy beats B&H (the fork-sensitivity and cross-index-control results above confirm this directly: a 0.91pp rank spread, and even a fully-capped rule still clears B&H by +8.5pp). SPY has no equivalent menu to offer — the DD-cap and Calmar rules that produce QQQ's gentler tiers don't produce a gentler *working* SPY tier, they produce the **same losing pick**, because SPY's in-sample drawdowns before 2022 never got deep enough to make the cap bind (see the box below). Of everything tried on SPY — the original three, plus `buycap`, plus the three protocol candidates — **`struct` is the only one that beats B&H at all.** So SPY isn't shipping "the conservative option among several winners"; it's shipping the sole survivor, at the one risk level that happened to work, with that risk fully disclosed (§1, §9). If you want a gentler SPY tier, the honest answer is that the data doesn't currently support one — not that it wasn't tried.
+
 > **Why an in-sample drawdown cap can't protect SPY.** A maxDD cap only reacts to drawdowns the training data contains. On every SPY window before 2022 the top combo's worst real drawdown was ~−35%, so a 50% cap never binds — it re-picks the exact combo that then lost −56% in 2022. **An in-sample cap cannot bound an out-of-sample tail; only structural limits can.** That is why SPY's shipped rule caps *behavior* (size and trigger), not backtest statistics.
 
 ### How SPY's one rule was chosen
