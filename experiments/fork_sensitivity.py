@@ -24,7 +24,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 if "--no-show" not in sys.argv:            # keep walkforward's matplotlib on Agg
     sys.argv.append("--no-show")
 from backtester import run_backtest, cagr as compute_cagr
-from walkforward import _rank_combos, _row_to_params
+from walkforward import _rank_combos, _row_to_params, _maxdd_cap, _buy_cap
+
+
+def _valid_select(s: str) -> bool:
+    return (s in ("cagr", "calmar", "struct", "robust1", "plateau")
+            or _maxdd_cap(s) is not None or _buy_cap(s) is not None)
 
 
 def build_rank_schedule(preset: str, exit_ma: int, select: str, rank: int,
@@ -72,12 +77,18 @@ def main():
     p.add_argument("--preset",     default="SPY", choices=["QQQ", "SPY", "IWM"])
     p.add_argument("--exit-ma",    type=int, default=200, choices=[50, 100, 200])
     p.add_argument("--select",     default="struct",
-                   choices=["struct", "robust1", "plateau"])
+                   help="'cagr', 'calmar', 'maxdd{N}', 'buycap{N}', 'struct', "
+                        "'robust1', or 'plateau' — any rule walkforward.py "
+                        "supports.")
     p.add_argument("--ranks",      type=int, default=5)
     p.add_argument("--start-year", type=int, default=2015)
     p.add_argument("--end-year",   type=int, default=2026)
     p.add_argument("--no-show",    action="store_true")
     args = p.parse_args()
+    if not _valid_select(args.select):
+        sys.exit(f"--select: invalid rule '{args.select}'; choose from "
+                 f"'cagr', 'calmar', 'maxdd{{N}}', 'buycap{{N}}', 'struct', "
+                 f"'robust1', 'plateau'.")
 
     print(f"\nFork sensitivity — {args.preset} MA{args.exit_ma} "
           f"[{args.select}], ranks 1–{args.ranks}, "

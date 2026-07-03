@@ -122,10 +122,36 @@ def _plateau_scores(res) -> pd.Series:
 def _rank_combos(passing, select: str, res=None):
     """Rank one window's passing combos under a selection rule, best first.
 
-    `_pick_combo` trades row 0; the fork-sensitivity diagnostic (protocol gate
-    S2) trades rows 1..N-1. `res` (the full grid, pass+fail) is required only
-    by 'plateau'. Ties resolve in grid order (stable sorts), matching idxmax.
+    `_pick_combo` trades row 0; the fork-sensitivity diagnostic (gate S2)
+    trades rows 1..N-1 — including for the four original rules (cagr/calmar/
+    maxdd{N}/buycap{N}), so QQQ's shipped rule can be fork-tested the same
+    way SPY's was. `res` (the full grid, pass+fail) is required only by
+    'plateau'. Ties resolve in grid order (stable sorts), matching idxmax.
     """
+    if select == "cagr":
+        return passing.sort_values("cagr", ascending=False, kind="stable")
+
+    if select == "calmar":
+        return passing.sort_values("calmar", ascending=False, kind="stable")
+
+    maxdd = _maxdd_cap(select)
+    if maxdd is not None:
+        surv = passing[passing["max_dd_real"] >= -maxdd * 100]
+        if not surv.empty:
+            return surv.sort_values("cagr", ascending=False, kind="stable")
+        # No survivor at this cap: fall back to shallowest-drawdown combo
+        # first, matching _pick_combo's single-pick fallback exactly.
+        return passing.sort_values("max_dd_real", ascending=False, kind="stable")
+
+    buy = _buy_cap(select)
+    if buy is not None:
+        surv = passing[passing["buy_pct"] <= buy + 1e-9]
+        if not surv.empty:
+            return surv.sort_values("cagr", ascending=False, kind="stable")
+        # No survivor: fall back to the plain top-CAGR leader, matching
+        # _pick_combo's fallback exactly.
+        return passing.sort_values("cagr", ascending=False, kind="stable")
+
     if select == "struct":
         surv = passing[(passing["buy_pct"] <= STRUCT_BUY_CAP + 1e-9)
                        & (passing["drop_level"] >= STRUCT_DROP_FLOOR - 1e-9)]
@@ -188,25 +214,8 @@ def _pick_combo(passing, select: str, res=None):
     leader is always the plain top-CAGR row, for reporting how much CAGR the
     chosen rule traded away.
     """
-    leader   = passing.loc[passing["cagr"].idxmax()]
-    maxdd    = _maxdd_cap(select)
-    buy      = _buy_cap(select)
-    if select in ("struct", "robust1", "plateau"):
-        chosen = _rank_combos(passing, select, res).iloc[0]
-    elif select == "calmar":
-        chosen = passing.loc[passing["calmar"].idxmax()]
-    elif maxdd is not None:
-        survivors = passing[passing["max_dd_real"] >= -maxdd * 100]
-        # If nothing survives the cap (very tight cap on an early window),
-        # fall back to the shallowest-drawdown passing combo.
-        chosen = (survivors.loc[survivors["cagr"].idxmax()] if not survivors.empty
-                  else passing.loc[passing["max_dd_real"].idxmax()])
-    elif buy is not None:
-        survivors = passing[passing["buy_pct"] <= buy + 1e-9]
-        chosen = (survivors.loc[survivors["cagr"].idxmax()] if not survivors.empty
-                  else leader)
-    else:
-        chosen = leader
+    leader = passing.loc[passing["cagr"].idxmax()]
+    chosen = _rank_combos(passing, select, res).iloc[0]
     return chosen, leader
 
 
