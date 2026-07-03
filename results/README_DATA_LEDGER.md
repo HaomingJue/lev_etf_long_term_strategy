@@ -36,6 +36,16 @@ the overfitting case history.
 - SPY yearly: `SPY_walkforward_2015-2026_gridv3_selstruct_yearly.csv`
   (−20.5 / +25.8 / +71.4 / −15.3 / +44.9 / −8.9 / +98.6 / −37.1 / +41.5 / +63.6 / +15.6 / −11.0*).
 
+## Fork sensitivity (gate S2) — README §7, both indices, 2026-07-03 (experiments/fork_sensitivity.py)
+| Rule (MA200) | rank1 CAGR | rank2 CAGR | rank-2 vs B&H | rank1-5 band | verdict |
+|---|---|---|---|---|---|
+| **QQQ maxdd50** (production) | 33.96 | 33.85 | **+14.64pp** | **0.91pp** | passes decisively — plateau confirmed directly |
+| SPY struct (shipped) | 16.29 | 15.42 | +1.69pp | 7.72pp | passes, thin |
+| SPY robust1 (not shipped) | 15.85 | 14.41 | +0.68pp (ranks 3-4 fall below B&H) | 4.91pp | contributed to the decision not to ship |
+- QQQ run used fresh data (2026-07-03) vs the §7 table's 2026-06-11 — explains 33.96 vs 34.76 published CAGR (data-end drift, not a bug).
+- `_rank_combos`/`_pick_combo` unified in walkforward.py to support this for all 7 rules (cagr/calmar/maxdd{N}/buycap{N}/struct/robust1/plateau);
+  regression-verified byte-identical rank-1 picks against every pre-existing cached schedule before trusting new output.
+
 ## Protocol matrix — README §6 (walkforward --from-grids, 2026-07-01 data; CAGR · worst yr)
 | Rule | MA200 | MA100 | MA50 |
 |---|---|---|---|

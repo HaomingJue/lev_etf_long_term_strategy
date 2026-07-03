@@ -338,7 +338,15 @@ A fair objection to annual re-optimization is that the headline CAGR is twelve d
 
 ### Fork sensitivity — does the headline hinge on one lucky pick?
 
-New mandatory diagnostic ([`experiments/fork_sensitivity.py`](experiments/fork_sensitivity.py)), motivated by §4's 2023 fork: rebuild the entire schedule from the rule's rank-R pick in *every* window and re-score. For **SPY struct · MA200**: rank-2 schedule still beats B&H (+1.7pp); ranks 1–5 span 7.7pp. For comparison, `robust1`'s ranks 3–4 fall *below* B&H — its edge is thinner across near-ties, one of the reasons it wasn't shipped despite passing its cell gate.
+Mandatory diagnostic ([`experiments/fork_sensitivity.py`](experiments/fork_sensitivity.py)), motivated by §4's 2023 fork: rebuild the entire schedule from the rule's rank-R pick in *every* window and re-score. Gate: rank-2 must still beat B&H; the rank-1..5 CAGR band should stay under ~8pp.
+
+| Rule (MA200) | rank-2 vs B&H | rank-1..5 band | Verdict |
+|---|---|---|---|
+| **QQQ maxdd50** (production) | **+14.6pp** | **0.91pp** | passes by a wide margin — the plateau story, directly confirmed |
+| SPY struct (shipped) | +1.7pp | 7.7pp | passes, but thin |
+| SPY robust1 (not shipped) | below B&H at ranks 3–4 | — | fails — one reason it wasn't shipped despite passing its cell gate |
+
+QQQ's result is the sharpest evidence in the whole study that its edge is structural, not a lucky in-sample guess: swap in the optimizer's 2nd-, 3rd-, 4th-, or 5th-best pick in every single year, and the walk-forward CAGR barely moves (33.05–33.96%). SPY's edge is real but far more sensitive to exactly which combo the optimizer returns — expected, given it survives on a narrower structural constraint rather than a broad plateau. *(QQQ run used data through 2026-07-03, three weeks later than the §7 table above; the 33.96% rank-1 CAGR reflects that, not a discrepancy with the 34.76% production figure.)*
 
 ### IWM (MA200) — not recommended
 
@@ -461,7 +469,7 @@ With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable 
 
 - **Anchor on walk-forward, not full-history.** The 23-year backtest is hindsight-optimized. The walk-forward numbers (QQQ 34.8%, SPY 16.4%) are the realistic forward expectation.
 - **The SPY variant ships under two documented post-hoc amendments.** The pre-registered protocol's original verdict was *demote SPY*; the owner relaxed the worst-year bar (−35% → −40%) and accepted a failed stability gate, both recorded in [`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md) with full disclosure rather than silently re-run. Readers should weight SPY's +2.6pp edge accordingly; the strongest counter-evidence that it is *not* pure fitting is the fresh-data result (§8: +5.7pp on four never-searched windows).
-- **The multiple-comparisons ledger.** Across the project's life, roughly **40 rule×MA cells** have been scored against the 2015–2026 OOS window (early studies ~10, the wide-grid matrix 15, the review probes 5, the protocol 9). Any single cell's ±2–4pp edge must be read against that denominator — it is why the protocol demanded multi-MA consistency, fork robustness, and reserved 2011–2014 data instead of one good number.
+- **The multiple-comparisons ledger.** Across the project's life, roughly **45 rule×MA cells / rank-schedules** have been scored against the 2015–2026 OOS window (early studies ~10, the wide-grid matrix 15, the review probes 5, the protocol 9, the QQQ + SPY fork-sensitivity reruns another ~5 each). Any single cell's ±2–4pp edge must be read against that denominator — it is why the protocol demanded multi-MA consistency, fork robustness, and reserved 2011–2014 data instead of one good number.
 - **An in-sample drawdown cap cannot bound an out-of-sample tail** (§5). Only structural levers (buy-size caps, dip floors, lower leverage) limit an unseen tail.
 - **Selection is the biggest risk in optimization** (§4). Aggressiveness-monotone parameters + argmax = guaranteed migration to the fragile edge. If you modify this study, extend the structural caps to any new axis you add.
 - **3× requires stomaching −20% to −37% calendar years.** If you cannot, trade the Conservative 2× variant or stay unleveraged.
@@ -496,8 +504,9 @@ python walkforward.py --preset SPY --exit-ma 200 --select struct,robust1,plateau
 
 **Selection / filter flags:** `--select` takes a comma-separated list of `cagr`, `maxdd{N}`, `buycap{N}`, `calmar`, and the protocol rules `struct` (buy ≤ 40% ∧ drop ≥ 0.25%), `robust1` (most conservative within 1pp of top CAGR), `plateau` (neighborhood-median rank) — one grid pass yields all. `--dd-limit 0.40` (calendar-year filter); `--cash-yield` (T-bill sleeve); `--from-grids`; `--no-save-grids`.
 
-**Fork-sensitivity diagnostic (protocol gate S2):**
+**Fork-sensitivity diagnostic (gate S2, any rule):**
 ```bash
+python experiments/fork_sensitivity.py --preset QQQ --exit-ma 200 --select maxdd50   # production rule
 python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select struct
 ```
 
@@ -567,43 +576,78 @@ Current live (2026) picks — these match the §1 table, the §9 backtests, and 
 | `tax_engine.py` + `tax_brackets.json` | Per-year fed + Ontario tax engine (2011–2025). | *(imported)* | — |
 | `crisis_analysis.py` | Trade-frequency stats (§1) + crisis figures (§9). No flags. | `python crisis_analysis.py` | `results/crisis/` |
 | `param_heatmap.py` | Robustness heatmaps (§4). | `python param_heatmap.py --no-show` | `results/optimizer/…png` |
-| `experiments/fork_sensitivity.py` | Gate S2: schedule from rank-R picks, R=1..5 (§7). | `python experiments/fork_sensitivity.py --preset SPY --select struct` | console |
+| `experiments/fork_sensitivity.py` | Gate S2: schedule from rank-R picks, R=1..5, any rule (§7). | `python experiments/fork_sensitivity.py --preset QQQ --select maxdd50` | console |
 | `SPY_FIX_PROTOCOL.md` | Pre-registered protocol, results, amendments, verdict. | *(read)* | — |
 | **`daily_signal/`** (companion repo) | Runs the identical engine for live BUY/SELL/HOLD Telegram signals + January re-opt. | see its README | `config/params.json` |
 
 </details>
 
 <details>
-<summary><b>D · Recreate this research from scratch (full pipeline)</b></summary>
+<summary><b>D · Recreate this research from scratch (full pipeline, in logical order)</b></summary>
 
-**1 · Full-history grid search — §4 landscape.** One run per preset × exit-MA (9 runs):
+This is the actual dependency order — not the historical order this project followed (which included the SPY selection mistake documented in §4). Each command has a one-line reason it runs where it does. All scripts share `optimizer_core.py`, so numbers cannot drift between them; `backtester.py` is authoritative for any cited figure.
+
+**Step 1 — Full-history grid search (§4 landscape, §4 heatmap).** One run per preset × exit-MA (9 runs); this is the raw in-sample return/risk landscape everything downstream picks from — nothing about later steps changes what gets searched here:
 ```bash
 python optimizer.py --preset QQQ --exit-ma 200 --no-show   # repeat --exit-ma 100, 50; presets SPY, IWM
 ```
 
-**2 · Walk-forward — §6–§7.** One grid pass per preset × MA derives all selection rules at once and caches every window's grid:
-```bash
-python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar --start-year 2015 --end-year 2026 --no-show
-python walkforward.py --preset SPY --exit-ma 200 --select struct,robust1,plateau --start-year 2015 --end-year 2026 --no-show
-# §6 SPY matrix: repeat the SPY line with --exit-ma 100 and 50 (--from-grids after the first pass)
-# §8 F1: python walkforward.py --preset SPY --exit-ma 200 --select struct --from-grids --start-year 2011 --end-year 2026 --no-show
-```
-
-**3 · Authoritative backtests — §9 table.** Run `backtester.py` once per Appendix-B row.
-
-**4 · Heatmaps + crisis figures:**
+**Step 2 — Robustness heatmaps (§4).** Visualize whether each index's in-sample optimum sits on a broad plateau or a fragile spike, *before* trusting any single "best" combo:
 ```bash
 python param_heatmap.py --no-show
-python crisis_analysis.py
 ```
 
-**5 · Diagnostics + experiments (§7 S2, §6 box, §10 VIX):**
+**Step 3 — Walk-forward Phase 1+2 for every candidate selection rule, at every candidate exit MA (§5–§7).** One grid pass per preset × MA derives every rule in `--select` at once (the search is the expensive part; deriving N rules from one search costs ~1×, not N×) and caches every window's grid so later steps reuse it for free via `--from-grids`:
 ```bash
-python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select struct
+# QQQ: the three shipped rules, already established — MA200 only (§6 settled this long ago)
+python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar --start-year 2015 --end-year 2026 --no-show
+
+# SPY: the three pre-registered candidate rules, at all three exit MAs — this produces the §6 rule×MA matrix
+python walkforward.py --preset SPY --exit-ma 200 --select struct,robust1,plateau --start-year 2015 --end-year 2026 --no-show
+python walkforward.py --preset SPY --exit-ma 100 --select struct,robust1,plateau --from-grids --no-show
+python walkforward.py --preset SPY --exit-ma 50  --select struct,robust1,plateau --from-grids --no-show
+```
+
+**Step 4 — Choose the exit MA under the frozen rule (§6).** Not a script — read the CAGR/worst-year cells from Step 3's yearly CSVs and apply the pre-registered criterion (clears B&H on ≥2/3 MAs; among passing cells, shallowest worst year wins). This is the step the historical study got backwards by comparing MAs *before* fixing the rule.
+
+**Step 5 — Cross-index control (§5, §8 F2).** Run the *other* index's candidate rules to check they don't secretly break it — a rule that only behaves on the index it was designed for is fitted, not structural:
+```bash
+python walkforward.py --preset QQQ --exit-ma 200 --select struct,robust1,plateau --from-grids --no-show
+```
+
+**Step 6 — Parameter-stability check (§7 gate S1).** Not a script — count distinct parameter sets across the 12+ windows in each shipped schedule JSON (`results/walkforward/*_param_schedule*.json`); too many or too erratic is a red flag even with a good headline CAGR.
+
+**Step 7 — Fork-sensitivity check, on every rule you intend to ship or seriously consider (§7 gate S2).** Rebuilds the whole schedule from the rank-2/3/4/5 in-sample pick instead of rank-1, and re-scores — the direct test of whether the headline depends on a single lucky in-sample draw:
+```bash
+python experiments/fork_sensitivity.py --preset QQQ --exit-ma 200 --select maxdd50   # production rule
+python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select struct    # shipped
+python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select robust1   # considered, not shipped — informative failure
+```
+
+**Step 8 — Fresh-data validation (§8 F1).** Extend the walk-forward to training windows genuinely never searched in any prior step — the one check immune to "best of 40 tries on the same window":
+```bash
+python walkforward.py --preset SPY --exit-ma 200 --select struct --from-grids --start-year 2011 --end-year 2026 --no-show
+```
+
+**Step 9 — Out-of-window regime check (§6 box, §8 F3).** Validate the core unleveraged trend-filter idea across 75 years, far outside the 2003+ grid's view:
+```bash
 python experiments/regime_reliability.py
+```
+
+**Step 10 — Side-experiment, reported either way (§10).** Tests whether a VIX fear-gate improves the shipped QQQ config; documented as a negative result:
+```bash
 python experiments/backtester_vix.py
 ```
 
-Because all tools import `optimizer_core.py`, the numbers cannot drift between them, and `backtester.py` remains authoritative for any cited figure. The full per-script CLI flag reference is unchanged from the tools' `--help`.
+**Step 11 — Authoritative backtests of every final shipped config (§9 table, Appendix B).** The trade-logged, cost-aware, tax-aware numbers actually cited anywhere in this README:
+```bash
+python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.04 --drop-level 0.0 --exit-signal 1.01 --buy-pct 1.0 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200 --no-show
+# repeat once per Appendix-B row (QQQ Balanced, QQQ Conservative, SPY Struct)
+```
+
+**Step 12 — Crisis stress tests and trade-frequency stats (§1, §9).** Runs every final shipped config through the four historical crises plus its plain-index and un-timed-leveraged-ETF benchmarks:
+```bash
+python crisis_analysis.py
+```
 
 </details>
