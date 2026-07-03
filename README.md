@@ -358,9 +358,13 @@ Mandatory diagnostic ([`experiments/fork_sensitivity.py`](experiments/fork_sensi
 
 | Rule (MA200) | rank-2 vs B&H | rank-1..5 band | Verdict |
 |---|---|---|---|
-| **QQQ maxdd50** (production) | **+14.6pp** | **0.91pp** | passes by a wide margin — the plateau story, directly confirmed |
+| **QQQ cagr** (Aggressive) | **+13.4pp** | **2.0pp** | passes by a wide margin |
+| **QQQ maxdd50** (Balanced, recommended) | **+14.6pp** | **0.91pp** | passes by a wide margin — the plateau story, directly confirmed |
+| **QQQ calmar** (Conservative) | **+7.3pp** | **0.76pp** | passes by a wide margin |
 | SPY struct (shipped) | +1.7pp | 7.7pp | passes, but thin |
 | SPY robust1 (not shipped) | below B&H at ranks 3–4 | — | fails — one reason it wasn't shipped despite passing its cell gate |
+
+All three of QQQ's shipped variants — not just the recommended Balanced one — pass with wide margins and tight rank-1..5 bands (0.76–2.0pp). Someone trading Aggressive or Conservative instead of Balanced gets the same confidence the optimizer's #1 in-sample pick isn't a fluke.
 
 QQQ's result is the sharpest evidence in the whole study that its edge is structural, not a lucky in-sample guess: swap in the optimizer's 2nd-, 3rd-, 4th-, or 5th-best pick in every single year, and the walk-forward CAGR barely moves (33.05–33.96%). SPY's edge is real but far more sensitive to exactly which combo the optimizer returns — expected, given it survives on a narrower structural constraint rather than a broad plateau. *(QQQ run used data through 2026-07-03, three weeks later than the §7 table above; the 33.96% rank-1 CAGR reflects that, not a discrepancy with the 34.76% production figure.)*
 
