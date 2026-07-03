@@ -35,12 +35,12 @@ All operate per training window on the DD-filter survivors of the standard v3 gr
 1. **`struct`** — structural caps: survivors with `buy_pct ≤ 0.40` **and**
    `drop_level ≥ 0.0025`; rank by in-sample CAGR. *Justification (a priori): the
    strategy's premise is dip-buying; `drop ≤ 0` degenerates into always-buy, and the
-   buy cap bounds per-signal exposure against unseen tails (README §6).*
+   buy cap bounds per-signal exposure against unseen tails (README §5).*
 2. **`robust1`** — noise-aware conservative tie-break: survivors with
    `drop_level ≥ 0.0` (premise floor: never buy a rally day); among those within
    **1.0pp** of the top in-sample CAGR, pick lowest `buy_pct`, then highest
    `drop_level`, then lowest `exit_signal`, then grid order. *Justification:
-   in-sample margins under ~1pp are backtest noise (README §1); ties must not
+   in-sample margins under ~1pp are backtest noise (README §4); ties must not
    resolve toward aggression.*
 3. **`plateau`** — robustness-first ranking: survivors with `drop_level ≥ 0.0`;
    rank by the **median CAGR of the axis-aligned ±1-step grid neighborhood**

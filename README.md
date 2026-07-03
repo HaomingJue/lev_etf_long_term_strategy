@@ -4,8 +4,8 @@ A systematic study of whether a disciplined "buy dips only in confirmed uptrends
 
 > [!IMPORTANT]
 > **The honest, out-of-sample headline (annual re-optimization, no look-ahead):**
-> - **QQQ works, decisively — and survived a selection-robustness audit.** The recommended **Balanced (DD-capped)** variant earns **34.8% CAGR vs 19.4% buy-and-hold** (2015–2026), worst year −22.6%. A robustness-first selector run as a control independently converges to nearly the same combo (§5) — QQQ's edge is structural, not a lucky pick.
-> - **SPY ships one high-risk satellite variant, admitted under documented amendments.** The **Struct-Capped (buy ≤ 40%, dip ≥ 0.25%, MA200 exit)** rule earns **16.4% vs 13.7% B&H** (2015–2026) and **19.8% vs 14.1%** on the extended 2011–2026 window whose first four years were never used in any prior decision (§8) — but it rides **−37% years** and failed one stability gate, disclosed in §7. Read §10 before trading it.
+> - **QQQ works, decisively — and survived a selection-robustness audit.** The recommended **Balanced (DD-capped)** variant earns **34.8% CAGR vs 19.4% buy-and-hold** (2015–2026), worst year −22.6%. A robustness-first selector run as a control independently converges to nearly the same combo (§7) — QQQ's edge is structural, not a lucky pick.
+> - **SPY ships one high-risk satellite variant, admitted under documented amendments.** The **Struct-Capped (buy ≤ 40%, dip ≥ 0.25%, MA200 exit)** rule earns **16.4% vs 13.7% B&H** (2015–2026) and **19.8% vs 14.1%** on the extended 2011–2026 window whose first four years were never used in any prior decision (§7) — but it rides **−37% years** and failed one stability gate, disclosed in §7. Read §9 before trading it.
 > - **IWM fails** out-of-sample and is not recommended.
 >
 > Full-history (hindsight-optimized) upper bounds are higher — QQQ $10k→$3.99M — but **anchor on the walk-forward numbers.**
@@ -19,12 +19,13 @@ A systematic study of whether a disciplined "buy dips only in confirmed uptrends
 - [3. Methodology](#3-methodology)
 - [4. Why naive selection fails — the study's hardest-won lesson](#4-why-naive-selection-fails--the-studys-hardest-won-lesson)
 - [5. The selection rules](#5-the-selection-rules)
-- [6. Choosing the exit MA — under the rule you actually trade](#6-choosing-the-exit-ma--under-the-rule-you-actually-trade)
-- [7. Walk-forward validation (the honest test)](#7-walk-forward-validation-the-honest-test)
-- [8. Fresh-data validation](#8-fresh-data-validation)
-- [9. Drawdown and tail risk](#9-drawdown-and-tail-risk)
-- [10. Risk and design honesty](#10-risk-and-design-honesty)
-- [11. Technical reference](#11-technical-reference)
+- [6. Walk-forward validation (the honest test)](#6-walk-forward-validation-the-honest-test)
+- [7. How we know this isn't overfit](#7-how-we-know-this-isnt-overfit)
+- [8. Drawdown and tail risk](#8-drawdown-and-tail-risk)
+- [9. Risk and design honesty](#9-risk-and-design-honesty)
+- [10. Technical reference](#10-technical-reference)
+
+> **Reading this fresh?** §1–§6 give you the complete current logic — what to trade, why the strategy works, and what it actually earned — with zero self-correction or history baked in. §7 is where every piece of "how do we know this wasn't cherry-picked" evidence lives (the SPY protocol, cross-index control, the full exit-MA matrix, stability, fork-sensitivity, fresh data). Read §7 only if you want the proof; skip it and you still have the whole answer.
 
 ---
 
@@ -46,11 +47,9 @@ The strategy never holds a leveraged ETF unconditionally: it buys dips only whil
 
 > **You barely trade.** All three QQQ variants place the identical **43** orders over 23 years (~2/year, busiest year ever: 4); they fire on the same signals and differ only in sizing. You are in cash or simply holding on ~99% of days. (Computed by [`crisis_analysis.py`](crisis_analysis.py).)
 
-**New since the selection audit (§5):** QQQ's recommendation is now *positively validated*, not just asserted — a robustness-first selector (`plateau`) run as a control lands on essentially the production Balanced combo (33.1% OOS), and even a fully capped conservative selector (`struct`: buy ≤ 40%, dip ≥ 0.25%) still beats QQQ B&H by +8.5pp. QQQ's edge does not depend on how you pick.
+**QQQ's recommendation is positively validated, not just asserted** — a robustness-first selector (`plateau`) run as a control lands on essentially the production Balanced combo (33.1% OOS), and even a fully capped conservative selector (`struct`: buy ≤ 40%, dip ≥ 0.25%) still beats QQQ B&H by +8.5pp. QQQ's edge does not depend on how you pick — full evidence in §7.
 
 ### SPY — a high-risk satellite, shipped with disclosures
-
-SPY's variant was produced by a **pre-registered protocol** ([`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md)) after the previous variant was found to rest on a flawed exit-MA comparison (§4, §6). What survived:
 
 | | **SPY Satellite — Struct-Capped (3×, MA200)** |
 |---|---|
@@ -61,7 +60,9 @@ SPY's variant was produced by a **pre-registered protocol** ([`SPY_FIX_PROTOCOL.
 | Full-history (2003–2026, live params) | 21.7% vs 11.4% B&H · maxDD −57.5% · Sharpe 0.69 |
 | Trades per year (full history) | ~2.5 (58 total / 23 yrs) |
 
-> **Read before trading SPY (full detail in §10):** this variant was admitted under **two documented post-hoc amendments** — the worst-year bar was relaxed from −35% to −40% after seeing results, and one stability gate (S1) **failed and ships failed**: the rule re-tunes by micro-steps roughly every two years within one parameter family (entry 1.01–1.02 · dip 0.25–0.5% · exit 0.94–0.97×MA200 · buy 30–40%). Its worst intra-crisis drawdown is **−57.5% (COVID 2020)** — deeper than any QQQ variant. The +2.6pp edge is real across every test we could throw at it, including four never-before-used validation years (§8), but it is thin relative to the ride. **QQQ remains the strategy's real home; treat SPY as an optional satellite and IWM as not recommended.**
+This is SPY's sole shipped variant — of everything ever tried (7 selection rules across 3 exit MAs), `struct`·MA200 is the only combination that beats buy-and-hold out-of-sample at all. It was chosen through a pre-registered protocol, not a style preference — full story in §7.
+
+> **Read before trading SPY (full detail in §9):** this variant was admitted under **two documented post-hoc amendments** — the worst-year bar was relaxed from −35% to −40% after seeing results, and one stability gate (S1) **failed and ships failed**: the rule re-tunes by micro-steps roughly every two years within one parameter family (entry 1.01–1.02 · dip 0.25–0.5% · exit 0.94–0.97×MA200 · buy 30–40%). Its worst intra-crisis drawdown is **−57.5% (COVID 2020)** — deeper than any QQQ variant. The +2.6pp edge is real across every test we could throw at it, including four never-before-used validation years (§7), but it is thin relative to the ride. **QQQ remains the strategy's real home; treat SPY as an optional satellite and IWM as not recommended.**
 
 ### Live parameters for calendar year 2026
 
@@ -139,12 +140,12 @@ The edge lives in steps 4–6: the strategy scales *into* leverage on dips **onl
 
 1. **Search.** Grid-search all 61,200 parameter combos over full history (2003–2026), separately for each candidate exit MA (50 / 100 / 200) and each index — producing the raw return/risk landscape.
 2. **Understand how selection fails.** Before trusting any pick, study what a naive argmax does with a wide grid (§4). This step exists because the study got it wrong once and documents the wreckage.
-3. **Fix the selection rule.** Choose selection rules that survive §4's failure modes — for SPY under a pre-registered protocol with frozen acceptance gates (§5).
-4. **Pick the exit MA — under that rule.** The exit MA and the selection rule cannot be chosen independently; judge each MA by the rule you will actually trade (§6).
-5. **Walk forward.** Re-run the full grid search on an **expanding** window each year — train on 2003→2014, then 2003→2015, … (12 windows) — freeze each year's pick, score out-of-sample against B&H, and report stability and fork-sensitivity diagnostics (§7).
-6. **Confirm on fresh data.** Extend the walk-forward back to 2011 (four training windows never searched before), and cross-check the rules on the other index as a control (§8). Stress-test tails with crisis backtests (§9).
+3. **Fix the selection rule.** Choose selection rules that survive §4's failure modes (§5) — SPY's rule was chosen via a pre-registered protocol with frozen acceptance gates (§7).
+4. **Pick the exit MA — under that rule.** The exit MA and the selection rule cannot be chosen independently; judge each MA by the rule you will actually trade (§7).
+5. **Walk forward.** Re-run the full grid search on an **expanding** window each year — train on 2003→2014, then 2003→2015, … (12 windows) — freeze each year's pick, score out-of-sample against B&H (§6), and report stability and fork-sensitivity diagnostics (§7).
+6. **Confirm on fresh data.** Extend the walk-forward back to 2011 (four training windows never searched before), and cross-check the rules on the other index as a control (§7). Stress-test tails with crisis backtests (§8).
 
-**Universe and window.** QQQ/QLD/TQQQ, SPY/SSO/UPRO, IWM/UWM/TNA, all from **2003-01-01** (a fair common floor: IWM launched 2000, the real 3× ETFs 2009–2010). The dot-com 2000–2002 period is excluded from optimization because the leveraged series there is 100% synthetic and extreme (§9 stress-tests it separately). QQQ results use data through **2026-06-11**; the SPY protocol runs use data through **2026-07-01** (three weeks' drift, disclosed rather than hidden — both strategy and B&H are always scored on identical windows).
+**Universe and window.** QQQ/QLD/TQQQ, SPY/SSO/UPRO, IWM/UWM/TNA, all from **2003-01-01** (a fair common floor: IWM launched 2000, the real 3× ETFs 2009–2010). The dot-com 2000–2002 period is excluded from optimization because the leveraged series there is 100% synthetic and extreme (§8 stress-tests it separately). QQQ results use data through **2026-06-11**; the SPY protocol runs use data through **2026-07-01** (three weeks' drift, disclosed rather than hidden — both strategy and B&H are always scored on identical windows).
 
 **Synthetic leveraged NAV.** Before a real ETF existed, its NAV is modeled as
 `lev_ret = L·r − 0.5·(L²−L)·var₂₀ − MER/252`, where the MER drag applies **only** to the synthetic pre-inception period (real prices already embed fees). Synthetic series are stitched to real prices at inception. All prices are dividend-adjusted.
@@ -166,7 +167,7 @@ Constraints: `exit < entry`, and `buy_pct ≤ 1 − alloc_base` (larger values a
 
 **Drawdown filter.** A combo passes only if no calendar year from the ETF-inception cutoff onward (QQQ 2010, SPY/IWM 2009) lost more than **40%**. The filter — and the real-period max-drawdown used by risk-managed rules — is enforced only on real (post-inception) data, because synthetic pre-inception leveraged drawdowns are punishingly large and would distort every choice toward 2×.
 
-**Every window's grid is saved.** Walk-forward Phase 1 writes each training window's complete grid (all 61,200 combos, every metric) to `results/walkforward/grids/{preset}/*.csv.gz`. The expensive search runs **once per window**; any selection rule can then be re-derived offline in seconds (`--from-grids`) — which is what made the §5 protocol runs cheap.
+**Every window's grid is saved.** Walk-forward Phase 1 writes each training window's complete grid (all 61,200 combos, every metric) to `results/walkforward/grids/{preset}/*.csv.gz`. The expensive search runs **once per window**; any selection rule can then be re-derived offline in seconds (`--from-grids`) — which is what made the §7 protocol runs cheap.
 
 **Sharpe** uses the historical 13-week T-bill (^IRX) as a daily-varying risk-free rate, reported by `backtester.py` over the full 2003→2026 history.
 
@@ -193,7 +194,7 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 
 **A buy-cap alone cannot fix this.** Capping `buy_pct` back to 40% recovers only ~2pp of the ~7pp damage at MA200 (11.1% vs 9.0%), because the 2015 and 2023 forks are *trigger-geometry* picks (drop, exit), which no sizing cap touches. The old "structural buy-size cap is the single lever that works" conclusion was half-right: structural caps are the right *kind* of lever, but they must cover **every** aggressiveness-monotone axis.
 
-**And the meta-trap: scoring many cells on one OOS window.** The previous exit-MA verdict compared 15 rule×MA cells on the same 12 years and shipped the best number. With that many draws, something always looks good. The fix is procedural, not statistical: freeze the candidate rules and acceptance criteria *before* scoring (§5), demand consistency across MAs, and keep fresh data in reserve (§8). A running count of every comparison ever made lives in §10.
+**And the meta-trap: scoring many cells on one OOS window.** The previous exit-MA verdict compared 15 rule×MA cells on the same 12 years and shipped the best number. With that many draws, something always looks good. The fix is procedural, not statistical: freeze the candidate rules and acceptance criteria *before* scoring (§7), demand consistency across MAs, and keep fresh data in reserve (§7). A running count of every comparison ever made lives in §9.
 
 ### Reading the robustness heatmaps
 
@@ -203,7 +204,7 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 
 - **Wide bright zone** = a plateau: forgiving, robust.
 - **Lone bright cell in a dark field** = a spike: overfit — avoid.
-- **Blue box** = the single highest-CAGR combo. For QQQ it sits inside a broad plateau (entry 1.03–1.05 × exit 0.99–1.01) — and §5's `plateau` control confirms this quantitatively: a selector that *ranks by neighborhood median* independently picks nearly the same QQQ combo the production rule does.
+- **Blue box** = the single highest-CAGR combo. For QQQ it sits inside a broad plateau (entry 1.03–1.05 × exit 0.99–1.01) — and §7's `plateau` control confirms this quantitatively: a selector that *ranks by neighborhood median* independently picks nearly the same QQQ combo the production rule does.
 
 ---
 
@@ -218,10 +219,10 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 | `calmar` | Top `CAGR / \|real-period maxDD\|` | **QQQ Conservative** |
 | `buycap{N}` | Top CAGR among combos with `buy_pct ≤ N%` | *not shipped* — SPY's retired rule, superseded by `struct` (§4) |
 | `struct` | Top CAGR with `buy_pct ≤ 40%` **and** `drop_level ≥ 0.25%` | **SPY Satellite** — SPY's only shipped variant |
-| `robust1` | Most conservative combo within 1pp of the top in-sample CAGR | *not shipped* — a SPY candidate, tested and rejected (below) |
-| `plateau` | Ranked by the median CAGR of each combo's ±1-grid-step neighborhood | *not shipped* — used once as a validation check, on both indices (below) |
+| `robust1` | Most conservative combo within 1pp of the top in-sample CAGR | *not shipped* — a SPY candidate, tested and rejected (§7) |
+| `plateau` | Ranked by the median CAGR of each combo's ±1-grid-step neighborhood | *not shipped* — used once as a validation check, on both indices (§7) |
 
-**QQQ ships three of these seven** as its three named variants (Aggressive/Balanced/Conservative — §1); **SPY ships exactly one** (`struct`). The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they're in the codebase because they were candidates during the process that chose SPY's rule, described next, or a one-off check run on QQQ, described after that.
+**QQQ ships three of these seven** as its three named variants (Aggressive/Balanced/Conservative — §1), all on the **MA200** exit; **SPY ships exactly one** (`struct`), also on **MA200**. The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they were candidates or one-off checks. §7 has the complete story of how each index's rule and exit MA were settled, including every rejected alternative.
 
 > **Why three variants for QQQ but only one for SPY? Not a style preference — it's what the data supports.** Point the exact same three rules that give QQQ its risk ladder at SPY (same MA200 exit, same 2015–2026 window, B&H 13.73%), and all three **fail**:
 >
@@ -232,75 +233,15 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 > | `calmar` (→ QQQ Conservative) | 11.04% | −2.69pp ✗ |
 > | `struct` (SPY's actual rule) | 16.30% | +2.57pp ✓ |
 >
-> QQQ's three variants are three *different working answers* to "how much risk do you want" — they can all be offered as a genuine menu because QQQ's trend structure is strong enough that almost any reasonable selection philosophy beats B&H. Two separate pieces of evidence confirm this, both further down: the **QQQ control** table just below (struct/robust1/plateau, three rules never designed for QQQ, still land at 27.8–33.1% vs 19.25% B&H), and §7's **fork-sensitivity** check, which found all three of QQQ's actual shipped variants pass with wide margins and tight rank-1..5 bands (0.76–2.0pp). SPY has no equivalent menu to offer — the DD-cap and Calmar rules that produce QQQ's gentler tiers don't produce a gentler *working* SPY tier, they produce the **same losing pick**, because SPY's in-sample drawdowns before 2022 never got deep enough to make the cap bind (see the box below). Of everything tried on SPY — the original three, plus `buycap`, plus the three protocol candidates — **`struct` is the only one that beats B&H at all.** So SPY isn't shipping "the conservative option among several winners"; it's shipping the sole survivor, at the one risk level that happened to work, with that risk fully disclosed (§1, §9). If you want a gentler SPY tier, the honest answer is that the data doesn't currently support one — not that it wasn't tried.
+> QQQ's three variants are three *different working answers* to "how much risk do you want" — they can all be offered as a genuine menu because QQQ's trend structure is strong enough that almost any reasonable selection philosophy beats B&H. §7 confirms this two separate ways: a cross-index control test (three rules never designed for QQQ still land at 27.8–33.1% vs 19.25% B&H) and a fork-sensitivity check (all three of QQQ's shipped variants pass with wide margins and tight rank-1..5 bands, 0.76–2.0pp). SPY has no equivalent menu to offer — the DD-cap and Calmar rules that produce QQQ's gentler tiers don't produce a gentler *working* SPY tier, they produce the **same losing pick**, because SPY's in-sample drawdowns before 2022 never got deep enough to make the cap bind (see the box below). Of everything tried on SPY — the original three, plus `buycap`, plus the three protocol candidates (§7) — **`struct` is the only one that beats B&H at all.** So SPY isn't shipping "the conservative option among several winners"; it's shipping the sole survivor, at the one risk level that happened to work, with that risk fully disclosed (§1, §8). If you want a gentler SPY tier, the honest answer is that the data doesn't currently support one — not that it wasn't tried.
 >
-> **This is also why every validation check from here on tests three QQQ rules but only one SPY rule.** It isn't an arbitrary asymmetry — it directly mirrors what's actually shipped: QQQ has three live variants worth individually confirming (the fork-sensitivity table in §7 checks Aggressive, Balanced, *and* Conservative separately, because a reader might trade any of the three), while SPY has exactly one (`struct`). Where `robust1` also appears in §7's table, it's shown only as the rejected candidate whose failure explains why it *isn't* shipped — not as a second SPY variant to pick between.
+> **This is also why §7's validation checks test three QQQ rules but only one SPY rule.** It isn't an arbitrary asymmetry — it directly mirrors what's actually shipped: QQQ has three live variants worth individually confirming, while SPY has exactly one (`struct`). Where `robust1` also appears in §7, it's shown only as the rejected candidate whose failure explains why it *isn't* shipped — not as a second SPY variant to pick between.
 
 > **Why an in-sample drawdown cap can't protect SPY.** A maxDD cap only reacts to drawdowns the training data contains. On every SPY window before 2022 the top combo's worst real drawdown was ~−35%, so a 50% cap never binds — it re-picks the exact combo that then lost −56% in 2022. **An in-sample cap cannot bound an out-of-sample tail; only structural limits can.** That is why SPY's shipped rule caps *behavior* (size and trigger), not backtest statistics.
 
-### How SPY's one rule was chosen
-
-SPY's old rule, `buycap50`, was diagnosed in §4 as incomplete — it capped only one of two aggressiveness-monotone axes. Rather than patch it and move on, its replacement was chosen through a **frozen, pre-registered protocol** ([`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md)): three new candidate rules, acceptance gates fixed *before* any of them were scored, no additions allowed afterward.
-
-- **`struct`** — buy ≤ 40% and dip ≥ 0.25%. *Justification: caps both problem axes at once (§4).*
-- **`robust1`** — most conservative combo within 1pp of the top in-sample CAGR. *Justification: sub-1pp margins are noise; ties should resolve toward caution, not aggression.*
-- **`plateau`** — ranked by neighborhood-median CAGR. *Justification: operationalizes §4's "plateau, not spike" principle as a selector instead of a chart.*
-
-**Gates** (frozen): beat B&H by ≥ 1.5pp with worst year ≥ −35% on the production MA; clear B&H on ≥ 2 of 3 exit MAs (a one-MA winner is cell-picking); parameter stability (≤ 4 distinct sets); fork-sensitivity (rank-2 must still beat B&H, §7); fresh-data confirmation (§8).
-
-**Outcome:** under the frozen gates, **no candidate passed outright** — `struct` cleared B&H on all three MAs but its worst year (−37.1%) missed the −35% bar; `robust1` passed one cell but failed stability and the cross-index check below; `plateau` failed SPY outright. The owner then made two **documented amendments** (worst-year bar → −40%; ship with the stability gate recorded as *failed*) that admit `struct · MA200` as a disclosed high-risk satellite. Every gate result and both amendments are recorded in the protocol file — nothing was quietly relabeled a pass.
-
-### The one-time QQQ check — not a QQQ selection process
-
-`struct`/`robust1`/`plateau` were also run on **QQQ's** grids, once, purely as a **falsification test**: if a rule built to fix SPY secretly wrecked a healthy index, the "one selection principle" story would be wrong. This did **not** re-pick or change anything for QQQ — `maxdd50` was already, and remains, QQQ's production rule. The table below exists only to check that rule survives scrutiny, nothing more.
-
-| Rule applied to QQQ (MA200, 2015–2026, B&H 19.25%) | OOS CAGR | Note |
-|---|---|---|
-| `maxdd50` — QQQ's actual production rule | 34.8% | shipped; unaffected by this check |
-| `plateau` | 33.1% | independently converges to ~the same combo (1.04/0.0/1.01, buy 90%) |
-| `robust1` | 29.3% | over-corrects (buy 50%) — informative, not a QQQ variant |
-| `struct` | 27.8% | even fully capped, +8.5pp over B&H |
-
-QQQ's edge survives every rule thrown at it — a property of the index's trend structure, not of any one optimizer's enthusiasm. SPY's edge, by contrast, only exists at all under the single structural rule it ships — the honest difference between a core holding and a satellite.
-
 ---
 
-## 6. Choosing the exit MA — under the rule you actually trade
-
-**Why this ordering matters.** The strategy uses moving averages in two roles: **arming** always uses the slow MA200 (fixed, every index); **exiting** uses a tunable MA (50/100/200) that controls how fast you bail. An earlier version of this study chose SPY's exit MA by comparing raw walk-forward numbers across MAs *before* fixing the selection rule — and got a different answer (MA50) than the one that survives sane selection (MA200). §4 explains the general trap; this section shows the corrected comparison.
-
-### QQQ → MA200, cleanly (unchanged)
-
-| Index · MA | In-sample best | OOS Aggressive | OOS Balanced (maxDD) | OOS Conservative | B&H | Verdict |
-|---|---|---|---|---|---|---|
-| **QQQ MA200** | 29.1% | 33.7% | **34.8%** | 27.0% | 19.4% | **chosen ✓** |
-| QQQ MA100 | 26.4% | 32.9% | 30.7% | 12.3% | 19.4% | worse, deeper worst years |
-
-Faster exits chop off profitable runs; MA200 wins both in-sample and out-of-sample with shallower worst years.
-
-> **Out-of-window check (1950–2026).** Because the grid only sees 2003+, we separately ran the *unleveraged* MA-timing signal on 75 years of S&P 500 ([`experiments/regime_reliability.py`](experiments/regime_reliability.py)). Over the full span the **MA200** long/cash rule nearly halved buy-and-hold's max drawdown (−30% vs −57%) and *added* return in every sideways/bear regime — including the 1966–82 secular chop the 2003+ sample never contains — while **MA50** was strictly worse (−45% maxDD, far more whipsaws). The slow MA200 is the more robust trend filter *across regimes*, not an artifact of the post-2003 window.
-
-### SPY → MA200 — the corrected verdict
-
-The protocol's rule×MA matrix (walk-forward 2015–2026, B&H ≈ 13.7%; cells = CAGR · worst year):
-
-| Rule | MA200 | MA100 | MA50 |
-|---|---|---|---|
-| **struct** | **16.4% · −37.1%** ✓ | 14.8% · −38.6% | 17.4% · −41.5% |
-| robust1 | 15.9% · −34.3% | 15.3% · −35.0% | 15.9% · −36.5% |
-| plateau | 9.6% ✗ · −45.6% | 15.3% · −49.5% | 16.3% · −56.5% |
-
-Three things the old MA50 verdict got wrong, visible at a glance:
-
-1. **Under structural selection, SPY beats B&H on *all three* exit MAs.** MA50 was never uniquely viable — it only looked that way when the slower MAs were scored with a broken selector (§4's 2015/2023 forks live at MA200/MA100).
-2. **MA200 is the only cell that passes the risk bar** for the production rule: MA50's extra CAGR (17.4%) costs a −41.5% worst year (and −56% under laxer rules — its deep 0.93×MA50 exit is a higher-drawdown animal in every crisis, §9).
-3. The exit MA is chosen by the **pre-registered criterion** (shallowest worst year among passing cells), not by the biggest number in the table — that discipline is the entire lesson of §4.
-
-**IWM → not recommended** (walk-forward fails B&H under every rule tested; not re-run under the protocol — disclosed, not hidden).
-
----
-
-## 7. Walk-forward validation (the honest test)
+## 6. Walk-forward validation (the honest test)
 
 Each January, the optimizer is re-run on all prior data only, the pick is frozen, and traded for the next 12 months. No look-ahead. **Fixed** = start-year parameters frozen throughout; **Expanding** = re-optimized every year.
 
@@ -341,6 +282,72 @@ Year-by-year (expanding):
 |---|---|
 | ![SPY struct walk-forward](results/walkforward/SPY_walkforward_2015-2026_gridv3_selstruct_comparison.png) | ![SPY struct drawdown](results/walkforward/SPY_walkforward_2015-2026_gridv3_selstruct_comparison_drawdown.png) |
 
+### IWM (MA200) — not recommended
+
+Expanding 6.2% vs 9.6% B&H — every selection rule fails, on every exit MA historically checked (§7). Small-cap LETF decay and unstable parameters; disclosed for completeness.
+
+---
+
+## 7. How we know this isn't overfit
+
+This section is where every piece of validation evidence lives: the pre-registered protocol that chose SPY's rule, the cross-index control, the full exit-MA × rule matrix, parameter stability, fork-sensitivity, and fresh out-of-sample data. §1–§6 already gave you the complete current answer with no self-correction; this section is the proof behind it.
+
+### How SPY's one rule was chosen (the pre-registered protocol)
+
+SPY's old rule, `buycap50`, was diagnosed in §4 as incomplete — it capped only one of two aggressiveness-monotone axes. Rather than patch it and move on, its replacement was chosen through a **frozen, pre-registered protocol** ([`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md)): three new candidate rules, acceptance gates fixed *before* any of them were scored, no additions allowed afterward.
+
+- **`struct`** — buy ≤ 40% and dip ≥ 0.25%. *Justification: caps both problem axes at once (§4).*
+- **`robust1`** — most conservative combo within 1pp of the top in-sample CAGR. *Justification: sub-1pp margins are noise; ties should resolve toward caution, not aggression.*
+- **`plateau`** — ranked by neighborhood-median CAGR. *Justification: operationalizes §4's "plateau, not spike" principle as a selector instead of a chart.*
+
+**Gates** (frozen): beat B&H by ≥ 1.5pp with worst year ≥ −35% on the production MA; clear B&H on ≥ 2 of 3 exit MAs (a one-MA winner is cell-picking); parameter stability (≤ 4 distinct sets, below); fork-sensitivity (rank-2 must still beat B&H, below); fresh-data confirmation (below).
+
+**Outcome:** under the frozen gates, **no candidate passed outright** — `struct` cleared B&H on all three MAs but its worst year (−37.1%) missed the −35% bar; `robust1` passed one cell but failed stability and the cross-index check below; `plateau` failed SPY outright. The owner then made two **documented amendments** (worst-year bar → −40%; ship with the stability gate recorded as *failed*) that admit `struct · MA200` as a disclosed high-risk satellite. Every gate result and both amendments are recorded in the protocol file — nothing was quietly relabeled a pass.
+
+### Cross-index control — does a rule built for one index wreck the other?
+
+`struct`/`robust1`/`plateau` were also run on **QQQ's** grids, once, purely as a **falsification test**: if a rule built to fix SPY secretly wrecked a healthy index, the "one selection principle" story would be wrong. This did **not** re-pick or change anything for QQQ — `maxdd50` was already, and remains, QQQ's production rule. The table below exists only to check that rule survives scrutiny, nothing more.
+
+| Rule applied to QQQ (MA200, 2015–2026, B&H 19.25%) | OOS CAGR | Note |
+|---|---|---|
+| `maxdd50` — QQQ's actual production rule | 34.8% | shipped; unaffected by this check |
+| `plateau` | 33.1% | independently converges to ~the same combo (1.04/0.0/1.01, buy 90%) |
+| `robust1` | 29.3% | over-corrects (buy 50%) — informative, not a QQQ variant |
+| `struct` | 27.8% | even fully capped, +8.5pp over B&H |
+
+QQQ's edge survives every rule thrown at it — a property of the index's trend structure, not of any one optimizer's enthusiasm. SPY's edge, by contrast, only exists at all under the single structural rule it ships — the honest difference between a core holding and a satellite.
+
+### Choosing the exit MA — the full rule × MA matrix
+
+**Why this ordering matters.** The strategy uses moving averages in two roles: **arming** always uses the slow MA200 (fixed, every index); **exiting** uses a tunable MA (50/100/200) that controls how fast you bail. An earlier version of this study chose SPY's exit MA by comparing raw walk-forward numbers across MAs *before* fixing the selection rule — and got a different answer (MA50) than the one that survives sane selection (MA200). §4 explains the general trap; this section shows the corrected comparison.
+
+**QQQ → MA200, cleanly.**
+
+| Index · MA | In-sample best | OOS Aggressive | OOS Balanced (maxDD) | OOS Conservative | B&H | Verdict |
+|---|---|---|---|---|---|---|
+| **QQQ MA200** | 29.1% | 33.7% | **34.8%** | 27.0% | 19.4% | **chosen ✓** |
+| QQQ MA100 | 26.4% | 32.9% | 30.7% | 12.3% | 19.4% | worse, deeper worst years |
+
+Faster exits chop off profitable runs; MA200 wins both in-sample and out-of-sample with shallower worst years.
+
+> **Out-of-window check (1950–2026).** Because the grid only sees 2003+, we separately ran the *unleveraged* MA-timing signal on 75 years of S&P 500 ([`experiments/regime_reliability.py`](experiments/regime_reliability.py)). Over the full span the **MA200** long/cash rule nearly halved buy-and-hold's max drawdown (−30% vs −57%) and *added* return in every sideways/bear regime — including the 1966–82 secular chop the 2003+ sample never contains — while **MA50** was strictly worse (−45% maxDD, far more whipsaws). The slow MA200 is the more robust trend filter *across regimes*, not an artifact of the post-2003 window.
+
+**SPY → MA200 — the corrected verdict.** The protocol's rule×MA matrix (walk-forward 2015–2026, B&H ≈ 13.7%; cells = CAGR · worst year):
+
+| Rule | MA200 | MA100 | MA50 |
+|---|---|---|---|
+| **struct** | **16.4% · −37.1%** ✓ | 14.8% · −38.6% | 17.4% · −41.5% |
+| robust1 | 15.9% · −34.3% | 15.3% · −35.0% | 15.9% · −36.5% |
+| plateau | 9.6% ✗ · −45.6% | 15.3% · −49.5% | 16.3% · −56.5% |
+
+Three things the old MA50 verdict got wrong, visible at a glance:
+
+1. **Under structural selection, SPY beats B&H on *all three* exit MAs.** MA50 was never uniquely viable — it only looked that way when the slower MAs were scored with a broken selector (§4's 2015/2023 forks live at MA200/MA100).
+2. **MA200 is the only cell that passes the risk bar** for the production rule: MA50's extra CAGR (17.4%) costs a −41.5% worst year (and −56% under laxer rules — its deep 0.93×MA50 exit is a higher-drawdown animal in every crisis, §8).
+3. The exit MA is chosen by the **pre-registered criterion** (shallowest worst year among passing cells), not by the biggest number in the table — that discipline is the entire lesson of §4.
+
+**IWM** was not re-run under the protocol (its walk-forward already fails B&H under every rule tested at every MA historically checked — §6); disclosed, not hidden.
+
 ### Parameter stability — is this one rule, or twelve?
 
 A fair objection to annual re-optimization is that the headline CAGR is twelve different rules stitched together. The schedules say otherwise for QQQ, and *almost* otherwise for SPY:
@@ -368,21 +375,13 @@ Mandatory diagnostic ([`experiments/fork_sensitivity.py`](experiments/fork_sensi
 
 All three of QQQ's shipped variants — not just the recommended Balanced one — pass with wide margins and tight rank-1..5 bands (0.76–2.0pp). Someone trading Aggressive or Conservative instead of Balanced gets the same confidence the optimizer's #1 in-sample pick isn't a fluke.
 
-QQQ's result is the sharpest evidence in the whole study that its edge is structural, not a lucky in-sample guess: swap in the optimizer's 2nd-, 3rd-, 4th-, or 5th-best pick in every single year, and the walk-forward CAGR barely moves (33.05–33.96%). SPY's edge is real but far more sensitive to exactly which combo the optimizer returns — expected, given it survives on a narrower structural constraint rather than a broad plateau. *(QQQ run used data through 2026-07-03, three weeks later than the §7 table above; the 33.96% rank-1 CAGR reflects that, not a discrepancy with the 34.76% production figure.)*
+QQQ's result is the sharpest evidence in the whole study that its edge is structural, not a lucky in-sample guess: swap in the optimizer's 2nd-, 3rd-, 4th-, or 5th-best pick in every single year, and the walk-forward CAGR barely moves (33.05–33.96%). SPY's edge is real but far more sensitive to exactly which combo the optimizer returns — expected, given it survives on a narrower structural constraint rather than a broad plateau. *(QQQ run used data through 2026-07-03, three weeks later than the §6 table above; the 33.96% rank-1 CAGR reflects that, not a discrepancy with the 34.76% production figure.)*
 
-### IWM (MA200) — not recommended
+### Fresh-data validation
 
-Expanding 6.2% vs 9.6% B&H — every selection rule fails. Small-cap LETF decay and unstable parameters; disclosed for completeness.
+Every number in §6 comes from a 12-year OOS window this project has scored dozens of times (§9 ledger). This is the evidence that couldn't have been cherry-picked.
 
----
-
-## 8. Fresh-data validation
-
-Every number in §7 comes from a 12-year OOS window this project has scored dozens of times (§10 ledger). This section is the evidence that couldn't have been cherry-picked.
-
-### F1 — Four training windows that never existed before
-
-The walk-forward was extended back to 2011: training windows 2003–2010 through 2003–2013 were **searched for the first time** after the SPY rule was frozen — their outcomes could not have influenced any design decision. Result (SPY struct · MA200, 2011–2026):
+**F1 — Four training windows that never existed before.** The walk-forward was extended back to 2011: training windows 2003–2010 through 2003–2013 were **searched for the first time** after the SPY rule was frozen — their outcomes could not have influenced any design decision. Result (SPY struct · MA200, 2011–2026):
 
 | | Strategy | SPY B&H |
 |---|---|---|
@@ -396,17 +395,13 @@ The four fresh years widen the edge rather than shrinking it — and the picks t
 
 ![SPY struct extended walk-forward](results/walkforward/SPY_walkforward_2011-2026_gridv3_selstruct_comparison.png)
 
-### F2 — Cross-index control
+**F2 — Cross-index control.** See the control table above: the robustness-first selector reproduces QQQ's production pick; the fully capped selector still beats QQQ B&H by +8.5pp. A rule family that behaves sensibly on an index it wasn't tuned for is evidence of structure, not fitting.
 
-§5's QQQ control table: the robustness-first selector reproduces QQQ's production pick; the fully capped selector still beats QQQ B&H by +8.5pp. A rule family that behaves sensibly on an index it wasn't tuned for is evidence of structure, not fitting.
-
-### F3 — Regime check (partial)
-
-The unleveraged MA200 trend signal is validated across 75 years and every market regime (§6 box). Extending that 1950–2026 test to the *full* trigger geometry (arm/dip/exit) is documented future work.
+**F3 — Regime check (partial).** The unleveraged MA200 trend signal is validated across 75 years and every market regime (the out-of-window box above). Extending that 1950–2026 test to the *full* trigger geometry (arm/dip/exit) is documented future work.
 
 ---
 
-## 9. Drawdown and tail risk
+## 8. Drawdown and tail risk
 
 This is the section that should drive your choice of variant — more than the headline CAGR. Each crisis gets a chart and a market-history walk-through; generated by [`crisis_analysis.py`](crisis_analysis.py).
 
@@ -426,7 +421,7 @@ Each cell is **`period return · max drawdown`**, both measured within that cris
 
 The SPY column's profile inverted versus the retired MA50 variant, and understanding why is instructive:
 - **Secular, grinding bears are now its best case.** Dot-com: **+34.9%** while everything else bled (the old MA50 variant made +10.8%); GFC: +26.3% (old: +4.7%). The slow MA200 exit disengages early and *stays* out through multi-year chop, and 30–40% per-dip sizing keeps re-entry whipsaws survivable.
-- **A gap-crash is now its worst case.** COVID 2020: **−9.7% with a −57.5% drawdown** — the full-history maximum. The MA200 exit cannot get ahead of a five-week, 34% collapse; the faster MA50 dodged more of it (−41.9%) at the price of failing everywhere else. There is no free exit speed — this study picks the slow exit because §6 shows it wins across regimes, and accepts the gap-crash tail knowingly.
+- **A gap-crash is now its worst case.** COVID 2020: **−9.7% with a −57.5% drawdown** — the full-history maximum. The MA200 exit cannot get ahead of a five-week, 34% collapse; the faster MA50 dodged more of it (−41.9%) at the price of failing everywhere else. There is no free exit speed — this study picks the slow exit because §7 shows it wins across regimes, and accepts the gap-crash tail knowingly.
 
 ### The timing rule vs. just holding the leveraged ETF
 
@@ -487,10 +482,10 @@ With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable 
 
 ---
 
-## 10. Risk and design honesty
+## 9. Risk and design honesty
 
 - **Anchor on walk-forward, not full-history.** The 23-year backtest is hindsight-optimized. The walk-forward numbers (QQQ 34.8%, SPY 16.4%) are the realistic forward expectation.
-- **The SPY variant ships under two documented post-hoc amendments.** The pre-registered protocol's original verdict was *demote SPY*; the owner relaxed the worst-year bar (−35% → −40%) and accepted a failed stability gate, both recorded in [`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md) with full disclosure rather than silently re-run. Readers should weight SPY's +2.6pp edge accordingly; the strongest counter-evidence that it is *not* pure fitting is the fresh-data result (§8: +5.7pp on four never-searched windows).
+- **The SPY variant ships under two documented post-hoc amendments.** The pre-registered protocol's original verdict was *demote SPY*; the owner relaxed the worst-year bar (−35% → −40%) and accepted a failed stability gate, both recorded in [`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md) with full disclosure rather than silently re-run. Readers should weight SPY's +2.6pp edge accordingly; the strongest counter-evidence that it is *not* pure fitting is the fresh-data result (§7: +5.7pp on four never-searched windows).
 - **The multiple-comparisons ledger.** Across the project's life, roughly **45 rule×MA cells / rank-schedules** have been scored against the 2015–2026 OOS window (early studies ~10, the wide-grid matrix 15, the review probes 5, the protocol 9, the QQQ + SPY fork-sensitivity reruns another ~5 each). Any single cell's ±2–4pp edge must be read against that denominator — it is why the protocol demanded multi-MA consistency, fork robustness, and reserved 2011–2014 data instead of one good number.
 - **An in-sample drawdown cap cannot bound an out-of-sample tail** (§5). Only structural levers (buy-size caps, dip floors, lower leverage) limit an unseen tail.
 - **Selection is the biggest risk in optimization** (§4). Aggressiveness-monotone parameters + argmax = guaranteed migration to the fragile edge. If you modify this study, extend the structural caps to any new axis you add.
@@ -506,7 +501,7 @@ A natural add-on is to sit in cash when fear is high — *hold no leverage while
 
 ---
 
-## 11. Technical reference
+## 10. Technical reference
 
 **Run the optimizer (one window, all combos):**
 ```bash
@@ -575,7 +570,7 @@ Every strategy is just these eight numbers. Arming **always** uses MA200; only t
 <details>
 <summary><b>B · Every shipped variant's exact parameters</b></summary>
 
-Current live (2026) picks — these match the §1 table, the §9 backtests, and the chart filenames. Re-optimized each January (§1); trade the fresh row when it differs.
+Current live (2026) picks — these match the §1 table, the §8 backtests, and the chart filenames. Re-optimized each January (§1); trade the fresh row when it differs.
 
 | Variant | entry | drop | exit | buy% | base | x2 | x3 | exit MA | Holds |
 |---|---|---|---|---|---|---|---|---|---|
@@ -596,7 +591,7 @@ Current live (2026) picks — these match the §1 table, the §9 backtests, and 
 | `walkforward.py` | **The honest test.** Expanding-window re-search + selection rules + Phase-2 backtest. | `python walkforward.py --preset SPY --exit-ma 200 --select struct` | `results/walkforward/` |
 | `backtester.py` | **Authoritative single-config run** — trade log, costs, T-bill yield, Ontario tax. | `python backtester.py --preset QQQ …` | `results/backtester/{preset}/` |
 | `tax_engine.py` + `tax_brackets.json` | Per-year fed + Ontario tax engine (2011–2025). | *(imported)* | — |
-| `crisis_analysis.py` | Trade-frequency stats (§1) + crisis figures (§9). No flags. | `python crisis_analysis.py` | `results/crisis/` |
+| `crisis_analysis.py` | Trade-frequency stats (§1) + crisis figures (§8). No flags. | `python crisis_analysis.py` | `results/crisis/` |
 | `param_heatmap.py` | Robustness heatmaps (§4). | `python param_heatmap.py --no-show` | `results/optimizer/…png` |
 | `experiments/fork_sensitivity.py` | Gate S2: schedule from rank-R picks, R=1..5, any rule (§7). | `python experiments/fork_sensitivity.py --preset QQQ --select maxdd50` | console |
 | `SPY_FIX_PROTOCOL.md` | Pre-registered protocol, results, amendments, verdict. | *(read)* | — |
@@ -621,18 +616,18 @@ python param_heatmap.py --no-show
 
 **Step 3 — Walk-forward Phase 1+2 for every candidate selection rule, at every candidate exit MA (§5–§7).** One grid pass per preset × MA derives every rule in `--select` at once (the search is the expensive part; deriving N rules from one search costs ~1×, not N×) and caches every window's grid so later steps reuse it for free via `--from-grids`:
 ```bash
-# QQQ: the three shipped rules, already established — MA200 only (§6 settled this long ago)
+# QQQ: the three shipped rules, already established — MA200 only (§7 settled this long ago)
 python walkforward.py --preset QQQ --exit-ma 200 --select cagr,maxdd50,calmar --start-year 2015 --end-year 2026 --no-show
 
-# SPY: the three pre-registered candidate rules, at all three exit MAs — this produces the §6 rule×MA matrix
+# SPY: the three pre-registered candidate rules, at all three exit MAs — this produces the §7 rule×MA matrix
 python walkforward.py --preset SPY --exit-ma 200 --select struct,robust1,plateau --start-year 2015 --end-year 2026 --no-show
 python walkforward.py --preset SPY --exit-ma 100 --select struct,robust1,plateau --from-grids --no-show
 python walkforward.py --preset SPY --exit-ma 50  --select struct,robust1,plateau --from-grids --no-show
 ```
 
-**Step 4 — Choose the exit MA under the frozen rule (§6).** Not a script — read the CAGR/worst-year cells from Step 3's yearly CSVs and apply the pre-registered criterion (clears B&H on ≥2/3 MAs; among passing cells, shallowest worst year wins). This is the step the historical study got backwards by comparing MAs *before* fixing the rule.
+**Step 4 — Choose the exit MA under the frozen rule (§7).** Not a script — read the CAGR/worst-year cells from Step 3's yearly CSVs and apply the pre-registered criterion (clears B&H on ≥2/3 MAs; among passing cells, shallowest worst year wins). This is the step the historical study got backwards by comparing MAs *before* fixing the rule.
 
-**Step 5 — Cross-index control (§5, §8 F2).** Run the *other* index's candidate rules to check they don't secretly break it — a rule that only behaves on the index it was designed for is fitted, not structural:
+**Step 5 — Cross-index control (§7).** Run the *other* index's candidate rules to check they don't secretly break it — a rule that only behaves on the index it was designed for is fitted, not structural:
 ```bash
 python walkforward.py --preset QQQ --exit-ma 200 --select struct,robust1,plateau --from-grids --no-show
 ```
@@ -646,28 +641,28 @@ python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select struc
 python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select robust1   # considered, not shipped — informative failure
 ```
 
-**Step 8 — Fresh-data validation (§8 F1).** Extend the walk-forward to training windows genuinely never searched in any prior step — the one check immune to "best of 40 tries on the same window":
+**Step 8 — Fresh-data validation (§7 F1).** Extend the walk-forward to training windows genuinely never searched in any prior step — the one check immune to "best of 40 tries on the same window":
 ```bash
 python walkforward.py --preset SPY --exit-ma 200 --select struct --from-grids --start-year 2011 --end-year 2026 --no-show
 ```
 
-**Step 9 — Out-of-window regime check (§6 box, §8 F3).** Validate the core unleveraged trend-filter idea across 75 years, far outside the 2003+ grid's view:
+**Step 9 — Out-of-window regime check (§7).** Validate the core unleveraged trend-filter idea across 75 years, far outside the 2003+ grid's view:
 ```bash
 python experiments/regime_reliability.py
 ```
 
-**Step 10 — Side-experiment, reported either way (§10).** Tests whether a VIX fear-gate improves the shipped QQQ config; documented as a negative result:
+**Step 10 — Side-experiment, reported either way (§9).** Tests whether a VIX fear-gate improves the shipped QQQ config; documented as a negative result:
 ```bash
 python experiments/backtester_vix.py
 ```
 
-**Step 11 — Authoritative backtests of every final shipped config (§9 table, Appendix B).** The trade-logged, cost-aware, tax-aware numbers actually cited anywhere in this README:
+**Step 11 — Authoritative backtests of every final shipped config (§8 table, Appendix B).** The trade-logged, cost-aware, tax-aware numbers actually cited anywhere in this README:
 ```bash
 python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.04 --drop-level 0.0 --exit-signal 1.01 --buy-pct 1.0 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200 --no-show
 # repeat once per Appendix-B row (QQQ Balanced, QQQ Conservative, SPY Struct)
 ```
 
-**Step 12 — Crisis stress tests and trade-frequency stats (§1, §9).** Runs every final shipped config through the four historical crises plus its plain-index and un-timed-leveraged-ETF benchmarks:
+**Step 12 — Crisis stress tests and trade-frequency stats (§1, §8).** Runs every final shipped config through the four historical crises plus its plain-index and un-timed-leveraged-ETF benchmarks:
 ```bash
 python crisis_analysis.py
 ```

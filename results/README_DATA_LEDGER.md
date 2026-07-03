@@ -14,7 +14,7 @@ documented amendments). SPY production = **struct · MA200**. The old MA50
 buy-cap rows are kept below as the superseded record — README §4 uses them as
 the overfitting case history.
 
-## Full-history authoritative backtests — README §9 table (results/backtester/{P}/*_summary.txt)
+## Full-history authoritative backtests — README §8 table (results/backtester/{P}/*_summary.txt)
 | Config | CAGR | B&H | worst yr | maxDD | Sharpe | final |
 |---|---|---|---|---|---|---|
 | QQQ Aggressive (buy100 3×, MA200)        | 29.11% | 16.2% | −35.0% | −55.9% | 0.78 | $3,987,913 |
@@ -24,7 +24,7 @@ the overfitting case history.
 - QQQ Aggressive +cash-yield 29.73%; +Ontario tax $100k salary ~25.1%.
 - SPY source: `results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.97_drop0.0025_buy0.3_b0_x20_ma200_summary.txt`.
 
-## Walk-forward 2015–2026 — README §7 (Fixed | Expanding | B&H)
+## Walk-forward 2015–2026 — README §6 (Fixed | Expanding | B&H)
 | Run | Fixed | Expanding | B&H | verdict |
 |---|---|---|---|---|
 | QQQ Aggressive            | 22.97 | **33.69** | 19.42 | re-opt WINS (+14.3pp), worst −22.6 |
@@ -53,11 +53,11 @@ the overfitting case history.
 | calmar (QQQ's Conservative rule) | 11.04% | 13.73% | −2.69pp FAIL |
 | struct (SPY's shipped rule) | 16.30% | 13.73% | +2.57pp PASS |
 - All three of QQQ's menu rules fail on SPY at its own production MA — not a style choice, `struct` is SPY's only rule of 7 tried that clears B&H at all.
-- QQQ run used fresh data (2026-07-03) vs the §7 table's 2026-06-11 — explains 33.96 vs 34.76 published CAGR (data-end drift, not a bug).
+- QQQ run used fresh data (2026-07-03) vs the §6 table's 2026-06-11 — explains 33.96 vs 34.76 published CAGR (data-end drift, not a bug).
 - `_rank_combos`/`_pick_combo` unified in walkforward.py to support this for all 7 rules (cagr/calmar/maxdd{N}/buycap{N}/struct/robust1/plateau);
   regression-verified byte-identical rank-1 picks against every pre-existing cached schedule before trusting new output.
 
-## Protocol matrix — README §6 (walkforward --from-grids, 2026-07-01 data; CAGR · worst yr)
+## Protocol matrix — README §7 (walkforward --from-grids, 2026-07-01 data; CAGR · worst yr)
 | Rule | MA200 | MA100 | MA50 |
 |---|---|---|---|
 | struct  | **16.35 · −37.1** ✓ | 14.82 · −38.6 | 17.44 · −41.5 |
@@ -70,7 +70,7 @@ the overfitting case history.
   band 7.72pp PASS; robust1·MA200 rank-2 +0.68pp, band 4.91pp (ranks 3–4 below B&H).
 - Stability (S1): struct·MA200 6 distinct sets /12 yrs (7/16) — FAILED, ships disclosed.
 
-## Fresh-data F1 — README §8 (walkforward --start-year 2011, windows 2003-2010..2013 searched 2026-07-02)
+## Fresh-data F1 — README §7 (walkforward --start-year 2011, windows 2003-2010..2013 searched 2026-07-02)
 - SPY struct·MA200 2011–2026: **19.80% vs 14.10% B&H (+5.69pp)**, worst −37.1%.
 - Fresh years: 2011 −21.3 (B&H +0.9) | 2012 +29.1 (+16.0) | 2013 +118.5 (+32.3) | 2014 +38.0 (+13.5).
 - Picks on fresh windows: 1.01–1.02 / 0.25–0.5% / 0.94–0.95 / buy 40% (v1-family, independently reproduced).
@@ -82,7 +82,7 @@ the overfitting case history.
 - 2015 fork: argmax (drop −1.0%, in-sample 27.4 vs 26.0) → OOS −23.6 vs −12.1.
 - 2023 fork: argmax (exit 0.99, in-sample 21.1 vs 20.5) → OOS +2.8 vs +42.2.
 
-## Crisis stress tests — README §9 (crisis_analysis.py → results/crisis/, rerun 2026-07-02)
+## Crisis stress tests — README §8 (crisis_analysis.py → results/crisis/, rerun 2026-07-02)
 Period return · maxDD within each window, 3 QQQ variants + SPY Satellite (struct·MA200):
 - Dot-com 2000–2003 (100% synthetic): Aggr −70.7 · −92.1 | Bal −65.6 · −90.2 |
   Cons(2×) −31.0 · −74.8 | **SPY-struct +34.9 · −34.7** (lone survivor).
