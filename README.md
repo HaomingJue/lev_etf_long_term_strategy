@@ -209,41 +209,46 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 
 ## 5. The selection rules
 
-The grid search finds tens of thousands of passing combos per window. *Which one do you trade?* After §4, the answer cannot be "the best one." The study now uses two groups of rules.
+**Every rule below does exactly the same job: given one training window's full grid (~61,200 evaluated combos), pick exactly one row to trade that year.** They are **parallel options for that one step, not sequential stages** — none of them depends on, follows, or feeds into another. A production index runs **one** rule (QQQ actually runs three, as three separate risk-tier variants you pick between — not three steps); everything else in the table exists because it was compared, tried, and set aside, or used once as a sanity check.
 
-### Production rules (one grid pass derives all)
-
-1. **Max-CAGR** → **QQQ Aggressive** — top CAGR among survivors. Maximizes growth; accepts §4's fragility risk, which QQQ's broad plateau happens to tolerate (see the control results below).
-2. **DD-Capped** (`maxdd50`) → **QQQ Balanced** (recommended) — highest-CAGR combo whose real-period max drawdown stays ≤ 50%. A mild regularizer: for QQQ it *beats* the uncapped rule out-of-sample (34.8% vs 33.7%) because the cap nudges buy 100% → buy 90% + 10% base, which generalizes better.
-3. **Calmar** → **QQQ Conservative** — top `CAGR / |real-period maxDD|`; converges to 2× plus a base cushion. The genuine low-drawdown choice, at ~8pp of CAGR.
-4. **Struct-Capped** (`struct`) → **SPY Satellite** — highest-CAGR combo with **`buy_pct ≤ 40%` and `drop_level ≥ 0.25%`**: a structural cap on *both* aggressiveness-monotone axes (§4). Independent of in-sample drawdown, so it limits exposure and preserves the dip-buying premise even against tails the training data never saw.
-
-> **Why an in-sample drawdown cap can't protect SPY.** A maxDD cap only reacts to drawdowns the training data contains. On every SPY window before 2022 the top combo's worst real drawdown was ~−35%, so a 50% cap never binds — it re-picks the exact combo that then lost −56% in 2022. **An in-sample cap cannot bound an out-of-sample tail; only structural limits can.** That is why SPY's rule caps *behavior* (size and trigger), not backtest statistics.
-
-### The pre-registered protocol (how SPY's rule was chosen)
-
-Because §4 showed the study had already burned its OOS window many times, SPY's fix was run as a **frozen, committed protocol** ([`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md)): exactly three candidate rules, acceptance gates fixed before scoring, no additions afterward.
-
-- **`struct`** — as above. *Justification: premise + structural exposure limit.*
-- **`robust1`** — most conservative combo within 1pp of the top in-sample CAGR (`drop ≥ 0`). *Justification: sub-1pp in-sample margins are noise; ties must not resolve toward aggression.*
-- **`plateau`** — combos ranked by the **median CAGR of their ±1-grid-step neighborhood** (`drop ≥ 0`). *Justification: §4's "plateau, not spike" principle, enforced as a selector instead of a chart.*
-
-**Gates** (frozen): beat B&H by ≥ 1.5pp with worst year ≥ −35% on the production MA; clear B&H on ≥ 2 of 3 exit MAs (a one-MA winner is cell-picking); parameter stability (≤ 4 distinct sets); fork-sensitivity (the rule's *second-ranked* picks must still beat B&H, §7); fresh-data confirmation (§8).
-
-**Outcome, in full:** under the frozen gates, **no rule passed** — `struct` beat B&H on all three MAs but its best worst-year (−37.1%) missed the −35% bar; `robust1` passed one cell but failed stability and the QQQ control; `plateau` failed SPY outright. The project owner then made two **documented amendments** (worst-year bar → −40%; ship with the stability gate S1 recorded as *failed*), which admit `struct · MA200` as a disclosed high-risk satellite. Every gate result, both amendments, and the reasoning are in the protocol file — nothing was relabeled a pass.
-
-### The QQQ control — what validates the whole framework
-
-The two selector-style candidates were also run on QQQ (MA200) as a falsification test: if a "robust" selector wrecked QQQ, the one-principle story would be wrong. Instead (2015–2026, B&H 19.25%):
-
-| Selector on QQQ | OOS CAGR | Note |
+| Rule | What it does | Shipped where |
 |---|---|---|
-| production Balanced (maxdd50) | 34.8% | the recommendation |
-| `plateau` control | **33.1%** | independently converges to ~the production combo (1.04 / 0.0 / 1.01, buy 90%) |
-| `robust1` control | 29.3% | over-corrects (buy 50%) — informative failure, why it isn't shipped |
-| `struct` control | 27.8% | even fully capped, +8.5pp over B&H |
+| `cagr` | Top CAGR, no constraint | **QQQ Aggressive** |
+| `maxdd{N}` (e.g. `maxdd50`) | Top CAGR among combos whose real-period max drawdown stays ≤ N% | **QQQ Balanced** (recommended, N=50) |
+| `calmar` | Top `CAGR / \|real-period maxDD\|` | **QQQ Conservative** |
+| `buycap{N}` | Top CAGR among combos with `buy_pct ≤ N%` | *not shipped* — SPY's retired rule, superseded by `struct` (§4) |
+| `struct` | Top CAGR with `buy_pct ≤ 40%` **and** `drop_level ≥ 0.25%` | **SPY Satellite** — SPY's only shipped variant |
+| `robust1` | Most conservative combo within 1pp of the top in-sample CAGR | *not shipped* — a SPY candidate, tested and rejected (below) |
+| `plateau` | Ranked by the median CAGR of each combo's ±1-grid-step neighborhood | *not shipped* — used once as a validation check, on both indices (below) |
 
-**QQQ's edge survives every conservative selector.** It is a property of the index's trend structure, not of an optimizer's enthusiasm. SPY's edge, by contrast, only exists at all under structural discipline — which is the honest difference between a core holding and a satellite.
+**QQQ ships three of these seven** as its three named variants (Aggressive/Balanced/Conservative — §1); **SPY ships exactly one** (`struct`). The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they're in the codebase because they were candidates during the process that chose SPY's rule, described next, or a one-off check run on QQQ, described after that.
+
+> **Why an in-sample drawdown cap can't protect SPY.** A maxDD cap only reacts to drawdowns the training data contains. On every SPY window before 2022 the top combo's worst real drawdown was ~−35%, so a 50% cap never binds — it re-picks the exact combo that then lost −56% in 2022. **An in-sample cap cannot bound an out-of-sample tail; only structural limits can.** That is why SPY's shipped rule caps *behavior* (size and trigger), not backtest statistics.
+
+### How SPY's one rule was chosen
+
+SPY's old rule, `buycap50`, was diagnosed in §4 as incomplete — it capped only one of two aggressiveness-monotone axes. Rather than patch it and move on, its replacement was chosen through a **frozen, pre-registered protocol** ([`SPY_FIX_PROTOCOL.md`](SPY_FIX_PROTOCOL.md)): three new candidate rules, acceptance gates fixed *before* any of them were scored, no additions allowed afterward.
+
+- **`struct`** — buy ≤ 40% and dip ≥ 0.25%. *Justification: caps both problem axes at once (§4).*
+- **`robust1`** — most conservative combo within 1pp of the top in-sample CAGR. *Justification: sub-1pp margins are noise; ties should resolve toward caution, not aggression.*
+- **`plateau`** — ranked by neighborhood-median CAGR. *Justification: operationalizes §4's "plateau, not spike" principle as a selector instead of a chart.*
+
+**Gates** (frozen): beat B&H by ≥ 1.5pp with worst year ≥ −35% on the production MA; clear B&H on ≥ 2 of 3 exit MAs (a one-MA winner is cell-picking); parameter stability (≤ 4 distinct sets); fork-sensitivity (rank-2 must still beat B&H, §7); fresh-data confirmation (§8).
+
+**Outcome:** under the frozen gates, **no candidate passed outright** — `struct` cleared B&H on all three MAs but its worst year (−37.1%) missed the −35% bar; `robust1` passed one cell but failed stability and the cross-index check below; `plateau` failed SPY outright. The owner then made two **documented amendments** (worst-year bar → −40%; ship with the stability gate recorded as *failed*) that admit `struct · MA200` as a disclosed high-risk satellite. Every gate result and both amendments are recorded in the protocol file — nothing was quietly relabeled a pass.
+
+### The one-time QQQ check — not a QQQ selection process
+
+`struct`/`robust1`/`plateau` were also run on **QQQ's** grids, once, purely as a **falsification test**: if a rule built to fix SPY secretly wrecked a healthy index, the "one selection principle" story would be wrong. This did **not** re-pick or change anything for QQQ — `maxdd50` was already, and remains, QQQ's production rule. The table below exists only to check that rule survives scrutiny, nothing more.
+
+| Rule applied to QQQ (MA200, 2015–2026, B&H 19.25%) | OOS CAGR | Note |
+|---|---|---|
+| `maxdd50` — QQQ's actual production rule | 34.8% | shipped; unaffected by this check |
+| `plateau` | 33.1% | independently converges to ~the same combo (1.04/0.0/1.01, buy 90%) |
+| `robust1` | 29.3% | over-corrects (buy 50%) — informative, not a QQQ variant |
+| `struct` | 27.8% | even fully capped, +8.5pp over B&H |
+
+QQQ's edge survives every rule thrown at it — a property of the index's trend structure, not of any one optimizer's enthusiasm. SPY's edge, by contrast, only exists at all under the single structural rule it ships — the honest difference between a core holding and a satellite.
 
 ---
 
