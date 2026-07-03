@@ -4,8 +4,8 @@ A systematic study of whether a disciplined "buy dips only in confirmed uptrends
 
 > [!IMPORTANT]
 > **The honest, out-of-sample headline (annual re-optimization, no look-ahead):**
-> - **QQQ works, decisively — and survived a selection-robustness audit.** The recommended **Balanced (DD-capped)** variant earns **34.8% CAGR vs 19.4% buy-and-hold** (2015–2026), worst year −22.6%. A robustness-first selector run as a control independently converges to nearly the same combo (§7) — QQQ's edge is structural, not a lucky pick.
-> - **SPY ships one high-risk satellite variant, admitted under documented amendments.** The **Struct-Capped (buy ≤ 40%, dip ≥ 0.25%, MA200 exit)** rule earns **16.4% vs 13.7% B&H** (2015–2026) and **19.8% vs 14.1%** on the extended 2011–2026 window whose first four years were never used in any prior decision (§7) — but it rides **−37% years** and failed one stability gate, disclosed in §7. Read §9 before trading it.
+> - **QQQ works, decisively — and survived a selection-robustness audit.** The recommended **`maxdd50` (DD-capped)** variant earns **34.8% CAGR vs 19.4% buy-and-hold** (2015–2026), worst year −22.6%. A robustness-first selector run as a control independently converges to nearly the same combo (§7) — QQQ's edge is structural, not a lucky pick.
+> - **SPY ships one high-risk satellite variant, admitted under documented amendments.** The **`struct` (buy ≤ 40%, dip ≥ 0.25%, MA200 exit)** rule earns **16.4% vs 13.7% B&H** (2015–2026) and **19.8% vs 14.1%** on the extended 2011–2026 window whose first four years were never used in any prior decision (§7) — but it rides **−37% years** and failed one stability gate, disclosed in §7. Read §9 before trading it.
 > - **IWM fails** out-of-sample and is not recommended.
 >
 > Full-history (hindsight-optimized) upper bounds are higher — QQQ $10k→$3.99M — but **anchor on the walk-forward numbers.**
@@ -26,6 +26,8 @@ A systematic study of whether a disciplined "buy dips only in confirmed uptrends
 - [10. Technical reference](#10-technical-reference)
 
 > **Reading this fresh?** §1–§6 give you the complete current logic — what to trade, why the strategy works, and what it actually earned — with zero self-correction or history baked in. §7 is where every piece of "how do we know this wasn't cherry-picked" evidence lives (the SPY protocol, cross-index control, the full exit-MA matrix, stability, fork-sensitivity, fresh data). Read §7 only if you want the proof; skip it and you still have the whole answer.
+>
+> **Naming.** Every variant is named directly after its selection rule — `cagr`, `maxdd50`, `calmar`, `struct` — the exact string you'd pass to `walkforward.py --select`. No separate "Aggressive/Balanced/Conservative" marketing tier: the rule name *is* the name, so a table cell, a CLI flag, and a JSON key all say the same thing.
 
 ---
 
@@ -35,7 +37,7 @@ The strategy never holds a leveraged ETF unconditionally: it buys dips only whil
 
 ### Trade QQQ. Pick a variant by how much drawdown you can stomach.
 
-| | **Aggressive — Max-CAGR (3×)** | **Balanced — DD-Capped (3×)** (recommended) | **Conservative — Calmar (2×)** |
+| | **`cagr` (3×)** | **`maxdd50` (3×)** (recommended) | **`calmar` (2×)** |
 |---|---|---|---|
 | Selection rule | top CAGR among survivors | top CAGR with real-period maxDD ≤ 50% | top Calmar = CAGR / \|maxDD\| |
 | Converges to | **3×** (TQQQ), buy 100% | **3×**, buy 90% + 10% base cushion | **2×** (QLD) + 20% base cushion |
@@ -47,11 +49,11 @@ The strategy never holds a leveraged ETF unconditionally: it buys dips only whil
 
 > **You barely trade.** All three QQQ variants place the identical **43** orders over 23 years (~2/year, busiest year ever: 4); they fire on the same signals and differ only in sizing. You are in cash or simply holding on ~99% of days. (Computed by [`crisis_analysis.py`](crisis_analysis.py).)
 
-**QQQ's recommendation is positively validated, not just asserted** — a robustness-first selector (`plateau`) run as a control lands on essentially the production Balanced combo (33.1% OOS), and even a fully capped conservative selector (`struct`: buy ≤ 40%, dip ≥ 0.25%) still beats QQQ B&H by +8.5pp. QQQ's edge does not depend on how you pick — full evidence in §7.
+**QQQ's recommendation is positively validated, not just asserted** — a robustness-first selector (`plateau`) run as a control lands on essentially the production `maxdd50` combo (33.1% OOS), and even a fully capped conservative selector (`struct`: buy ≤ 40%, dip ≥ 0.25%) still beats QQQ B&H by +8.5pp. QQQ's edge does not depend on how you pick — full evidence in §7.
 
 ### SPY — a high-risk satellite, shipped with disclosures
 
-| | **SPY Satellite — Struct-Capped (3×, MA200)** |
+| | **SPY `struct` (3×, MA200)** |
 |---|---|
 | Selection rule | top CAGR with **buy ≤ 40% and dip ≥ 0.25%** (`struct`) |
 | Walk-forward CAGR (2015–2026) | **16.4%** vs 13.7% B&H (+2.6pp) |
@@ -70,10 +72,10 @@ Trained on 2003-01-02 → 2025-12-31. A row labeled *year N* was trained on data
 
 | Index · variant | Entry | Drop | Exit | Buy% | Allocation |
 |---|---|---|---|---|---|
-| **QQQ · Aggressive — Max-CAGR (3×)** | 1.04×MA200 | 0.0% (any non-up day) | 1.01×MA200 | 100% | 100% TQQQ (3×) |
-| **QQQ · Balanced — DD-Capped (3×)** (recommended) | 1.04×MA200 | 0.0% | 1.01×MA200 | 90% | 10% QQQ + TQQQ (3×) |
-| **QQQ · Conservative — Calmar (2×)** | 1.04×MA200 | 0.0% | 1.01×MA200 | 80% | 20% QQQ + QLD (2×) |
-| **SPY · Satellite — Struct-Capped (3×)** | 1.02×MA200 | 0.25% | 0.97×MA200 | 30% | 100% UPRO (3×) |
+| **QQQ · `cagr` (3×)** | 1.04×MA200 | 0.0% (any non-up day) | 1.01×MA200 | 100% | 100% TQQQ (3×) |
+| **QQQ · `maxdd50` (3×)** (recommended) | 1.04×MA200 | 0.0% | 1.01×MA200 | 90% | 10% QQQ + TQQQ (3×) |
+| **QQQ · `calmar` (2×)** | 1.04×MA200 | 0.0% | 1.01×MA200 | 80% | 20% QQQ + QLD (2×) |
+| **SPY · `struct` (3×)** | 1.02×MA200 | 0.25% | 0.97×MA200 | 30% | 100% UPRO (3×) |
 
 ### Re-optimize each January
 
@@ -214,26 +216,26 @@ The entire top-10 of the 2015 window is premise-violating (`drop ≤ −0.5%`) w
 
 | Rule | What it does | Shipped where |
 |---|---|---|
-| `cagr` | Top CAGR, no constraint | **QQQ Aggressive** |
-| `maxdd{N}` (e.g. `maxdd50`) | Top CAGR among combos whose real-period max drawdown stays ≤ N% | **QQQ Balanced** (recommended, N=50) |
-| `calmar` | Top `CAGR / \|real-period maxDD\|` | **QQQ Conservative** |
+| `cagr` | Top CAGR, no constraint | **QQQ `cagr`** |
+| `maxdd{N}` (e.g. `maxdd50`) | Top CAGR among combos whose real-period max drawdown stays ≤ N% | **QQQ `maxdd50`** (recommended) |
+| `calmar` | Top `CAGR / \|real-period maxDD\|` | **QQQ `calmar`** |
 | `buycap{N}` | Top CAGR among combos with `buy_pct ≤ N%` | *not shipped* — SPY's retired rule, superseded by `struct` (§4) |
-| `struct` | Top CAGR with `buy_pct ≤ 40%` **and** `drop_level ≥ 0.25%` | **SPY Satellite** — SPY's only shipped variant |
+| `struct` | Top CAGR with `buy_pct ≤ 40%` **and** `drop_level ≥ 0.25%` | **SPY `struct`** — SPY's only shipped variant |
 | `robust1` | Most conservative combo within 1pp of the top in-sample CAGR | *not shipped* — a SPY candidate, tested and rejected (§7) |
 | `plateau` | Ranked by the median CAGR of each combo's ±1-grid-step neighborhood | *not shipped* — used once as a validation check, on both indices (§7) |
 
-**QQQ ships three of these seven** as its three named variants (Aggressive/Balanced/Conservative — §1), all on the **MA200** exit; **SPY ships exactly one** (`struct`), also on **MA200**. The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they were candidates or one-off checks. §7 has the complete story of how each index's rule and exit MA were settled, including every rejected alternative.
+**QQQ ships three of these seven** as its three variants (`cagr` / `maxdd50` / `calmar` — §1), all on the **MA200** exit; **SPY ships exactly one** (`struct`), also on **MA200**. The remaining three rows (`buycap`, `robust1`, `plateau`) are not live anywhere — they were candidates or one-off checks. §7 has the complete story of how each index's rule and exit MA were settled, including every rejected alternative.
 
-> **Why three variants for QQQ but only one for SPY? Not a style preference — it's what the data supports.** Point the exact same three rules that give QQQ its risk ladder at SPY (same MA200 exit, same 2015–2026 window, B&H 13.73%), and all three **fail**:
+> **Why three variants for QQQ but only one for SPY? Not a style preference — it's what the data supports.** Point QQQ's own three rules (`cagr`, `maxdd50`, `calmar`) at SPY instead (same MA200 exit, same 2015–2026 window, B&H 13.73%), and all three **fail**:
 >
 > | Rule | SPY OOS CAGR | vs B&H |
 > |---|---|---|
-> | `cagr` (→ QQQ Aggressive) | 8.97% | −4.76pp ✗ |
-> | `maxdd50` (→ QQQ Balanced) | 10.92% | −2.81pp ✗ |
-> | `calmar` (→ QQQ Conservative) | 11.04% | −2.69pp ✗ |
+> | `cagr` | 8.97% | −4.76pp ✗ |
+> | `maxdd50` | 10.92% | −2.81pp ✗ |
+> | `calmar` | 11.04% | −2.69pp ✗ |
 > | `struct` (SPY's actual rule) | 16.30% | +2.57pp ✓ |
 >
-> QQQ's three variants are three *different working answers* to "how much risk do you want" — they can all be offered as a genuine menu because QQQ's trend structure is strong enough that almost any reasonable selection philosophy beats B&H. §7 confirms this two separate ways: a cross-index control test (three rules never designed for QQQ still land at 27.8–33.1% vs 19.25% B&H) and a fork-sensitivity check (all three of QQQ's shipped variants pass with wide margins and tight rank-1..5 bands, 0.76–2.0pp). SPY has no equivalent menu to offer — the DD-cap and Calmar rules that produce QQQ's gentler tiers don't produce a gentler *working* SPY tier, they produce the **same losing pick**, because SPY's in-sample drawdowns before 2022 never got deep enough to make the cap bind (see the box below). Of everything tried on SPY — the original three, plus `buycap`, plus the three protocol candidates (§7) — **`struct` is the only one that beats B&H at all.** So SPY isn't shipping "the conservative option among several winners"; it's shipping the sole survivor, at the one risk level that happened to work, with that risk fully disclosed (§1, §8). If you want a gentler SPY tier, the honest answer is that the data doesn't currently support one — not that it wasn't tried.
+> QQQ's three variants are three *different working answers* to "how much risk do you want" — they can all be offered as a genuine menu because QQQ's trend structure is strong enough that almost any reasonable selection philosophy beats B&H. §7 confirms this two separate ways: a cross-index control test (three rules never designed for QQQ still land at 27.8–33.1% vs 19.25% B&H) and a fork-sensitivity check (all three of QQQ's shipped variants pass with wide margins and tight rank-1..5 bands, 0.76–2.0pp). SPY has no equivalent menu to offer — the `maxdd50` and `calmar` rules that produce QQQ's gentler tiers don't produce a gentler *working* SPY tier, they produce the **same losing pick**, because SPY's in-sample drawdowns before 2022 never got deep enough to make the cap bind (see the box below). Of everything tried on SPY — the original three, plus `buycap`, plus the three protocol candidates (§7) — **`struct` is the only one that beats B&H at all.** So SPY isn't shipping "the conservative option among several winners"; it's shipping the sole survivor, at the one risk level that happened to work, with that risk fully disclosed (§1, §8). If you want a gentler SPY tier, the honest answer is that the data doesn't currently support one — not that it wasn't tried.
 >
 > **This is also why §7's validation checks test three QQQ rules but only one SPY rule.** It isn't an arbitrary asymmetry — it directly mirrors what's actually shipped: QQQ has three live variants worth individually confirming, while SPY has exactly one (`struct`). Where `robust1` also appears in §7, it's shown only as the rejected candidate whose failure explains why it *isn't* shipped — not as a second SPY variant to pick between.
 
@@ -249,16 +251,16 @@ Each January, the optimizer is re-run on all prior data only, the pick is frozen
 
 | Variant | Fixed | **Expanding** | B&H | Worst year (exp) |
 |---|---|---|---|---|
-| Aggressive — Max-CAGR (3×) | 23.0% | **33.7%** | 19.4% | −22.6% |
-| Balanced — DD-Capped (3×) | 29.1% | **34.8%** | 19.4% | −22.6% |
-| Conservative — Calmar (2×) | 26.7% | 27.0% | 19.4% | **−18.4%** |
+| `cagr` (3×) | 23.0% | **33.7%** | 19.4% | −22.6% |
+| `maxdd50` (3×) | 29.1% | **34.8%** | 19.4% | −22.6% |
+| `calmar` (2×) | 26.7% | 27.0% | 19.4% | **−18.4%** |
 
-The Aggressive schedule converges to `1.04 / 0.0 / 1.01 / buy 100%` and holds it unchanged from 2017 on. The Balanced variant earns the most out-of-sample while trimming the in-sample drawdown.
+The `cagr` schedule converges to `1.04 / 0.0 / 1.01 / buy 100%` and holds it unchanged from 2017 on. The `maxdd50` variant earns the most out-of-sample while trimming the in-sample drawdown.
 
-| Aggressive — Max-CAGR (3×) | Balanced — DD-Capped (3×) |
+| `cagr` (3×) | `maxdd50` (3×) |
 |---|---|
-| ![QQQ Aggressive walk-forward](results/walkforward/QQQ_walkforward_2015-2026_gridv3_comparison.png) | ![QQQ Balanced walk-forward](results/walkforward/QQQ_walkforward_2015-2026_gridv3_selmaxdd50_comparison.png) |
-| ![QQQ Aggressive drawdown](results/walkforward/QQQ_walkforward_2015-2026_gridv3_comparison_drawdown.png) | ![QQQ Balanced drawdown](results/walkforward/QQQ_walkforward_2015-2026_gridv3_selmaxdd50_comparison_drawdown.png) |
+| ![QQQ cagr walk-forward](results/walkforward/QQQ_walkforward_2015-2026_gridv3_comparison.png) | ![QQQ maxdd50 walk-forward](results/walkforward/QQQ_walkforward_2015-2026_gridv3_selmaxdd50_comparison.png) |
+| ![QQQ cagr drawdown](results/walkforward/QQQ_walkforward_2015-2026_gridv3_comparison_drawdown.png) | ![QQQ maxdd50 drawdown](results/walkforward/QQQ_walkforward_2015-2026_gridv3_selmaxdd50_comparison_drawdown.png) |
 
 *Top row: equity curves. Bottom row: drawdown (underwater) curves — the lived experience of holding the strategy: the leveraged variants spend long stretches 30–50% underwater even while compounding far ahead of B&H.*
 
@@ -278,7 +280,7 @@ Year-by-year (expanding):
 
 *(2026 is a partial year through the data end.)* Note the **Fixed** model again does best of all (18.2%) — SPY rewards a stable structural rule more than annual re-tuning, consistent with its §5 story.
 
-| SPY Satellite — Struct (3×, MA200) | drawdown |
+| SPY `struct` (3×, MA200) | drawdown |
 |---|---|
 | ![SPY struct walk-forward](results/walkforward/SPY_walkforward_2015-2026_gridv3_selstruct_comparison.png) | ![SPY struct drawdown](results/walkforward/SPY_walkforward_2015-2026_gridv3_selstruct_comparison_drawdown.png) |
 
@@ -323,7 +325,7 @@ QQQ's edge survives every rule thrown at it — a property of the index's trend 
 
 **QQQ → MA200, cleanly.**
 
-| Index · MA | In-sample best | OOS Aggressive | OOS Balanced (maxDD) | OOS Conservative | B&H | Verdict |
+| Index · MA | In-sample best | OOS `cagr` | OOS `maxdd50` | OOS `calmar` | B&H | Verdict |
 |---|---|---|---|---|---|---|
 | **QQQ MA200** | 29.1% | 33.7% | **34.8%** | 27.0% | 19.4% | **chosen ✓** |
 | QQQ MA100 | 26.4% | 32.9% | 30.7% | 12.3% | 19.4% | worse, deeper worst years |
@@ -336,9 +338,9 @@ Faster exits chop off profitable runs; MA200 wins both in-sample and out-of-samp
 
 | Rule | MA200 | MA100 | MA50 |
 |---|---|---|---|
-| **struct** | **16.4% · −37.1%** ✓ | 14.8% · −38.6% | 17.4% · −41.5% |
-| robust1 | 15.9% · −34.3% | 15.3% · −35.0% | 15.9% · −36.5% |
-| plateau | 9.6% ✗ · −45.6% | 15.3% · −49.5% | 16.3% · −56.5% |
+| **`struct`** | **16.4% · −37.1%** ✓ | 14.8% · −38.6% | 17.4% · −41.5% |
+| `robust1` | 15.9% · −34.3% | 15.3% · −35.0% | 15.9% · −36.5% |
+| `plateau` | 9.6% ✗ · −45.6% | 15.3% · −49.5% | 16.3% · −56.5% |
 
 Three things the old MA50 verdict got wrong, visible at a glance:
 
@@ -354,10 +356,10 @@ A fair objection to annual re-optimization is that the headline CAGR is twelve d
 
 | Variant | Trigger path (entry / drop / exit) | Distinct sets in 12 yrs | Sizing path |
 |---|---|---|---|
-| **QQQ Aggressive** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **2** | buy 20% → **100%** (’17–’26) |
-| **QQQ Balanced** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **3** | buy 50% → 100% → **90% + 10% base** (’21–) |
-| **QQQ Conservative** | **1.04 / 0.0% / 1.01** (all 12 years) | **2** | 70/30 → **80/20** (’21–) |
-| **SPY Satellite — Struct** | 1.01–1.02 / 0.25–0.5% / 0.95–0.97 (0.94 in the 2011–14 windows) | **6** (7 over 16 yrs) | buy 40% → **30%** (’23–, after 2022 enters training) |
+| **QQQ `cagr`** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **2** | buy 20% → **100%** (’17–’26) |
+| **QQQ `maxdd50`** | → **1.04 / 0.0% / 1.01** (2017, then frozen) | **3** | buy 50% → 100% → **90% + 10% base** (’21–) |
+| **QQQ `calmar`** | **1.04 / 0.0% / 1.01** (all 12 years) | **2** | 70/30 → **80/20** (’21–) |
+| **SPY `struct`** | 1.01–1.02 / 0.25–0.5% / 0.95–0.97 (0.94 in the 2011–14 windows) | **6** (7 over 16 yrs) | buy 40% → **30%** (’23–, after 2022 enters training) |
 
 **The SPY disclosure (protocol gate S1, failed and shipped failed):** SPY's rule never fully freezes — it re-tunes by micro-steps roughly every two years. Every set stays inside one family (each change is a single grid step on one axis; compare §4's broken argmax, which swung buy 40↔100% and drop −1%↔+1%), and the drift direction is always *toward caution after a loss* (buy 40%→30% in 2023, exactly as QQQ added its cushion in 2021). But by the protocol's own count it is 6–7 sets, not ≤4, and that failure is disclosed here rather than redefined away.
 
@@ -367,13 +369,13 @@ Mandatory diagnostic ([`experiments/fork_sensitivity.py`](experiments/fork_sensi
 
 | Rule (MA200) | rank-2 vs B&H | rank-1..5 band | Verdict |
 |---|---|---|---|
-| **QQQ cagr** (Aggressive) | **+13.4pp** | **2.0pp** | passes by a wide margin |
-| **QQQ maxdd50** (Balanced, recommended) | **+14.6pp** | **0.91pp** | passes by a wide margin — the plateau story, directly confirmed |
-| **QQQ calmar** (Conservative) | **+7.3pp** | **0.76pp** | passes by a wide margin |
-| SPY struct (shipped) | +1.7pp | 7.7pp | passes, but thin |
-| SPY robust1 (not shipped) | below B&H at ranks 3–4 | — | fails — one reason it wasn't shipped despite passing its cell gate |
+| **QQQ `cagr`** | **+13.4pp** | **2.0pp** | passes by a wide margin |
+| **QQQ `maxdd50`** (recommended) | **+14.6pp** | **0.91pp** | passes by a wide margin — the plateau story, directly confirmed |
+| **QQQ `calmar`** | **+7.3pp** | **0.76pp** | passes by a wide margin |
+| SPY `struct` (shipped) | +1.7pp | 7.7pp | passes, but thin |
+| SPY `robust1` (not shipped) | below B&H at ranks 3–4 | — | fails — one reason it wasn't shipped despite passing its cell gate |
 
-All three of QQQ's shipped variants — not just the recommended Balanced one — pass with wide margins and tight rank-1..5 bands (0.76–2.0pp). Someone trading Aggressive or Conservative instead of Balanced gets the same confidence the optimizer's #1 in-sample pick isn't a fluke.
+All three of QQQ's shipped variants — not just the recommended `maxdd50` one — pass with wide margins and tight rank-1..5 bands (0.76–2.0pp). Someone trading `cagr` or `calmar` instead of `maxdd50` gets the same confidence the optimizer's #1 in-sample pick isn't a fluke.
 
 QQQ's result is the sharpest evidence in the whole study that its edge is structural, not a lucky in-sample guess: swap in the optimizer's 2nd-, 3rd-, 4th-, or 5th-best pick in every single year, and the walk-forward CAGR barely moves (33.05–33.96%). SPY's edge is real but far more sensitive to exactly which combo the optimizer returns — expected, given it survives on a narrower structural constraint rather than a broad plateau. *(QQQ run used data through 2026-07-03, three weeks later than the §6 table above; the 33.96% rank-1 CAGR reflects that, not a discrepancy with the 34.76% production figure.)*
 
@@ -381,7 +383,7 @@ QQQ's result is the sharpest evidence in the whole study that its edge is struct
 
 Every number in §6 comes from a 12-year OOS window this project has scored dozens of times (§9 ledger). This is the evidence that couldn't have been cherry-picked.
 
-**F1 — Four training windows that never existed before.** The walk-forward was extended back to 2011: training windows 2003–2010 through 2003–2013 were **searched for the first time** after the SPY rule was frozen — their outcomes could not have influenced any design decision. Result (SPY struct · MA200, 2011–2026):
+**F1 — Four training windows that never existed before.** The walk-forward was extended back to 2011: training windows 2003–2010 through 2003–2013 were **searched for the first time** after the SPY rule was frozen — their outcomes could not have influenced any design decision. Result (SPY `struct` · MA200, 2011–2026):
 
 | | Strategy | SPY B&H |
 |---|---|---|
@@ -405,13 +407,13 @@ The four fresh years widen the edge rather than shrinking it — and the picks t
 
 This is the section that should drive your choice of variant — more than the headline CAGR. Each crisis gets a chart and a market-history walk-through; generated by [`crisis_analysis.py`](crisis_analysis.py).
 
-> **Directly answering "would this prevent an 80% drawdown?"** For QQQ's Aggressive 3× config, no — only lower leverage shrinks that tail (Conservative 2× roughly halves it). SPY's Struct variant is the most tail-resistant *in slow secular bears* — its ≤30–40% per-dip cap is the same structural lever that lets it beat B&H — but its slow MA200 exit makes it the *worst* performer in a gap-crash like COVID. **No variant escapes §4's core finding: only structural exposure limits an unseen tail; an in-sample drawdown cap cannot.**
+> **Directly answering "would this prevent an 80% drawdown?"** For QQQ's `cagr` 3× config, no — only lower leverage shrinks that tail (`calmar` 2× roughly halves it). SPY's `struct` variant is the most tail-resistant *in slow secular bears* — its ≤30–40% per-dip cap is the same structural lever that lets it beat B&H — but its slow MA200 exit makes it the *worst* performer in a gap-crash like COVID. **No variant escapes §4's core finding: only structural exposure limits an unseen tail; an in-sample drawdown cap cannot.**
 
 ### The four crises at a glance
 
 Each cell is **`period return · max drawdown`**, both measured within that crisis window only. Buy & hold (1×) benchmarks in italics.
 
-| Crisis (window) | QQQ Aggressive (3×) | QQQ Balanced (3×) | QQQ Conservative (2×) | _QQQ B&H (1×)_ | SPY Satellite — Struct (3×) | _SPY B&H (1×)_ |
+| Crisis (window) | QQQ `cagr` (3×) | QQQ `maxdd50` (3×) | QQQ `calmar` (2×) | _QQQ B&H (1×)_ | SPY `struct` (3×) | _SPY B&H (1×)_ |
 |---|---|---|---|---|---|---|
 | **Dot-com** 2000–2003 *(100% synthetic)* | −70.7% · **−92.1%** | −65.6% · −90.2% | −31.0% · −74.8% | _−61.5% · −83.0%_ | **+34.9% · −34.7%** | _−19.2% · −47.5%_ |
 | **GFC** 2007–2009 | +64.7% · −38.8% | +58.4% · −38.4% | +43.1% · **−29.2%** | _−2.5% · −53.4%_ | +26.3% · −41.4% | _−23.1% · −55.2%_ |
@@ -425,9 +427,9 @@ The SPY column's profile inverted versus the retired MA50 variant, and understan
 
 ### The timing rule vs. just holding the leveraged ETF
 
-*"Does the MA timing rule earn its keep, or could I just buy and hold the 3× ETF?"* QQQ Aggressive differs from holding TQQQ by nothing but the timing rule — a clean isolation. (SPY Struct deploys ≤30–40% per dip, so its row is "recommended SPY strategy vs holding UPRO".)
+*"Does the MA timing rule earn its keep, or could I just buy and hold the 3× ETF?"* QQQ `cagr` differs from holding TQQQ by nothing but the timing rule — a clean isolation. (SPY `struct` deploys ≤30–40% per dip, so its row is "recommended SPY strategy vs holding UPRO".)
 
-| Crisis | QQQ Aggressive (timed) | Hold TQQQ | SPY Struct (timed) | Hold UPRO |
+| Crisis | QQQ `cagr` (timed) | Hold TQQQ | SPY `struct` (timed) | Hold UPRO |
 |---|---|---|---|---|
 | **Dot-com** 2000–2003 | −70.7% · −92.1% | **−100.0% · −100.0%** | +34.9% · −34.7% | −85.0% · −94.2% |
 | **GFC** 2007–2009 | +64.7% · −38.8% | −80.2% · −96.9% | +26.3% · −41.4% | −90.7% · −97.5% |
@@ -441,19 +443,19 @@ Holding the leveraged ETF straight through is a wipeout in every decisive bear. 
 
 ![Dot-com crisis](results/crisis/crisis_dotcom.png)
 
-**Dot-com, 2000–2003 — QQQ's one unwinnable case, SPY Struct's best.** The Nasdaq fell ~83% in a 2.5-year grind punctuated by +30–40% bear rallies — each one re-armed the rule, triggered leveraged dip-buys, then broke down again. Repeat with 3× leverage: **−92%** for QQQ Aggressive (2× only softens to −75%: *leverage itself is the tail driver, not the timing*). SPY Struct is the lone survivor (**+34.9%**) — small tranches on a slow exit meant the whipsaws never compounded into ruin. (Caveat: 100% synthetic leveraged data, and SPY fell far less than QQQ in this bear.)
+**Dot-com, 2000–2003 — QQQ's one unwinnable case, SPY `struct`'s best.** The Nasdaq fell ~83% in a 2.5-year grind punctuated by +30–40% bear rallies — each one re-armed the rule, triggered leveraged dip-buys, then broke down again. Repeat with 3× leverage: **−92%** for QQQ `cagr` (2× only softens to −75%: *leverage itself is the tail driver, not the timing*). SPY `struct` is the lone survivor (**+34.9%**) — small tranches on a slow exit meant the whipsaws never compounded into ruin. (Caveat: 100% synthetic leveraged data, and SPY fell far less than QQQ in this bear.)
 
 ![GFC crisis](results/crisis/crisis_gfc.png)
 
-**GFC, 2007–2009 — the trend filter's showcase.** A decisive downtrend: the MA200 broke cleanly in late 2007, the strategy sat in cash through the autumn-2008 collapse, and re-armed into the 2009 recovery. QQQ Aggressive **+64.7%** across a window where buy-and-hold lost half.
+**GFC, 2007–2009 — the trend filter's showcase.** A decisive downtrend: the MA200 broke cleanly in late 2007, the strategy sat in cash through the autumn-2008 collapse, and re-armed into the 2009 recovery. QQQ `cagr` **+64.7%** across a window where buy-and-hold lost half.
 
 ![COVID crisis](results/crisis/crisis_covid.png)
 
-**COVID, 2020 — too fast to dodge; the recovery is what you're paid for.** The fastest bear in history (−34% in five weeks) hurt *before* any trend filter could react. QQQ took −52% intra-crash, then mechanically re-armed and finished **+103.9%**. SPY Struct shows the cost of the slow exit in this regime: −57.5% drawdown, −9.7% on the year — its documented worst case.
+**COVID, 2020 — too fast to dodge; the recovery is what you're paid for.** The fastest bear in history (−34% in five weeks) hurt *before* any trend filter could react. QQQ took −52% intra-crash, then mechanically re-armed and finished **+103.9%**. SPY `struct` shows the cost of the slow exit in this regime: −57.5% drawdown, −9.7% on the year — its documented worst case.
 
 ![2022 rate-hike crisis](results/crisis/crisis_ratehike.png)
 
-**2022 rate-hike bear — a mild rhyme of dot-com.** QQQ's slow exit kept it mostly in cash through 2022 and slightly *positive* over the window (+8.9%). SPY Struct lost −16.9% — repeated small dip-buys into a grinding decline are its known cost in this regime, and 2022 (−37.1%) is its walk-forward worst year.
+**2022 rate-hike bear — a mild rhyme of dot-com.** QQQ's slow exit kept it mostly in cash through 2022 and slightly *positive* over the window (+8.9%). SPY `struct` lost −16.9% — repeated small dip-buys into a grinding decline are its known cost in this regime, and 2022 (−37.1%) is its walk-forward worst year.
 
 ### What the four crises teach
 
@@ -464,7 +466,7 @@ Holding the leveraged ETF straight through is a wipeout in every decisive bear. 
 
 For reference, the full 23-year curves of the two headline configs:
 
-| QQQ Aggressive · Max-CAGR (3×) — 2003–2026 | SPY Satellite — Struct (3×, MA200) — 2003–2026 |
+| QQQ `cagr` (3×) — 2003–2026 | SPY `struct` (3×, MA200) — 2003–2026 |
 |---|---|
 | ![QQQ equity](results/backtester/QQQ/QQQ_2003-2026_entry1.04_exit1.01_drop0.0_buy1.0_b0_x20_ma200.png) | ![SPY equity](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.97_drop0.0025_buy0.3_b0_x20_ma200.png) |
 | ![QQQ drawdown](results/backtester/QQQ/QQQ_2003-2026_entry1.04_exit1.01_drop0.0_buy1.0_b0_x20_ma200_drawdown.png) | ![SPY drawdown](results/backtester/SPY/SPY_2003-2026_entry1.02_exit0.97_drop0.0025_buy0.3_b0_x20_ma200_drawdown.png) |
@@ -473,12 +475,12 @@ For reference, the full 23-year curves of the two headline configs:
 
 | Config | CAGR | B&H | Worst year | Max DD | Sharpe | Final |
 |---|---|---|---|---|---|---|
-| QQQ Aggressive — Max-CAGR (3×) | **29.1%** | 16.2% | −35.0% | −55.9% | 0.78 | $3,987,913 |
-| QQQ Balanced — DD-Capped (3×) | 28.2% | 16.2% | −31.9% | −51.8% | 0.78 | $3,356,876 |
-| QQQ Conservative — Calmar (2×) | 20.9% | 16.2% | **−19.1%** | **−33.4%** | **0.80** | $856,189 |
-| SPY Satellite — Struct (3×, MA200) | 21.7% | 11.4% | −35.7% | −57.5% | 0.69 | $1,004,372 |
+| QQQ `cagr` (3×) | **29.1%** | 16.2% | −35.0% | −55.9% | 0.78 | $3,987,913 |
+| QQQ `maxdd50` (3×) | 28.2% | 16.2% | −31.9% | −51.8% | 0.78 | $3,356,876 |
+| QQQ `calmar` (2×) | 20.9% | 16.2% | **−19.1%** | **−33.4%** | **0.80** | $856,189 |
+| SPY `struct` (3×, MA200) | 21.7% | 11.4% | −35.7% | −57.5% | 0.69 | $1,004,372 |
 
-With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable account at a $100k salary it nets ~24.6% after-tax (TFSA/RRSP: untaxed) — modelled with per-year federal + Ontario brackets (`tax_engine.py`, 2011–2025).
+With a T-bill cash sleeve, QQQ `cagr` rises to 29.7%; in an Ontario taxable account at a $100k salary it nets ~24.6% after-tax (TFSA/RRSP: untaxed) — modelled with per-year federal + Ontario brackets (`tax_engine.py`, 2011–2025).
 
 ---
 
@@ -489,15 +491,15 @@ With a T-bill cash sleeve, QQQ Aggressive rises to 29.7%; in an Ontario taxable 
 - **The multiple-comparisons ledger.** Across the project's life, roughly **45 rule×MA cells / rank-schedules** have been scored against the 2015–2026 OOS window (early studies ~10, the wide-grid matrix 15, the review probes 5, the protocol 9, the QQQ + SPY fork-sensitivity reruns another ~5 each). Any single cell's ±2–4pp edge must be read against that denominator — it is why the protocol demanded multi-MA consistency, fork robustness, and reserved 2011–2014 data instead of one good number.
 - **An in-sample drawdown cap cannot bound an out-of-sample tail** (§5). Only structural levers (buy-size caps, dip floors, lower leverage) limit an unseen tail.
 - **Selection is the biggest risk in optimization** (§4). Aggressiveness-monotone parameters + argmax = guaranteed migration to the fragile edge. If you modify this study, extend the structural caps to any new axis you add.
-- **3× requires stomaching −20% to −37% calendar years.** If you cannot, trade the Conservative 2× variant or stay unleveraged.
+- **3× requires stomaching −20% to −37% calendar years.** If you cannot, trade the `calmar` 2× variant or stay unleveraged.
 - **SPY's tail lives in gap-crashes** (−57.5% in COVID). QQQ's lives in secular chop (−92% in synthetic dot-com). Neither is hypothetical.
-- **Taxes are the largest real cost.** Ontario taxable at $100k salary: QQQ Aggressive nets ~24.6% vs 29% pre-tax. Use TFSA → RRSP → taxable.
+- **Taxes are the largest real cost.** Ontario taxable at $100k salary: QQQ `cagr` nets ~24.6% vs 29% pre-tax. Use TFSA → RRSP → taxable.
 - **Synthetic-data dependence.** ~6–7 early years rely on the leverage-decay model; dot-com numbers are approximations.
 - **Data-end drift.** QQQ numbers use data through 2026-06-11; the SPY protocol runs through 2026-07-01. Strategy and benchmark are always scored on identical windows.
 
 ### Experiment — does a VIX regime filter help? (a negative result)
 
-A natural add-on is to sit in cash when fear is high — *hold no leverage while VIX > T*. We tested it on the QQQ Balanced config ([`experiments/backtester_vix.py`](experiments/backtester_vix.py)), sweeping T = 20…35 with the decision on the prior day's VIX. **It does not help at any threshold**: the gentlest gate costs ~1pp CAGR for zero drawdown improvement; tighter gates are worse on both axes (VIX > 30: CAGR 28.2% → 22.7%, maxDD −51.7% → −57.3%). VIX peaks *at* bottoms, so the filter sells the panic and misses the recovery; and VIX does not separate the strategy's good years from bad (its worst year, 2016, had the decade's lowest VIX). The lever that tracks the real failure mode — whipsaws in *low*-vol chop — is volatility-scaled sizing, left for future work.
+A natural add-on is to sit in cash when fear is high — *hold no leverage while VIX > T*. We tested it on the QQQ `maxdd50` config ([`experiments/backtester_vix.py`](experiments/backtester_vix.py)), sweeping T = 20…35 with the decision on the prior day's VIX. **It does not help at any threshold**: the gentlest gate costs ~1pp CAGR for zero drawdown improvement; tighter gates are worse on both axes (VIX > 30: CAGR 28.2% → 22.7%, maxDD −51.7% → −57.3%). VIX peaks *at* bottoms, so the filter sells the panic and misses the recovery; and VIX does not separate the strategy's good years from bad (its worst year, 2016, had the decade's lowest VIX). The lever that tracks the real failure mode — whipsaws in *low*-vol chop — is volatility-scaled sizing, left for future work.
 
 ---
 
@@ -529,7 +531,7 @@ python experiments/fork_sensitivity.py --preset SPY --exit-ma 200 --select struc
 
 **Authoritative single-config backtest:**
 ```bash
-# SPY Satellite — Struct (3×, MA200), live 2026 params
+# SPY struct (3×, MA200), live 2026 params
 python backtester.py --preset SPY --start 2003-01-01 --entry-signal 1.02 --drop-level 0.0025 \
   --exit-signal 0.97 --buy-pct 0.3 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200 --no-show
 ```
@@ -574,10 +576,10 @@ Current live (2026) picks — these match the §1 table, the §8 backtests, and 
 
 | Variant | entry | drop | exit | buy% | base | x2 | x3 | exit MA | Holds |
 |---|---|---|---|---|---|---|---|---|---|
-| **QQQ Aggressive — Max-CAGR** | 1.04 | 0.0% | 1.01 | 100% | 0% | 0% | 100% | MA200 | TQQQ (3×) |
-| **QQQ Balanced — DD-Capped** | 1.04 | 0.0% | 1.01 | 90% | 10% | 0% | 100% | MA200 | QQQ + TQQQ (3×) |
-| **QQQ Conservative — Calmar** | 1.04 | 0.0% | 1.01 | 80% | 20% | 100% | 0% | MA200 | QQQ + QLD (2×) |
-| **SPY Satellite — Struct-Capped** | 1.02 | 0.25% | 0.97 | 30% | 0% | 0% | 100% | MA200 | UPRO (3×) |
+| **QQQ `cagr`** | 1.04 | 0.0% | 1.01 | 100% | 0% | 0% | 100% | MA200 | TQQQ (3×) |
+| **QQQ `maxdd50`** | 1.04 | 0.0% | 1.01 | 90% | 10% | 0% | 100% | MA200 | QQQ + TQQQ (3×) |
+| **QQQ `calmar`** | 1.04 | 0.0% | 1.01 | 80% | 20% | 100% | 0% | MA200 | QQQ + QLD (2×) |
+| **SPY `struct`** | 1.02 | 0.25% | 0.97 | 30% | 0% | 0% | 100% | MA200 | UPRO (3×) |
 
 </details>
 
@@ -659,7 +661,7 @@ python experiments/backtester_vix.py
 **Step 11 — Authoritative backtests of every final shipped config (§8 table, Appendix B).** The trade-logged, cost-aware, tax-aware numbers actually cited anywhere in this README:
 ```bash
 python backtester.py --preset QQQ --start 2003-01-01 --entry-signal 1.04 --drop-level 0.0 --exit-signal 1.01 --buy-pct 1.0 --alloc-base 0 --alloc-x2 0 --alloc-x3 1 --exit-ma 200 --no-show
-# repeat once per Appendix-B row (QQQ Balanced, QQQ Conservative, SPY Struct)
+# repeat once per Appendix-B row (QQQ maxdd50, QQQ calmar, SPY struct)
 ```
 
 **Step 12 — Crisis stress tests and trade-frequency stats (§1, §8).** Runs every final shipped config through the four historical crises plus its plain-index and un-timed-leveraged-ETF benchmarks:
